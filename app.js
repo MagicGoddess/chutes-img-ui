@@ -154,7 +154,18 @@ els.generateBtn.addEventListener('click', async ()=>{
 });
 
 // Helpers
-function toast(msg, isErr=false){ els.runStatus.textContent = msg; els.runStatus.className = isErr ? 'error' : 'success'; }
+let toastTimer = null;
+function toast(msg, isErr=false){
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = isErr ? 'error show' : 'success show';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{
+    t.className = '';
+    t.textContent = '';
+  }, 3000);
+}
 function setBusy(state, msg='Working…'){
   els.generateBtn.disabled = state; els.downloadBtn.disabled = state || !els.resultImg.src; els.copyBtn.disabled = state || !els.resultImg.src;
   if (state) {

@@ -49,3 +49,9 @@ pre.log{margin:0;white-space:pre-wrap;word-break:break-word;font:12px ui-monospa
 
 /* Drag & drop highlight for image thumb */
 .thumb.drop-hover{ border-color: var(--accent); background:#0c1226 }
+
+/* Toast notifications */
+#toast{ position:fixed; right:16px; bottom:16px; z-index:9999; display:none; background:#0b1020; color:var(--text); border:1px solid #253047; border-radius:12px; padding:10px 12px; box-shadow:0 10px 30px rgba(0,0,0,.35) }
+#toast.show{ display:block }
+#toast.success{ border-left:4px solid var(--accent2) }
+#toast.error{ border-left:4px solid #ef4444 }
