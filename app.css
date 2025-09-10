@@ -18,7 +18,7 @@ textarea{min-height:72px;resize:vertical}
 button{appearance:none;background:var(--accent);color:white;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
 button.secondary{background:#253047;color:#e5e7eb}
 button:disabled{opacity:.6;cursor:not-allowed}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .preview{display:grid;gap:12px}
 .thumb{display:flex;align-items:center;justify-content:center;min-height:220px;border:1px dashed #334155;border-radius:12px;background:#0b1020;padding:8px}
 .thumb img{max-width:100%;max-height:60vh;border-radius:12px}
@@ -32,3 +32,20 @@ pre.log{margin:0;white-space:pre-wrap;word-break:break-word;font:12px ui-monospa
 .grid-cols-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
 .two-col{display:grid;gap:12px}
 @media(min-width:980px){ .two-col{grid-template-columns:1fr 1fr; align-items:start} }
+
+/* Loading spinner next to run status */
+.loading::before{
+  content:"";
+  display:inline-block;
+  width:14px;height:14px;
+  margin-right:8px;
+  border:2px solid var(--muted);
+  border-top-color: var(--accent);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+  vertical-align:-4px;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* Drag & drop highlight for image thumb */
+.thumb.drop-hover{ border-color: var(--accent); background:#0c1226 }

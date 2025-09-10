@@ -78,10 +78,11 @@ function fileToBase64(file) {
 }
 
 // Generate call
+let genTimer = null; let genStart = 0;
 els.generateBtn.addEventListener('click', async ()=>{
   try{
     const key = (els.apiKey.value || '').trim();
-    if (!key) return toast('Add your API key first', true);
+    if (!key) { toast('Add your API key first', true); els.keyStatus.textContent='API key required'; els.keyStatus.classList.add('error'); els.apiKey.focus(); return; }
     if (!sourceB64) return toast('Select a source image', true);
     // Ensure dims are multiples of 64 as many backends require tiling alignment
     const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
@@ -106,7 +107,7 @@ els.generateBtn.addEventListener('click', async ()=>{
     if (negative_prompt) body.negative_prompt = negative_prompt;
     if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
 
-    setBusy(true, 'Sending…');
+    setBusy(true, 'Generating…');
     log(`[${ts()}] Sending request to Chutes…`);
     const t0 = performance.now();
     const resp = await fetch('https://chutes-qwen-image-edit.chutes.ai/generate', {
@@ -156,7 +157,21 @@ els.generateBtn.addEventListener('click', async ()=>{
 function toast(msg, isErr=false){ els.runStatus.textContent = msg; els.runStatus.className = isErr ? 'error' : 'success'; }
 function setBusy(state, msg='Working…'){
   els.generateBtn.disabled = state; els.downloadBtn.disabled = state || !els.resultImg.src; els.copyBtn.disabled = state || !els.resultImg.src;
-  els.runStatus.textContent = state ? msg : '';
+  if (state) {
+    els.runStatus.className = 'muted loading';
+    genStart = performance.now();
+    const update = ()=>{
+      const secs = (performance.now() - genStart) / 1000;
+      els.runStatus.textContent = `${msg} ${secs.toFixed(2)}s`;
+    };
+    update();
+    if (genTimer) clearInterval(genTimer);
+    genTimer = setInterval(update, 50);
+  } else {
+    if (genTimer) { clearInterval(genTimer); genTimer = null; }
+    els.runStatus.className = 'muted';
+    els.runStatus.textContent = '';
+  }
 }
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 function snap(v, step, min, max){
@@ -190,3 +205,32 @@ els.copyBtn.addEventListener('click', async ()=>{
     toast('Copied to clipboard ✓');
   } catch(e){ toast('Clipboard not supported here', true); }
 });
+
+// Drag & drop support for source image
+async function handleImageFile(file){
+  if (!file) { els.imgThumb.innerHTML = '<span class="muted">No image selected</span>'; sourceB64 = null; return; }
+  if (!(file.type||'').startsWith('image/')) { toast('Please drop an image file', true); return; }
+  const url = URL.createObjectURL(file);
+  els.imgThumb.innerHTML = `<img src="${url}" alt="source"/>`;
+  log(`[${ts()}] Reading file: ${file.name}`);
+  const b64 = await fileToBase64(file);
+  sourceB64 = (b64||'').split(',')[1] || null;
+  sourceMime = file.type || 'image/png';
+  log(`[${ts()}] Image ready (Base64 in memory).`);
+}
+['dragenter','dragover'].forEach(ev=>{
+  els.imgThumb.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); els.imgThumb.classList.add('drop-hover'); });
+});
+['dragleave','dragend','drop'].forEach(ev=>{
+  els.imgThumb.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); els.imgThumb.classList.remove('drop-hover'); });
+});
+els.imgThumb.addEventListener('drop', async (e)=>{
+  const f = e.dataTransfer?.files?.[0];
+  await handleImageFile(f);
+});
+
+// Clear API key error hint upon typing/saving
+els.apiKey.addEventListener('input', ()=>{
+  if (els.keyStatus.classList.contains('error')) { els.keyStatus.classList.remove('error'); els.keyStatus.textContent=''; }
+});
+els.saveKeyBtn.addEventListener('click', ()=>{ els.keyStatus.classList.remove('error'); });
