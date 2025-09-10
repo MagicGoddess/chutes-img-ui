@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Chutes × Qwen Image Edit</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111827'/><text x='50' y='58' font-size='52' text-anchor='middle' fill='white'>Q</text></svg>">
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:1920px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="badge">PWA</span>
+        <h1>Chutes × Qwen Image Edit</h1>
+      </div>
+      <button id="installBtn" class="secondary" hidden>Install</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="card" id="keyCard">
+      <h2>1) API Key</h2>
+      <div class="row">
+        <label for="apiKey">Chutes API Key</label>
+        <div class="toolbar">
+          <input id="apiKey" type="password" placeholder="chutes_xxx..." autocomplete="off" />
+          <button id="revealKeyBtn" class="secondary" aria-pressed="false" aria-label="Show API key">Show</button>
+          <button id="saveKeyBtn">Save</button>
+          <button id="forgetKeyBtn" class="secondary">Forget</button>
+          <span id="keyStatus" class="muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="two-col">
+      <div class="card">
+        <h2>2) Input</h2>
+        <div class="row row-2">
+          <div>
+            <label>Source Image (required)</label>
+            <input id="imgInput" type="file" accept="image/*" />
+            <div class="thumb" id="imgThumb"><span class="muted">No image selected</span></div>
+          </div>
+          <div class="preview">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" placeholder="Describe the edit you want..."></textarea>
+            <label for="negPrompt">Negative prompt</label>
+            <textarea id="negPrompt" placeholder="Things to avoid (optional)"></textarea>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="row row-3">
+          <div>
+            <label for="width">Width (128–2048)</label>
+            <input id="width" type="number" min="128" max="2048" step="64" value="1024" />
+          </div>
+          <div>
+            <label for="height">Height (128–2048)</label>
+            <input id="height" type="number" min="128" max="2048" step="64" value="1024" />
+          </div>
+          <div>
+            <label for="seed">Seed (blank = random)</label>
+            <input id="seed" type="number" min="0" max="4294967295" placeholder="e.g. 12345" />
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="grid-cols-2">
+          <div>
+            <label for="cfg">True CFG Scale (0–10)</label>
+            <input id="cfg" type="range" min="0" max="10" step="0.1" value="4" />
+            <div class="muted">Value: <span id="cfgVal">4</span></div>
+          </div>
+          <div>
+            <label for="steps">Inference Steps (5–100)</label>
+            <input id="steps" type="range" min="5" max="100" step="1" value="50" />
+            <div class="muted">Value: <span id="stepsVal">50</span></div>
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="toolbar">
+          <button id="generateBtn">Generate</button>
+          <span id="runStatus" class="muted"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>3) Result</h2>
+        <div class="thumb"><img id="resultImg" alt="Result will appear here" /></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button id="downloadBtn" class="secondary" disabled>Download</button>
+          <button id="copyBtn" class="secondary" disabled>Copy to Clipboard</button>
+          <span id="outMeta" class="muted"></span>
+        </div>
+      </div>
+    </div>
+
+    <p class="muted" style="margin-top:12px">Tip: This app stores only your API key in <code>localStorage</code>. Images never leave your device except the selected source image which is sent to Chutes for editing.</p>
+
+    <div class="spacer"></div>
+    <div class="card">
+      <h2>Activity Log</h2>
+      <pre id="logOutput" class="log" aria-live="polite"></pre>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <span class="muted">Not affiliated with Chutes.</span>
+      <span> • </span>
+      <a href="https://github.com/MagicGoddess/chutes-img-ui" target="_blank" rel="noopener noreferrer">GitHub Repo</a>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
