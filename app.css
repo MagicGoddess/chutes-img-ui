@@ -141,6 +141,23 @@ button:disabled {
   cursor: not-allowed
 }
 
+/* Subtle, pill-shaped PWA install button */
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #10182b, #0b1224);
+  border: 1px solid #334155;
+  color: #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .2s
+}
+.install-btn .btn-icon { width: 16px; height: 16px; border-radius: 4px }
+.install-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.35); border-color: #475569 }
+.install-btn:active { transform: translateY(0) }
+
 .toolbar {
   display: flex;
   gap: 8px;
