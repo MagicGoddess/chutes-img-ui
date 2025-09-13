@@ -1,8 +1,11 @@
 {
+  "id": ".",
   "name": "Chutes × Qwen Image Edit",
   "short_name": "Qwen Edit",
-  "start_url": "/index.html",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#0b1020",
   "theme_color": "#111827",
   "icons": [
