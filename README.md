@@ -1,10 +1,10 @@
-# Chutes × Qwen Image Edit (PWA)
+# Chutes × Qwen Image Edit
 
 A minimalist, vibecoded Progressive Web App for editing images with Qwen Image Edit on Chutes. Runs fully client-side in your browser; only your selected source image is sent to Chutes and your API key is stored in localStorage.
 
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
-- PWA: installable, offline app-shell cache
+- Experimental PWA: installable, offline app-shell cache
 - Activity log for quick debugging and status
 - Copies output to clipboard and allows download
 - No server code; pure static files

@@ -7,43 +7,6 @@
   }catch(e){}
 })();
 
-// ---- PWA install prompt ----
-let deferredPrompt; const installBtn = document.getElementById('installBtn');
-window.addEventListener('beforeinstallprompt', (e)=>{
-  // Stash the event so it can be triggered later.
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installBtn) installBtn.hidden = false;
-});
-
-installBtn?.addEventListener('click', async ()=>{
-  // Guard: if we don't have a deferred prompt, bail gracefully.
-  if (!deferredPrompt) { toast('Install not available yet', true); return; }
-  try {
-    const choice = await deferredPrompt.prompt();
-    // Some browsers return a promise with userChoice; others return void.
-    if (choice && choice.outcome) {
-      if (choice.outcome === 'accepted') {
-        toast('Installing…');
-      } else {
-        // If dismissed, let the user try again later
-        if (installBtn) installBtn.hidden = false;
-      }
-    }
-  } catch (err) {
-    console.error(err);
-    toast('Install failed to start', true);
-  } finally {
-    // The deferred prompt can only be used once.
-    deferredPrompt = null;
-  }
-});
-
-window.addEventListener('appinstalled', ()=>{
-  toast('App installed ✓');
-  if (installBtn) installBtn.hidden = true;
-});
-
 // ---- Service worker registration ----
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
