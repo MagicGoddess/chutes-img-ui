@@ -58,6 +58,7 @@ const els = {
   imgInput: document.getElementById('imgInput'), imgThumb: document.getElementById('imgThumb'),
   prompt: document.getElementById('prompt'), negPrompt: document.getElementById('negPrompt'),
   width: document.getElementById('width'), height: document.getElementById('height'), seed: document.getElementById('seed'),
+  resolutionPreset: document.getElementById('resolutionPreset'), autoDims: document.getElementById('autoDims'),
   cfg: document.getElementById('cfg'), cfgVal: document.getElementById('cfgVal'), steps: document.getElementById('steps'), stepsVal: document.getElementById('stepsVal'),
   generateBtn: document.getElementById('generateBtn'), runStatus: document.getElementById('runStatus'),
   resultImg: document.getElementById('resultImg'), downloadBtn: document.getElementById('downloadBtn'), copyBtn: document.getElementById('copyBtn'), outMeta: document.getElementById('outMeta')
@@ -104,10 +105,108 @@ els.imgInput.addEventListener('change', async (e)=>{
   // Strip data URL header; API expects pure base64 string
   sourceB64 = b64.split(',')[1];
   log(`[${ts()}] Image ready (Base64 in memory).`);
+  // After image loads, if Auto preset selected compute dims
+  if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+    await computeAndDisplayAutoDims(url);
+  }
 });
 
 function fileToBase64(file) {
   return new Promise((res, rej)=>{ const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
+}
+
+// ---- Resolution Preset Handling ----
+const PRESETS = {
+  '1024x1024': { w:1024, h:1024 },
+  '1536x1024': { w:1536, h:1024 },
+  '1024x1536': { w:1024, h:1536 },
+  '2048x2048': { w:2048, h:2048 }
+};
+let autoDimsCache = null; // {w,h}
+
+async function computeAndDisplayAutoDims(imgUrl){
+  try{
+    const dims = await computeAutoDims(imgUrl);
+    autoDimsCache = dims;
+    if (els.autoDims){
+      els.autoDims.style.display = 'block';
+      els.autoDims.textContent = `Auto: ${dims.w} × ${dims.h}`;
+    }
+    // Update width/height inputs even when they are disabled so user can see values
+    if (els.width && els.height){ els.width.value = dims.w; els.height.value = dims.h; }
+    log(`[${ts()}] Auto resolution computed: ${dims.w}x${dims.h}`);
+  }catch(e){
+    if (els.autoDims){ els.autoDims.style.display='block'; els.autoDims.textContent = 'Auto: (failed to read image)'; }
+  }
+}
+
+function computeAutoDims(imgUrl){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.naturalWidth; let h = img.naturalHeight;
+      if (!(w>0 && h>0)) return reject(new Error('Invalid source dimensions'));
+      // Maintain aspect ratio while keeping max side <= 2048 and both between 128-2048
+      const MAX = 2048; const MIN = 128;
+      // Scale so that the largest side becomes as large as possible but <= MAX
+      const scale = Math.min(MAX / Math.max(w,h), 1); // don't upscale
+      w = Math.floor(w * scale); h = Math.floor(h * scale);
+      // Enforce multiples of 64
+      w = snap(w,64,MIN,MAX); h = snap(h,64,MIN,MAX);
+      // Guarantee at least 128
+      if (w < MIN) w = MIN; if (h < MIN) h = MIN;
+      resolve({ w, h });
+    };
+    img.onerror = reject;
+    img.src = imgUrl;
+  });
+}
+
+function applyPreset(){
+  if (!els.resolutionPreset) return;
+  const val = els.resolutionPreset.value;
+  if (val === 'custom'){
+    toggleDimInputs(true);
+    if (els.autoDims) els.autoDims.style.display='none';
+    log(`[${ts()}] Preset: custom`);
+    return;
+  }
+  if (val === 'auto'){
+    toggleDimInputs(false); // disable manual editing during auto
+    if (els.autoDims){ els.autoDims.style.display='block'; els.autoDims.textContent='Auto: (waiting for image)'; }
+    const src = lastSourceObjectUrl();
+    if (src){
+      // If we already computed auto dims earlier, use cache to populate inputs immediately
+      if (autoDimsCache){ if (els.width && els.height){ els.width.value = autoDimsCache.w; els.height.value = autoDimsCache.h; } }
+      else { computeAndDisplayAutoDims(src); }
+    }
+    log(`[${ts()}] Preset: auto`);
+    return;
+  }
+  const p = PRESETS[val];
+  if (p){
+    toggleDimInputs(false);
+    els.width.value = p.w;
+    els.height.value = p.h;
+    if (els.autoDims) els.autoDims.style.display='none';
+    log(`[${ts()}] Preset selected: ${val}`);
+  }
+}
+
+function toggleDimInputs(enabled){
+  els.width.disabled = !enabled;
+  els.height.disabled = !enabled;
+}
+
+function lastSourceObjectUrl(){
+  // We can re-use the current <img> inside imgThumb if present
+  const img = els.imgThumb.querySelector('img');
+  return img ? img.src : null;
+}
+
+if (els.resolutionPreset){
+  els.resolutionPreset.addEventListener('change', applyPreset);
+  applyPreset(); // initialize
 }
 
 // Generate call
@@ -117,11 +216,32 @@ els.generateBtn.addEventListener('click', async ()=>{
     const key = (els.apiKey.value || '').trim();
     if (!key) { toast('Add your API key first', true); els.keyStatus.textContent='API key required'; els.keyStatus.classList.add('error'); els.apiKey.focus(); return; }
     if (!sourceB64) return toast('Select a source image', true);
-    // Ensure dims are multiples of 64 as many backends require tiling alignment
-    const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
-    const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
-    const width = snap(widthIn, 64, 128, 2048);
-    const height = snap(heightIn, 64, 128, 2048);
+    // Resolve width/height depending on preset
+    let width, height;
+    if (els.resolutionPreset){
+      const preset = els.resolutionPreset.value;
+      if (preset === 'auto'){
+        if (!autoDimsCache){
+          const srcUrl = lastSourceObjectUrl();
+          if (srcUrl){
+            await computeAndDisplayAutoDims(srcUrl);
+          }
+        }
+        if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
+      } else if (preset && PRESETS[preset]){
+        width = PRESETS[preset].w; height = PRESETS[preset].h;
+      }
+    }
+    if (!width || !height){
+      // fallback to manual/custom values
+      const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
+      const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
+      width = snap(widthIn, 64, 128, 2048);
+      height = snap(heightIn, 64, 128, 2048);
+    }
+    if (els.autoDims && els.resolutionPreset && els.resolutionPreset.value==='auto'){
+      els.autoDims.textContent = `Auto: ${width} × ${height}`;
+    }
     const steps = clamp(parseInt(els.steps.value||'50',10), 5, 100);
     const cfg = clamp(parseFloat(els.cfg.value||'4'), 0, 10);
     const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
