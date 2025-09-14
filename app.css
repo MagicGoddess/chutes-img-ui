@@ -27,6 +27,11 @@ header {
   border-bottom: 1px solid #1f2937
 }
 
+/* Ensure header sits above floating toolbars / result controls when scrolling */
+header {
+  z-index: 60; /* above most UI elements like toolbars/toasts */
+}
+
 img.logo {
   width: 28px;
   height: 28px;
