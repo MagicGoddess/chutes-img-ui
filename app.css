@@ -229,6 +229,18 @@ button:disabled {
   border-radius: 12px
 }
 
+/* Style for the result placeholder */
+.result-placeholder {
+  color: var(--muted);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  width: 100%;
+  font-size: 15px;
+}
+
 /* Constrain source image preview inside input so it doesn't dominate layout.
    Large landscape images were shrinking the prompt textareas; tall portraits stretched the card.
    Limit displayed size while preserving aspect ratio. Result image (#resultImg) keeps existing sizing. */

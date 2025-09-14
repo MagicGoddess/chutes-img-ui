@@ -66,6 +66,33 @@ const els = {
   resultImg: document.getElementById('resultImg'), downloadBtn: document.getElementById('downloadBtn'), copyBtn: document.getElementById('copyBtn'), outMeta: document.getElementById('outMeta')
 };
 
+// Helper function to create an img element inside the result container
+function createResultImg(src) {
+  // Clear the container
+  els.resultImg.innerHTML = '';
+  
+  // Create and configure the img element
+  const img = document.createElement('img');
+  img.alt = 'Generated result';
+  img.src = src;
+  
+  // Add the img to the container
+  els.resultImg.appendChild(img);
+  
+  // Return the img element for further manipulation if needed
+  return img;
+}
+
+// Helper function to check if result container has an img element
+function hasResultImg() {
+  return els.resultImg.querySelector('img') !== null;
+}
+
+// Helper function to get the img element from the result container
+function getResultImgElement() {
+  return els.resultImg.querySelector('img');
+}
+
 // Sync function for sliders
 const sync = ()=>{ els.cfgVal.textContent = els.cfg.value; els.stepsVal.textContent = els.steps.value; };
 
@@ -605,7 +632,7 @@ els.generateBtn.addEventListener('click', async ()=>{
     // Display
     if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
     lastBlobUrl = URL.createObjectURL(blob);
-    els.resultImg.src = lastBlobUrl;
+    createResultImg(lastBlobUrl);
     els.downloadBtn.disabled = false; els.copyBtn.disabled = false;
     const dt = ((performance.now()-t0)/1000).toFixed(1);
     els.outMeta.textContent = `Output ${blob.type || 'image/jpeg'} • ${(blob.size/1024).toFixed(0)} KB • ${dt}s`;
@@ -633,7 +660,7 @@ function toast(msg, isErr=false){
   }, 3000);
 }
 function setBusy(state, msg='Working…'){
-  els.generateBtn.disabled = state; els.downloadBtn.disabled = state || !els.resultImg.src; els.copyBtn.disabled = state || !els.resultImg.src;
+  els.generateBtn.disabled = state; els.downloadBtn.disabled = state || !hasResultImg(); els.copyBtn.disabled = state || !hasResultImg();
   if (state) {
     els.runStatus.className = 'muted loading';
     genStart = performance.now();
@@ -670,14 +697,16 @@ function log(line){
 }
 
 els.downloadBtn.addEventListener('click', ()=>{
-  if (!els.resultImg.src) return;
+  if (!hasResultImg()) return;
+  const img = getResultImgElement();
   const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
-  const a = document.createElement('a'); a.href = els.resultImg.src; a.download = `${prefix}-${Date.now()}.jpg`; a.click();
+  const a = document.createElement('a'); a.href = img.src; a.download = `${prefix}-${Date.now()}.jpg`; a.click();
 });
 
 els.copyBtn.addEventListener('click', async ()=>{
-  if (!els.resultImg.src) return;
-  const res = await fetch(els.resultImg.src); const blob = await res.blob();
+  if (!hasResultImg()) return;
+  const img = getResultImgElement();
+  const res = await fetch(img.src); const blob = await res.blob();
   try{
     await navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
     toast('Copied to clipboard ✓');
