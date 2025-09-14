@@ -350,10 +350,11 @@ function updateParametersForImageEdit() {
   const preset = els.resolutionPreset;
   preset.innerHTML = `
     <option value="auto" selected>Auto (derive from source)</option>
-    <option value="1024x1024">1024 × 1024 (1:1)</option>
-    <option value="1536x1024">1536 × 1024 (3:2)</option>
-    <option value="1024x1536">1024 × 1536 (2:3)</option>
-    <option value="2048x2048">2048 × 2048 (Hi‑Res)</option>
+    <option value="512x512">512 × 512 (Low-res square 1:1)</option>
+    <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
+    <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
+    <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
+    <option value="2048x2048">2048 × 2048 (HiRes square)</option>
     <option value="custom">Custom…</option>
   `;
   
@@ -405,12 +406,12 @@ function updateParametersForModel(modelKey) {
   // Update standard resolution presets for text-to-image
   const preset = els.resolutionPreset;
   preset.innerHTML = `
-    <option value="512x512">512 × 512 (1:1)</option>
-    <option value="1024x1024" selected>1024 × 1024 (1:1)</option>
-    <option value="1536x1024">1536 × 1024 (3:2)</option>
-    <option value="1024x1536">1024 × 1536 (2:3)</option>
-    <option value="768x1360">768 × 1360 (9:16)</option>
-    <option value="1360x768">1360 × 768 (16:9)</option>
+    <option value="512x512">512 × 512 (Low-res square 1:1)</option>
+    <option value="1024x1024" selected>1024 × 1024 (Square 1:1)</option>
+    <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
+    <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
+    <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
+    <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
     <option value="custom">Custom…</option>
   `;
   
