@@ -408,6 +408,8 @@ pre.log {
   background: rgba(17, 24, 39, 0.8);
   border-radius: 8px;
   font-size: 14px;
+  position: relative;
+  cursor: pointer;
 }
 
 .quota-progress {
@@ -447,6 +449,42 @@ pre.log {
 .quota-text {
   color: var(--muted);
   font-weight: 500;
+}
+
+/* Tooltip Styles */
+.tooltip {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 4px 4px 4px;
+  border-style: solid;
+  border-color: transparent transparent #1f2937 transparent;
+}
+
+.quota-counter:hover .tooltip,
+.quota-counter:focus .tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* Single quota class can be styled via .quota-counter or .quota if needed */

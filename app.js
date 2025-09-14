@@ -199,8 +199,43 @@ const quotaElements = {
   counter: document.getElementById('quotaCounter'),
   percentage: document.getElementById('quotaPercentage'),
   text: document.getElementById('quotaText'),
-  circle: document.querySelector('.progress-ring-circle')
+  circle: document.querySelector('.progress-ring-circle'),
+  tooltip: document.getElementById('quotaTooltip')
 };
+
+// Add touch event for mobile tooltip
+if (quotaElements.counter && quotaElements.tooltip) {
+  let touchTimer = null;
+  
+  quotaElements.counter.addEventListener('touchstart', (e) => {
+    touchTimer = setTimeout(() => {
+      quotaElements.tooltip.style.opacity = '1';
+      quotaElements.tooltip.style.visibility = 'visible';
+    }, 500); // Show tooltip after 500ms hold
+  });
+  
+  quotaElements.counter.addEventListener('touchend', (e) => {
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      touchTimer = null;
+    }
+    // Hide tooltip after a short delay
+    setTimeout(() => {
+      quotaElements.tooltip.style.opacity = '0';
+      quotaElements.tooltip.style.visibility = 'hidden';
+    }, 3000);
+  });
+  
+  quotaElements.counter.addEventListener('touchmove', (e) => {
+    if (touchTimer) {
+      clearTimeout(touchTimer);
+      touchTimer = null;
+    }
+    // Hide tooltip if user moves finger
+    quotaElements.tooltip.style.opacity = '0';
+    quotaElements.tooltip.style.visibility = 'hidden';
+  });
+}
 
 async function fetchQuotaUsage(apiKey) {
   try {
