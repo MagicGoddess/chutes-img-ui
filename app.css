@@ -149,6 +149,25 @@ textarea {
   }
 }
 
+/* Improved layout: prevent source image column from becoming too wide so prompt area stays usable */
+@media(min-width:760px){
+  .row-2:not(.t2i){
+    grid-template-columns: minmax(260px, 420px) 1fr; /* cap first column */
+    align-items: start;
+  }
+  #sourceImageSection{ 
+    max-width:420px; 
+    overflow: hidden; /* prevent content from bleeding out */
+  }
+  #sourceImageSection .thumb{ width:100%; }
+  #sourceImageSection input[type="file"]{ 
+    width: 100%; 
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
 button {
   appearance: none;
   background: var(--accent);
@@ -208,6 +227,18 @@ button:disabled {
   max-width: 100%;
   max-height: 60vh;
   border-radius: 12px
+}
+
+/* Constrain source image preview inside input so it doesn't dominate layout.
+   Large landscape images were shrinking the prompt textareas; tall portraits stretched the card.
+   Limit displayed size while preserving aspect ratio. Result image (#resultImg) keeps existing sizing. */
+#imgThumb img {
+  /* Fit within a reasonable box; adjust as needed */
+  max-width: min(420px, 100%);
+  max-height: 420px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .muted {
