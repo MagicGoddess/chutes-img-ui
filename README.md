@@ -21,6 +21,20 @@ A minimalist, vibecoded Progressive Web App for editing images with Qwen Image E
   - Open `http://localhost:5173`
 - Paste your API key, select an image, write a prompt, and Generate.
 
+## Development & Deployment
+
+### Cache Busting
+To ensure users always get the latest version after updates:
+
+```bash
+# Update version numbers before deploying
+node update-cache-version.js
+```
+
+This automatically updates cache versions in the service worker and adds version parameters to CSS/JS files, preventing browser caching issues.
+
+See `CACHE-BUSTING.md` for detailed information about the cache management system.
+
 ## Files
 - `index.html` — markup only
 - `app.css` — styles

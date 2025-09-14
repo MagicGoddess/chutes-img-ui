@@ -1,5 +1,6 @@
 /* Simple app-shell cache. Avoid caching authenticated API calls. */
-const CACHE = 'qwen-edit-cache-v1';
+const CACHE_VERSION = 1757848137113; // Dynamic cache version - updated by build script
+const CACHE = `qwen-edit-cache-v${CACHE_VERSION}`;
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,16 +10,32 @@ const APP_SHELL = [
   './service-worker.js'
 ];
 self.addEventListener('install', (e)=>{
+  console.log('Service Worker: Installing with cache version', CACHE_VERSION);
   e.waitUntil((async()=>{
-    const c = await caches.open(CACHE); await c.addAll(APP_SHELL);
+    const c = await caches.open(CACHE); 
+    await c.addAll(APP_SHELL);
+    // Force immediate activation of new service worker
     self.skipWaiting();
   })());
 });
+
 self.addEventListener('activate', (e)=>{
+  console.log('Service Worker: Activating and cleaning old caches');
   e.waitUntil((async()=>{
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)));
+    // Delete all old cache versions
+    await Promise.all(keys.filter(k=>k!==CACHE).map(k=>{
+      console.log('Service Worker: Deleting old cache', k);
+      return caches.delete(k);
+    }));
+    // Take control of all clients immediately
     await self.clients.claim();
+    
+    // Notify all clients about the update
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({ type: 'CACHE_UPDATED', version: CACHE_VERSION });
+    });
   })());
 });
 self.addEventListener('fetch', (e)=>{
