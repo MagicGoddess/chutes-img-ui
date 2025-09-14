@@ -1,7 +1,7 @@
 {
   "id": ".",
-  "name": "Chutes × Qwen Image Edit",
-  "short_name": "Qwen Edit",
+  "name": "Chutes Image UI",
+  "short_name": "Chutes IMG",
   "start_url": "./index.html?source=pwa",
   "scope": "./",
   "display": "standalone",

@@ -1,9 +1,11 @@
-# Chutes × Qwen Image Edit
+# Chutes Image UI
 
-A minimalist, vibecoded Progressive Web App for editing images with Qwen Image Edit on Chutes. Runs fully client-side in your browser; only your selected source image is sent to Chutes and your API key is stored in localStorage.
+A minimalist, vibecoded Progressive Web App for generating and editing images with Chutes. Runs fully client-side in your browser; only your selected source image or prompt is sent to Chutes, and your API key is stored in localStorage.
 
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
+- Supports two modes: Image Edit and Text-to-Image generation
+- Model selector for Text-to-Image with multiple models (e.g., Hidream, JuggernautXL, Chroma)
 - Experimental PWA: installable, offline app-shell cache
 - Activity log for quick debugging and status
 - Copies output to clipboard and allows download
@@ -11,15 +13,19 @@ A minimalist, vibecoded Progressive Web App for editing images with Qwen Image E
 
 ## Configure
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
-- API endpoint: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
-- Request body (flat): `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
+- API endpoints:
+  - Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
+  - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
+- Request body (flat):
+  - Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
+  - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
 
 ## Usage
 - Use online: https://magicgoddess.github.io/chutes-img-ui
 - Or serve locally from the project root:
-  - `npx serve` or python3 -m http.server 5173`
+  - `npx serve` or `python3 -m http.server 5173`
   - Open `http://localhost:5173`
-- Paste your API key, select an image, write a prompt, and Generate.
+- Paste your API key, select a mode, write a prompt, and Generate.
 
 ## Development & Deployment
 

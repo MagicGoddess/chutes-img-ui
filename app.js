@@ -55,8 +55,10 @@ if ('serviceWorker' in navigator) {
 // ---- UI logic ----
 const els = {
   apiKey: document.getElementById('apiKey'), revealKeyBtn: document.getElementById('revealKeyBtn'), saveKeyBtn: document.getElementById('saveKeyBtn'), forgetKeyBtn: document.getElementById('forgetKeyBtn'), keyStatus: document.getElementById('keyStatus'),
-  imgInput: document.getElementById('imgInput'), imgThumb: document.getElementById('imgThumb'),
-  prompt: document.getElementById('prompt'), negPrompt: document.getElementById('negPrompt'),
+  modeImageEdit: document.getElementById('modeImageEdit'), modeTextToImage: document.getElementById('modeTextToImage'),
+  modelSelect: document.getElementById('modelSelect'), modelRow: document.getElementById('modelRow'),
+  imgInput: document.getElementById('imgInput'), imgThumb: document.getElementById('imgThumb'), sourceImageSection: document.getElementById('sourceImageSection'), sourceImageRequired: document.getElementById('sourceImageRequired'), imageInputRow: document.getElementById('imageInputRow'),
+  prompt: document.getElementById('prompt'), negPrompt: document.getElementById('negPrompt'), inputCardTitle: document.getElementById('inputCardTitle'),
   width: document.getElementById('width'), height: document.getElementById('height'), seed: document.getElementById('seed'),
   resolutionPreset: document.getElementById('resolutionPreset'), autoDims: document.getElementById('autoDims'),
   cfg: document.getElementById('cfg'), cfgVal: document.getElementById('cfgVal'), steps: document.getElementById('steps'), stepsVal: document.getElementById('stepsVal'),
@@ -64,9 +66,251 @@ const els = {
   resultImg: document.getElementById('resultImg'), downloadBtn: document.getElementById('downloadBtn'), copyBtn: document.getElementById('copyBtn'), outMeta: document.getElementById('outMeta')
 };
 
+// Sync function for sliders
+const sync = ()=>{ els.cfgVal.textContent = els.cfg.value; els.stepsVal.textContent = els.steps.value; };
+
+// Model configurations based on Chutes unified API
+const MODEL_CONFIGS = {
+  'hidream': {
+    name: 'Hidream',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'hidream',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'qwen-image': {
+    name: 'Qwen Image',
+    endpoint: 'https://chutes-qwen-image.chutes.ai/generate',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'flux-dev': {
+    name: 'FLUX.1 Dev',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'FLUX.1-dev',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'juggernaut-xl': {
+    name: 'JuggernautXL',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'JuggernautXL',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'chroma': {
+    name: 'Chroma',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'chroma',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'ilust-mix': {
+    name: 'iLustMix',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'iLustMix',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'neta-lumina': {
+    name: 'Neta Lumina',
+    endpoint: 'https://chutes-neta-lumina.chutes.ai/generate',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  }
+};
+
+// Current mode and model
+let currentMode = 'image-edit';
+let currentModel = 'hidream';
+
 // Load key
 const saved = localStorage.getItem('chutes_api_key');
 if (saved) { els.apiKey.value = saved; els.keyStatus.textContent = 'Loaded from localStorage'; }
+
+// Mode switching
+function switchMode(mode) {
+  currentMode = mode;
+  const isTextToImage = mode === 'text-to-image';
+  
+  // Update UI visibility
+  els.modelRow.style.display = isTextToImage ? 'block' : 'none';
+  els.sourceImageSection.style.display = isTextToImage ? 'none' : 'block';
+  // Add class on the input row so CSS can adapt layout for T2I
+  if (els.imageInputRow) {
+    if (isTextToImage) els.imageInputRow.classList.add('t2i'); else els.imageInputRow.classList.remove('t2i');
+  }
+  
+  // Update prompt placeholder
+  els.prompt.placeholder = isTextToImage ? 
+    'Describe the image you want to generate...' : 
+    'Describe the edit you want...';
+    
+  // Update input card title
+  els.inputCardTitle.textContent = isTextToImage ? '3) Input & Model' : '3) Input';
+    
+  // Update resolution presets for text-to-image
+  if (isTextToImage) {
+    updateParametersForModel(currentModel);
+  } else {
+    // Restore original image edit controls
+    updateParametersForImageEdit();
+  }
+  
+  log(`[${ts()}] Switched to ${mode} mode`);
+}
+
+function updateParametersForImageEdit() {
+  // Restore original CFG and steps ranges for image editing
+  els.cfg.min = 0; els.cfg.max = 10; els.cfg.step = 0.1; els.cfg.value = 4;
+  els.steps.min = 5; els.steps.max = 100; els.steps.step = 1; els.steps.value = 50;
+  
+  // Update resolution preset options for image editing
+  const preset = els.resolutionPreset;
+  preset.innerHTML = `
+    <option value="auto" selected>Auto (derive from source)</option>
+    <option value="1024x1024">1024 × 1024 (1:1)</option>
+    <option value="1536x1024">1536 × 1024 (3:2)</option>
+    <option value="1024x1536">1024 × 1536 (2:3)</option>
+    <option value="2048x2048">2048 × 2048 (Hi‑Res)</option>
+    <option value="custom">Custom…</option>
+  `;
+  
+  // Reset to defaults
+  els.width.value = 1024; els.height.value = 1024; els.seed.value = '';
+  els.negPrompt.value = '';
+  sync();
+}
+
+function updateParametersForModel(modelKey) {
+  const config = MODEL_CONFIGS[modelKey];
+  if (!config) return;
+  
+  currentModel = modelKey;
+  const params = config.params;
+  
+  // Update guidance scale (now standardized as guidance_scale)
+  if (params.guidance_scale) {
+    els.cfg.min = params.guidance_scale.min;
+    els.cfg.max = params.guidance_scale.max;
+    els.cfg.step = params.guidance_scale.step;
+    els.cfg.value = params.guidance_scale.default;
+  }
+  
+  // Update steps (now standardized as num_inference_steps)
+  if (params.num_inference_steps) {
+    els.steps.min = params.num_inference_steps.min;
+    els.steps.max = params.num_inference_steps.max;
+    els.steps.step = params.num_inference_steps.step;
+    els.steps.value = params.num_inference_steps.default;
+  }
+  
+  // Update width/height (now all models use width/height)
+  if (params.width) {
+    els.width.min = params.width.min;
+    els.width.max = params.width.max;
+    els.width.step = params.width.step;
+    els.width.value = params.width.default;
+  }
+  if (params.height) {
+    els.height.min = params.height.min;
+    els.height.max = params.height.max;
+    els.height.step = params.height.step;
+    els.height.value = params.height.default;
+  }
+  
+  // Update standard resolution presets for text-to-image
+  const preset = els.resolutionPreset;
+  preset.innerHTML = `
+    <option value="1024x1024" selected>1024 × 1024 (1:1)</option>
+    <option value="1536x1024">1536 × 1024 (3:2)</option>
+    <option value="1024x1536">1024 × 1536 (2:3)</option>
+    <option value="768x1360">768 × 1360 (9:16)</option>
+    <option value="1360x768">1360 × 768 (16:9)</option>
+    <option value="custom">Custom…</option>
+  `;
+  
+  // Update seed
+  if (params.seed) {
+    els.seed.min = params.seed.min;
+    if (params.seed.max) {
+      els.seed.max = params.seed.max;
+    } else {
+      els.seed.removeAttribute('max');
+    }
+    els.seed.value = params.seed.default || '';
+  }
+  
+  // Update negative prompt default
+  if (params.negative_prompt) {
+    els.negPrompt.value = params.negative_prompt.default;
+  } else {
+    els.negPrompt.value = '';
+  }
+  
+  sync();
+  log(`[${ts()}] Updated parameters for ${config.name} model`);
+}
+
+// Event listeners for mode switching
+els.modeImageEdit.addEventListener('change', () => {
+  if (els.modeImageEdit.checked) switchMode('image-edit');
+});
+els.modeTextToImage.addEventListener('change', () => {
+  if (els.modeTextToImage.checked) switchMode('text-to-image');
+});
+
+// Event listener for model selection
+els.modelSelect.addEventListener('change', () => {
+  if (currentMode === 'text-to-image') {
+    updateParametersForModel(els.modelSelect.value);
+  }
+});
+
+// Initialize with image edit mode
+switchMode('image-edit');
 
 els.saveKeyBtn.addEventListener('click', ()=>{
   const v = els.apiKey.value.trim();
@@ -87,10 +331,6 @@ els.revealKeyBtn.addEventListener('click', ()=>{
   els.revealKeyBtn.textContent = isPwd ? 'Hide' : 'Show';
   els.revealKeyBtn.setAttribute('aria-pressed', String(isPwd));
 });
-
-// Sliders
-const sync = ()=>{ els.cfgVal.textContent = els.cfg.value; els.stepsVal.textContent = els.steps.value; };
-els.cfg.addEventListener('input', sync); els.steps.addEventListener('input', sync); sync();
 
 // Image preview
 let sourceB64 = null; let sourceMime = null; let lastBlobUrl = null;
@@ -215,55 +455,128 @@ els.generateBtn.addEventListener('click', async ()=>{
   try{
     const key = (els.apiKey.value || '').trim();
     if (!key) { toast('Add your API key first', true); els.keyStatus.textContent='API key required'; els.keyStatus.classList.add('error'); els.apiKey.focus(); return; }
-    if (!sourceB64) return toast('Select a source image', true);
-    // Resolve width/height depending on preset
+    
+    // Check source image requirement based on mode
+    if (currentMode === 'image-edit' && !sourceB64) {
+      return toast('Select a source image for image editing', true);
+    }
+    
+    // Resolve width/height depending on preset and model
     let width, height;
-    if (els.resolutionPreset){
+    const config = currentMode === 'text-to-image' ? MODEL_CONFIGS[currentModel] : null;
+    
+    if (currentMode === 'text-to-image' && config && config.params.resolution) {
+      // Model uses resolution presets (like SD3)
       const preset = els.resolutionPreset.value;
-      if (preset === 'auto'){
-        if (!autoDimsCache){
-          const srcUrl = lastSourceObjectUrl();
-          if (srcUrl){
-            await computeAndDisplayAutoDims(srcUrl);
+      if (preset !== 'custom' && preset) {
+        const [w, h] = preset.split('x').map(Number);
+        width = w; height = h;
+      } else {
+        width = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
+        height = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
+      }
+    } else {
+      // Standard width/height handling
+      if (els.resolutionPreset){
+        const preset = els.resolutionPreset.value;
+        if (preset === 'auto' && currentMode === 'image-edit'){
+          if (!autoDimsCache){
+            const srcUrl = lastSourceObjectUrl();
+            if (srcUrl){
+              await computeAndDisplayAutoDims(srcUrl);
+            }
           }
+          if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
+        } else if (preset && PRESETS[preset]){
+          width = PRESETS[preset].w; height = PRESETS[preset].h;
+        } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) {
+          // Handle resolution presets like "1024x1024"
+          const [w, h] = preset.split('x').map(Number);
+          width = w; height = h;
         }
-        if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
-      } else if (preset && PRESETS[preset]){
-        width = PRESETS[preset].w; height = PRESETS[preset].h;
+      }
+      if (!width || !height){
+        // fallback to manual/custom values
+        const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
+        const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
+        width = snap(widthIn, 64, 128, 2048);
+        height = snap(heightIn, 64, 128, 2048);
       }
     }
-    if (!width || !height){
-      // fallback to manual/custom values
-      const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
-      const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
-      width = snap(widthIn, 64, 128, 2048);
-      height = snap(heightIn, 64, 128, 2048);
-    }
-    if (els.autoDims && els.resolutionPreset && els.resolutionPreset.value==='auto'){
+    
+    if (els.autoDims && els.resolutionPreset && els.resolutionPreset.value==='auto' && currentMode === 'image-edit'){
       els.autoDims.textContent = `Auto: ${width} × ${height}`;
     }
-    const steps = clamp(parseInt(els.steps.value||'50',10), 5, 100);
-    const cfg = clamp(parseFloat(els.cfg.value||'4'), 0, 10);
-    const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
-    const prompt = els.prompt.value.trim(); if (!prompt) return toast('Prompt cannot be empty', true);
-    const negative_prompt = els.negPrompt.value.trim();
+    
+    // Get model-specific parameters
+    let body;
+    let endpoint;
+    
+    if (currentMode === 'image-edit') {
+      // Original image editing logic
+      const steps = clamp(parseInt(els.steps.value||'50',10), 5, 100);
+      const cfg = clamp(parseFloat(els.cfg.value||'4'), 0, 10);
+      const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
+      const prompt = els.prompt.value.trim(); if (!prompt) return toast('Prompt cannot be empty', true);
+      const negative_prompt = els.negPrompt.value.trim();
 
-    // Build FLAT body (endpoint expects top-level fields)
-    const body = {
-      width,
-      height,
-      prompt,
-      image_b64: sourceB64,
-      true_cfg_scale: cfg,
-      num_inference_steps: steps
-    };
-    if (negative_prompt) body.negative_prompt = negative_prompt;
-    if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
+      // Build FLAT body (endpoint expects top-level fields)
+      body = {
+        width,
+        height,
+        prompt,
+        image_b64: sourceB64,
+        true_cfg_scale: cfg,
+        num_inference_steps: steps
+      };
+      if (negative_prompt) body.negative_prompt = negative_prompt;
+      if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
+      
+      endpoint = 'https://chutes-qwen-image-edit.chutes.ai/generate';
+    } else {
+      // Text-to-image generation
+      const prompt = els.prompt.value.trim(); if (!prompt) return toast('Prompt cannot be empty', true);
+      const negative_prompt = els.negPrompt.value.trim();
+      
+      if (!config) return toast('Invalid model selected', true);
+      
+      // Build body with standardized structure for Chutes unified API
+      body = { 
+        prompt,
+        width,
+        height,
+        guidance_scale: parseFloat(els.cfg.value),
+        num_inference_steps: parseInt(els.steps.value)
+      };
+      
+      // Add model parameter for unified API (except for models with separate endpoints)
+      if (config.modelName) {
+        body.model = config.modelName;
+      }
+      
+      // Add negative prompt if provided
+      if (negative_prompt) {
+        body.negative_prompt = negative_prompt;
+      }
+      
+      // Add seed if provided
+      if (els.seed.value && els.seed.value !== '') {
+        const seedVal = parseInt(els.seed.value);
+        if (!Number.isNaN(seedVal)) {
+          body.seed = seedVal;
+        }
+      }
+      
+      // Note: Text-to-image models don't support source images based on the schemas
+      // in img-models.jsonl, so we don't send image_b64 parameter
+      
+      endpoint = config.endpoint;
+    }
 
     setBusy(true, 'Generating…');
-    log(`[${ts()}] Sending request to Chutes…`);
+    log(`[${ts()}] Sending request to ${currentMode === 'image-edit' ? 'Qwen Image Edit' : config.name}…`);
     const t0 = performance.now();
-    const resp = await fetch('https://chutes-qwen-image-edit.chutes.ai/generate', {
+    const resp = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${key}`,
@@ -358,7 +671,8 @@ function log(line){
 
 els.downloadBtn.addEventListener('click', ()=>{
   if (!els.resultImg.src) return;
-  const a = document.createElement('a'); a.href = els.resultImg.src; a.download = `qwen-edit-${Date.now()}.jpg`; a.click();
+  const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
+  const a = document.createElement('a'); a.href = els.resultImg.src; a.download = `${prefix}-${Date.now()}.jpg`; a.click();
 });
 
 els.copyBtn.addEventListener('click', async ()=>{
@@ -398,3 +712,8 @@ els.apiKey.addEventListener('input', ()=>{
   if (els.keyStatus.classList.contains('error')) { els.keyStatus.classList.remove('error'); els.keyStatus.textContent=''; }
 });
 els.saveKeyBtn.addEventListener('click', ()=>{ els.keyStatus.classList.remove('error'); });
+
+// Setup slider event listeners and initial sync
+els.cfg.addEventListener('input', sync); 
+els.steps.addEventListener('input', sync); 
+sync();
