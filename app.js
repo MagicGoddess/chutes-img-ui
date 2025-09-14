@@ -126,10 +126,11 @@ const MODEL_CONFIGS = {
     endpoint: 'https://image.chutes.ai/generate',
     modelName: 'FLUX.1-dev',
     params: {
-      resolution: { default: '1024x1024' },
-      guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
-      seed: { min: 0, max: 100000000, default: null }
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 30, default: 30, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null }
     }
   },
   'juggernaut-xl': {
@@ -612,43 +613,31 @@ els.generateBtn.addEventListener('click', async ()=>{
     let width, height;
     const config = currentMode === 'text-to-image' ? MODEL_CONFIGS[currentModel] : null;
     
-    if (currentMode === 'text-to-image' && config && config.params.resolution) {
-      // Model uses resolution presets (like SD3)
+    // Standard width/height handling
+    if (els.resolutionPreset){
       const preset = els.resolutionPreset.value;
-      if (preset !== 'custom' && preset) {
+      if (preset === 'auto' && currentMode === 'image-edit'){
+        if (!autoDimsCache){
+          const srcUrl = lastSourceObjectUrl();
+          if (srcUrl){
+            await computeAndDisplayAutoDims(srcUrl);
+          }
+        }
+        if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
+      } else if (preset && PRESETS[preset]){
+        width = PRESETS[preset].w; height = PRESETS[preset].h;
+      } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) {
+        // Handle resolution presets like "1024x1024"
         const [w, h] = preset.split('x').map(Number);
         width = w; height = h;
-      } else {
-        width = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
-        height = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
       }
-    } else {
-      // Standard width/height handling
-      if (els.resolutionPreset){
-        const preset = els.resolutionPreset.value;
-        if (preset === 'auto' && currentMode === 'image-edit'){
-          if (!autoDimsCache){
-            const srcUrl = lastSourceObjectUrl();
-            if (srcUrl){
-              await computeAndDisplayAutoDims(srcUrl);
-            }
-          }
-          if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
-        } else if (preset && PRESETS[preset]){
-          width = PRESETS[preset].w; height = PRESETS[preset].h;
-        } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) {
-          // Handle resolution presets like "1024x1024"
-          const [w, h] = preset.split('x').map(Number);
-          width = w; height = h;
-        }
-      }
-      if (!width || !height){
-        // fallback to manual/custom values
-        const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
-        const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
-        width = snap(widthIn, 64, 128, 2048);
-        height = snap(heightIn, 64, 128, 2048);
-      }
+    }
+    if (!width || !height){
+      // fallback to manual/custom values
+      const widthIn = clamp(parseInt(els.width.value||'1024',10), 128, 2048);
+      const heightIn = clamp(parseInt(els.height.value||'1024',10), 128, 2048);
+      width = snap(widthIn, 64, 128, 2048);
+      height = snap(heightIn, 64, 128, 2048);
     }
     
     if (els.autoDims && els.resolutionPreset && els.resolutionPreset.value==='auto' && currentMode === 'image-edit'){
@@ -687,14 +676,25 @@ els.generateBtn.addEventListener('click', async ()=>{
       
       if (!config) return toast('Invalid model selected', true);
       
-      // Build body with standardized structure for Chutes unified API
+      // Build body with model-specific parameter names
       body = { 
         prompt,
         width,
-        height,
-        guidance_scale: parseFloat(els.cfg.value),
-        num_inference_steps: parseInt(els.steps.value)
+        height
       };
+      
+      // Add model-specific parameters with correct names
+      if (config.params.cfg) {
+        body.cfg = parseFloat(els.cfg.value);
+      } else if (config.params.guidance_scale || config.params.true_cfg_scale) {
+        body.guidance_scale = parseFloat(els.cfg.value);
+      }
+      
+      if (config.params.steps) {
+        body.steps = parseInt(els.steps.value);
+      } else if (config.params.num_inference_steps) {
+        body.num_inference_steps = parseInt(els.steps.value);
+      }
       
       // Add model parameter for unified API (except for models with separate endpoints)
       if (config.modelName) {
@@ -712,6 +712,15 @@ els.generateBtn.addEventListener('click', async ()=>{
         if (!Number.isNaN(seedVal)) {
           body.seed = seedVal;
         }
+      }
+      
+      // Add additional parameters if they exist in the model config
+      if (config.params.sampler && config.params.sampler.default) {
+        body.sampler = config.params.sampler.default;
+      }
+      
+      if (config.params.scheduler && config.params.scheduler.default) {
+        body.scheduler = config.params.scheduler.default;
       }
       
       // Note: Text-to-image models don't support source images based on the schemas
