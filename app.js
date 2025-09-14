@@ -96,7 +96,7 @@ function getResultImgElement() {
 // Sync function for sliders
 const sync = ()=>{ els.cfgVal.textContent = els.cfg.value; els.stepsVal.textContent = els.steps.value; };
 
-// Model configurations based on Chutes unified API
+// Model configurations based on actual API schemas from img-models.jsonl
 const MODEL_CONFIGS = {
   'hidream': {
     name: 'Hidream',
@@ -106,7 +106,7 @@ const MODEL_CONFIGS = {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },
       guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      num_inference_steps: { min: 1, max: 30, default: 10, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
@@ -117,8 +117,8 @@ const MODEL_CONFIGS = {
     params: {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      true_cfg_scale: { min: 0, max: 10, default: 4, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
@@ -128,12 +128,10 @@ const MODEL_CONFIGS = {
     endpoint: 'https://image.chutes.ai/generate',
     modelName: 'FLUX.1-dev',
     params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
-      seed: { min: 0, max: 4294967295, default: null },
-      negative_prompt: { default: '' }
+      resolution: { default: '1024x1024' },
+      guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
+      seed: { min: 0, max: 100000000, default: null }
     }
   },
   'juggernaut-xl': {
@@ -144,7 +142,7 @@ const MODEL_CONFIGS = {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },
       guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
@@ -154,12 +152,11 @@ const MODEL_CONFIGS = {
     endpoint: 'https://image.chutes.ai/generate',
     modelName: 'chroma',
     params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
-      seed: { min: 0, max: 4294967295, default: null },
-      negative_prompt: { default: '' }
+      width: { min: 200, max: 2048, default: 1024, step: 64 },
+      height: { min: 200, max: 2048, default: 1024, step: 64 },
+      cfg: { min: 1, max: 7.5, default: 4.5, step: 0.1 },
+      steps: { min: 5, max: 50, default: 30, step: 1 },
+      seed: { min: 0, max: null, default: 0 }
     }
   },
   'ilust-mix': {
@@ -170,7 +167,7 @@ const MODEL_CONFIGS = {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },
       guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
@@ -179,12 +176,14 @@ const MODEL_CONFIGS = {
     name: 'Neta Lumina',
     endpoint: 'https://chutes-neta-lumina.chutes.ai/generate',
     params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
-      seed: { min: 0, max: 4294967295, default: null },
-      negative_prompt: { default: '' }
+      width: { min: 768, max: 2048, default: 1024, step: 64 },
+      height: { min: 768, max: 2048, default: 1024, step: 64 },
+      cfg: { min: 4, max: 5.5, default: 4.5, step: 0.1 },
+      steps: { min: 20, max: 50, default: 30, step: 1 },
+      seed: { min: 0, max: null, default: 0 },
+      sampler: { default: 'res_multistep' },
+      scheduler: { default: 'linear_quadratic' },
+      negative_prompt: { default: 'blurry, worst quality, low quality' }
     }
   }
 };
@@ -372,20 +371,22 @@ function updateParametersForModel(modelKey) {
   currentModel = modelKey;
   const params = config.params;
   
-  // Update guidance scale (now standardized as guidance_scale)
-  if (params.guidance_scale) {
-    els.cfg.min = params.guidance_scale.min;
-    els.cfg.max = params.guidance_scale.max;
-    els.cfg.step = params.guidance_scale.step;
-    els.cfg.value = params.guidance_scale.default;
+  // Update CFG/guidance scale (models use different parameter names)
+  const cfgParam = params.guidance_scale || params.true_cfg_scale || params.cfg;
+  if (cfgParam) {
+    els.cfg.min = cfgParam.min;
+    els.cfg.max = cfgParam.max;
+    els.cfg.step = cfgParam.step;
+    els.cfg.value = cfgParam.default;
   }
   
-  // Update steps (now standardized as num_inference_steps)
-  if (params.num_inference_steps) {
-    els.steps.min = params.num_inference_steps.min;
-    els.steps.max = params.num_inference_steps.max;
-    els.steps.step = params.num_inference_steps.step;
-    els.steps.value = params.num_inference_steps.default;
+  // Update inference steps (models use different parameter names)
+  const stepsParam = params.num_inference_steps || params.steps;
+  if (stepsParam) {
+    els.steps.min = stepsParam.min;
+    els.steps.max = stepsParam.max;
+    els.steps.step = stepsParam.step;
+    els.steps.value = stepsParam.default;
   }
   
   // Update width/height (now all models use width/height)
@@ -431,6 +432,7 @@ function updateParametersForModel(modelKey) {
     els.negPrompt.value = '';
   }
   
+  // Update the display values
   sync();
   log(`[${ts()}] Updated parameters for ${config.name} model`);
 }
