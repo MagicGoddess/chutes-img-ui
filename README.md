@@ -25,7 +25,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 ## Usage
 - Use online: https://magicgoddess.github.io/chutes-img-ui
 - Or serve locally from the project root:
-  - `npx serve` or `python3 -m http.server 5173`
+  - `npm run dev`
   - Open `http://localhost:5173`
 - Paste your API key, select a mode, write a prompt, and Generate.
 
