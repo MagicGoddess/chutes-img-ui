@@ -399,6 +399,94 @@ pre.log {
   box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
 }
 
+/* Style range inputs to use the app accent color */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px; /* gives room for custom thumb */
+  background: transparent; /* we'll style the track with pseudo elements */
+}
+
+/* WebKit track */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--_p, 50%), #253047 var(--_p, 50%));
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -6px; /* center the thumb on the track */
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  border: 3px solid rgba(17,17,27,0.6);
+  cursor: pointer;
+}
+
+/* Firefox */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: #253047;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid rgba(17,17,27,0.6);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* IE/Edge (legacy) */
+input[type="range"]::-ms-track {
+  height: 8px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+input[type="range"]::-ms-fill-lower {
+  background: var(--accent);
+  border-radius: 999px;
+}
+input[type="range"]::-ms-fill-upper {
+  background: #253047;
+  border-radius: 999px;
+}
+
+/* Focus state */
+input[type="range"]:focus {
+  outline: none;
+}
+input[type="range"]:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 6px rgba(124,58,237,0.12), 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* Disabled */
+input[type="range"]:disabled::-webkit-slider-thumb,
+input[type="range"]:disabled::-moz-range-thumb {
+  background: #334155;
+  border-color: #111827;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Utility: update the WebKit track fill position using a CSS variable that JS can set if desired. Defaults handled by gradient stop above. */
+
 /* Quota Counter Styles */
 .quota-counter {
   display: flex;
