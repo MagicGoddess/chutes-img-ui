@@ -193,9 +193,88 @@ const MODEL_CONFIGS = {
 let currentMode = 'image-edit';
 let currentModel = 'hidream';
 
+// Quota management
+let quotaData = null;
+const quotaElements = {
+  counter: document.getElementById('quotaCounter'),
+  percentage: document.getElementById('quotaPercentage'),
+  text: document.getElementById('quotaText'),
+  circle: document.querySelector('.progress-ring-circle')
+};
+
+async function fetchQuotaUsage(apiKey) {
+  try {
+    const response = await fetch('https://api.chutes.ai/users/me/quota_usage/me', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+  } catch (error) {
+    console.warn('Failed to fetch quota usage:', error);
+  }
+  return null;
+}
+
+function updateQuotaDisplay(quota, used) {
+  if (!quotaElements.counter || !quota) return;
+  
+  quotaData = { quota, used };
+  const usedPercentage = (used / quota) * 100;
+  const remainingPercentage = 100 - usedPercentage;
+  
+  // Update text
+  quotaElements.percentage.textContent = `${Math.round(remainingPercentage)}%`;
+  quotaElements.text.textContent = `${used}/${quota} used`;
+  
+  // Update progress circle
+  const circumference = 2 * Math.PI * 16; // radius = 16
+  const offset = circumference - (remainingPercentage / 100) * circumference;
+  quotaElements.circle.style.strokeDashoffset = offset;
+  
+  // Keep a single 'quota' marker class for styling if needed
+  quotaElements.counter.classList.remove('quota-high', 'quota-medium', 'quota-low');
+  quotaElements.counter.classList.add('quota');
+  
+  // Show the counter
+  quotaElements.counter.style.display = 'flex';
+}
+
+function hideQuotaCounter() {
+  if (quotaElements.counter) {
+    quotaElements.counter.style.display = 'none';
+  }
+}
+
+async function refreshQuotaUsage() {
+  const apiKey = (els.apiKey.value || '').trim();
+  if (!apiKey) {
+    hideQuotaCounter();
+    return;
+  }
+  
+  const data = await fetchQuotaUsage(apiKey);
+  if (data && data.quota && data.used !== undefined) {
+    updateQuotaDisplay(data.quota, data.used);
+  } else {
+    hideQuotaCounter();
+  }
+}
+
 // Load key
 const saved = localStorage.getItem('chutes_api_key');
-if (saved) { els.apiKey.value = saved; els.keyStatus.textContent = 'Loaded from localStorage'; }
+if (saved) { 
+  els.apiKey.value = saved; 
+  els.keyStatus.textContent = 'Loaded from localStorage';
+  // Load quota when API key is restored
+  setTimeout(refreshQuotaUsage, 100);
+}
 
 // Mode switching
 function switchMode(mode) {
@@ -339,16 +418,20 @@ els.modelSelect.addEventListener('change', () => {
 // Initialize with image edit mode
 switchMode('image-edit');
 
-els.saveKeyBtn.addEventListener('click', ()=>{
+els.saveKeyBtn.addEventListener('click', async ()=>{
   const v = els.apiKey.value.trim();
   if (!v) { els.keyStatus.textContent='Enter a key first.'; return; }
   localStorage.setItem('chutes_api_key', v);
   els.keyStatus.textContent='Saved ✓';
   log(`[${ts()}] Saved API key to localStorage.`);
+  // Refresh quota usage when API key is saved
+  await refreshQuotaUsage();
 });
 els.forgetKeyBtn.addEventListener('click', ()=>{
   localStorage.removeItem('chutes_api_key'); els.apiKey.value=''; els.keyStatus.textContent='Removed from localStorage';
   log(`[${ts()}] Removed API key from localStorage.`);
+  // Hide quota counter when API key is removed
+  hideQuotaCounter();
 });
 
 // Reveal/Hide API key
@@ -638,6 +721,9 @@ els.generateBtn.addEventListener('click', async ()=>{
     els.outMeta.textContent = `Output ${blob.type || 'image/jpeg'} • ${(blob.size/1024).toFixed(0)} KB • ${dt}s`;
     toast('Done ✓');
     log(`[${ts()}] Done ✓`);
+    
+    // Refresh quota usage after successful generation
+    await refreshQuotaUsage();
   } catch(err){
     console.error(err);
     toast(err.message || String(err), true);

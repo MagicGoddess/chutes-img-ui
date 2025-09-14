@@ -6,6 +6,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports two modes: Image Edit and Text-to-Image generation
 - Model selector for Text-to-Image with multiple models (e.g., Hidream, JuggernautXL, Chroma)
+- Quota counter: Displays remaining quota as a percentage and usage details
 - Experimental PWA: installable, offline app-shell cache
 - Activity log for quick debugging and status
 - Copies output to clipboard and allows download
@@ -13,6 +14,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 
 ## Configure
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
+- Quota usage endpoint: `GET https://api.chutes.ai/users/me/quota_usage/me`
 - API endpoints:
   - Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter

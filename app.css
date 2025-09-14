@@ -398,3 +398,55 @@ pre.log {
   color: white;
   box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
 }
+
+/* Quota Counter Styles */
+.quota-counter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(17, 24, 39, 0.8);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.quota-progress {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-circle-bg {
+  fill: none;
+  stroke: #374151;
+  stroke-width: 2;
+}
+
+.progress-ring-circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 100.53 100.53;
+  stroke-dashoffset: 100.53;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.quota-percentage {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.quota-text {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Single quota class can be styled via .quota-counter or .quota if needed */
