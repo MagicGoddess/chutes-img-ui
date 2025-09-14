@@ -100,15 +100,13 @@ const sync = ()=>{ els.cfgVal.textContent = els.cfg.value; els.stepsVal.textCont
 const MODEL_CONFIGS = {
   'hidream': {
     name: 'Hidream',
-    endpoint: 'https://image.chutes.ai/generate',
-    modelName: 'hidream',
+    endpoint: 'https://kikakkz-hidream-i1-full.chutes.ai/generate',
     params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
-      num_inference_steps: { min: 1, max: 30, default: 10, step: 1 },
-      seed: { min: 0, max: 4294967295, default: null },
-      negative_prompt: { default: '' }
+      width: { min: 256, max: 2560, default: 512, step: 64 },
+      height: { min: 256, max: 2560, default: 512, step: 64 },
+      guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
+      seed: { min: 0, max: 100000000, default: null }
     }
   },
   'qwen-image': {
@@ -406,6 +404,7 @@ function updateParametersForModel(modelKey) {
   // Update standard resolution presets for text-to-image
   const preset = els.resolutionPreset;
   preset.innerHTML = `
+    <option value="512x512">512 × 512 (1:1)</option>
     <option value="1024x1024" selected>1024 × 1024 (1:1)</option>
     <option value="1536x1024">1536 × 1024 (3:2)</option>
     <option value="1024x1536">1024 × 1536 (2:3)</option>
@@ -504,6 +503,7 @@ function fileToBase64(file) {
 
 // ---- Resolution Preset Handling ----
 const PRESETS = {
+  '512x512': { w:512, h:512 },
   '1024x1024': { w:1024, h:1024 },
   '1536x1024': { w:1536, h:1024 },
   '1024x1536': { w:1024, h:1536 },

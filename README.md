@@ -57,3 +57,6 @@ See `CACHE-BUSTING.md` for detailed information about the cache management syste
 
 ## Disclaimer
 This project is community-built and not affiliated with Chutes.
+
+## References
+- [Image Models Documentation](./reference/img-models.md)
