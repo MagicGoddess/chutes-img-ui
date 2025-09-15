@@ -514,6 +514,8 @@ const PRESETS = {
   '1024x1024': { w:1024, h:1024 },
   '1536x1024': { w:1536, h:1024 },
   '1024x1536': { w:1024, h:1536 },
+  '768x1360': { w:768, h:1360 },
+  '1360x768': { w:1360, h:768 },
   '2048x2048': { w:2048, h:2048 },
   '2024x2024': { w:2024, h:2024 },
   '1920x1080': { w:1920, h:1080 },
@@ -603,6 +605,7 @@ function applyPreset(){
     els.height.value = p.h;
     if (els.autoDims) els.autoDims.style.display='none';
     log(`[${ts()}] Preset selected: ${val}`);
+    return;
   }
 }
 
