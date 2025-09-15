@@ -910,8 +910,10 @@ const imageHistory = {
     this.loadFromStorage();
     this.setupCollapsible();
     this.setupHistoryControls();
-    this.setupModal();
     this.render();
+    
+    // Setup modal after DOM is fully loaded
+    setTimeout(() => this.setupModal(), 100);
   },
 
   loadFromStorage() {
@@ -984,24 +986,22 @@ const imageHistory = {
   },
 
   setupCollapsible() {
-    // Activity log collapsible
+    // Activity log collapsible - default to collapsed
     if (els.logHeader && els.logContent && els.logToggleIcon) {
-      const logCollapsed = localStorage.getItem('chutes_log_collapsed') === 'true';
+      const logCollapsed = localStorage.getItem('chutes_log_collapsed') !== 'false'; // Default to true
       if (logCollapsed) {
         els.logContent.classList.add('collapsed');
         els.logToggleIcon.classList.add('collapsed');
       }
 
       els.logHeader.addEventListener('click', (e) => {
-        if (e.target.closest('#logHeader')) {
-          const isCollapsed = els.logContent.classList.toggle('collapsed');
-          els.logToggleIcon.classList.toggle('collapsed');
-          localStorage.setItem('chutes_log_collapsed', isCollapsed);
-        }
+        const isCollapsed = els.logContent.classList.toggle('collapsed');
+        els.logToggleIcon.classList.toggle('collapsed');
+        localStorage.setItem('chutes_log_collapsed', isCollapsed);
       });
     }
 
-    // History collapsible
+    // History collapsible - default to expanded
     if (els.historyHeader && els.historyContent && els.historyToggleIcon) {
       const historyCollapsed = localStorage.getItem('chutes_history_collapsed') === 'true';
       if (historyCollapsed) {
@@ -1010,11 +1010,12 @@ const imageHistory = {
       }
 
       els.historyHeader.addEventListener('click', (e) => {
-        if (e.target.closest('#historyHeader') && !e.target.closest('#historyControls')) {
-          const isCollapsed = els.historyContent.classList.toggle('collapsed');
-          els.historyToggleIcon.classList.toggle('collapsed');
-          localStorage.setItem('chutes_history_collapsed', isCollapsed);
-        }
+        // Prevent triggering when clicking on control buttons
+        if (e.target.closest('#historyControls')) return;
+        
+        const isCollapsed = els.historyContent.classList.toggle('collapsed');
+        els.historyToggleIcon.classList.toggle('collapsed');
+        localStorage.setItem('chutes_history_collapsed', isCollapsed);
       });
     }
   },

@@ -11,6 +11,21 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - Activity log for quick debugging and status
 - Copies output to clipboard and allows download
 - No server code; pure static files
+- **Generated Image History**: Save and manage all your generated images locally with advanced features:
+  - **Collapsible Sections**: Activity log and image history can be collapsed, state saved to localStorage
+  - **Image Grid**: Visual gallery of all generated images with responsive design
+  - **Image Modal**: Click any image to preview with action buttons:
+    - Download generated image
+    - Download source image (for image edit mode)
+    - Load settings back into the form
+    - Delete image permanently
+  - **Bulk Operations**: Toggle selection mode to:
+    - Select/deselect individual images with checkboxes
+    - Select all or deselect all images at once
+    - Delete multiple images at once
+  - **Automatic Saving**: All generated images and their settings are automatically saved
+  - **Storage Management**: Automatically limits to 100 images to prevent storage overflow
+  - **Persistent Storage**: Uses localStorage to keep your image history between sessions
 
 ## Configure
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
@@ -28,6 +43,10 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
   - `npm run dev`
   - Open `http://localhost:5173`
 - Paste your API key, select a mode, write a prompt, and Generate.
+- Generated images are automatically saved to your browser history for later access.
+- Click the collapse arrows (▼) to hide/show the Activity Log or Generated Images sections.
+- Click any generated image to open a modal with download, settings, and delete options.
+- Use the "☑️ Select" button to enable bulk operations on multiple images.
 
 ## Development & Deployment
 

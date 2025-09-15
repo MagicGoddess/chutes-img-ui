@@ -601,16 +601,15 @@ input[type="range"]:disabled::-moz-range-thumb {
 }
 
 .collapsible-content {
-  transition: all 0.3s ease;
+  transition: max-height 0.3s ease, padding 0.3s ease;
   overflow: hidden;
+  max-height: 1000px; /* Default expanded state */
 }
 
 .collapsible-content.collapsed {
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
-  margin-top: 0;
-  margin-bottom: 0;
 }
 
 /* Image History Grid */
