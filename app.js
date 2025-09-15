@@ -63,7 +63,16 @@ const els = {
   resolutionPreset: document.getElementById('resolutionPreset'), autoDims: document.getElementById('autoDims'),
   cfg: document.getElementById('cfg'), cfgVal: document.getElementById('cfgVal'), steps: document.getElementById('steps'), stepsVal: document.getElementById('stepsVal'),
   generateBtn: document.getElementById('generateBtn'), runStatus: document.getElementById('runStatus'),
-  resultImg: document.getElementById('resultImg'), downloadBtn: document.getElementById('downloadBtn'), copyBtn: document.getElementById('copyBtn'), outMeta: document.getElementById('outMeta')
+  resultImg: document.getElementById('resultImg'), downloadBtn: document.getElementById('downloadBtn'), copyBtn: document.getElementById('copyBtn'), outMeta: document.getElementById('outMeta'),
+  // History and collapsible elements
+  logHeader: document.getElementById('logHeader'), logToggleIcon: document.getElementById('logToggleIcon'), logContent: document.getElementById('logContent'),
+  historyHeader: document.getElementById('historyHeader'), historyToggleIcon: document.getElementById('historyToggleIcon'), historyContent: document.getElementById('historyContent'),
+  historyGrid: document.getElementById('historyGrid'), toggleCheckboxBtn: document.getElementById('toggleCheckboxBtn'),
+  selectAllBtn: document.getElementById('selectAllBtn'), deselectAllBtn: document.getElementById('deselectAllBtn'), deleteSelectedBtn: document.getElementById('deleteSelectedBtn'),
+  // Modal elements
+  imageModal: document.getElementById('imageModal'), modalCloseBtn: document.getElementById('modalCloseBtn'), modalImage: document.getElementById('modalImage'),
+  modalTitle: document.getElementById('modalTitle'), modalDownloadBtn: document.getElementById('modalDownloadBtn'), modalDownloadSourceBtn: document.getElementById('modalDownloadSourceBtn'),
+  modalLoadSettingsBtn: document.getElementById('modalLoadSettingsBtn'), modalDeleteBtn: document.getElementById('modalDeleteBtn')
 };
 
 // Helper function to create an img element inside the result container
@@ -769,6 +778,22 @@ els.generateBtn.addEventListener('click', async ()=>{
     toast('Done ✓');
     log(`[${ts()}] Done ✓`);
     
+    // Save to image history
+    const historyData = {
+      imageUrl: lastBlobUrl,
+      sourceImageUrl: currentMode === 'image-edit' ? lastSourceObjectUrl() : null,
+      mode: currentMode,
+      model: currentMode === 'text-to-image' ? currentModel : null,
+      prompt: els.prompt.value.trim(),
+      negativePrompt: els.negPrompt.value.trim(),
+      width: width,
+      height: height,
+      seed: body.seed || null,
+      cfg: currentMode === 'image-edit' ? body.true_cfg_scale : (body.cfg || body.guidance_scale),
+      steps: body.num_inference_steps || body.steps
+    };
+    imageHistory.addImage(historyData);
+    
     // Refresh quota usage after successful generation
     await refreshQuotaUsage();
   } catch(err){
@@ -874,6 +899,317 @@ els.apiKey.addEventListener('input', ()=>{
   if (els.keyStatus.classList.contains('error')) { els.keyStatus.classList.remove('error'); els.keyStatus.textContent=''; }
 });
 els.saveKeyBtn.addEventListener('click', ()=>{ els.keyStatus.classList.remove('error'); });
+
+// Image history management
+const imageHistory = {
+  items: [],
+  isSelectionMode: false,
+  currentModalItem: null,
+
+  init() {
+    this.loadFromStorage();
+    this.setupCollapsible();
+    this.setupHistoryControls();
+    this.setupModal();
+    this.render();
+  },
+
+  loadFromStorage() {
+    try {
+      const saved = localStorage.getItem('chutes_image_history');
+      this.items = saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.warn('Failed to load image history:', e);
+      this.items = [];
+    }
+  },
+
+  saveToStorage() {
+    try {
+      localStorage.setItem('chutes_image_history', JSON.stringify(this.items));
+    } catch (e) {
+      console.warn('Failed to save image history:', e);
+    }
+  },
+
+  addImage(imageData) {
+    const historyItem = {
+      id: Date.now() + Math.random().toString(36).substr(2, 9),
+      timestamp: Date.now(),
+      imageUrl: imageData.imageUrl,
+      sourceImageUrl: imageData.sourceImageUrl || null,
+      settings: {
+        mode: imageData.mode,
+        model: imageData.model || null,
+        prompt: imageData.prompt,
+        negativePrompt: imageData.negativePrompt || '',
+        width: imageData.width,
+        height: imageData.height,
+        seed: imageData.seed || null,
+        cfg: imageData.cfg,
+        steps: imageData.steps
+      }
+    };
+    
+    this.items.unshift(historyItem); // Add to beginning
+    
+    // Limit to 100 items to prevent storage overflow
+    if (this.items.length > 100) {
+      this.items = this.items.slice(0, 100);
+    }
+    
+    this.saveToStorage();
+    this.render();
+    log(`[${ts()}] Image saved to history`);
+  },
+
+  deleteImage(id) {
+    this.items = this.items.filter(item => item.id !== id);
+    this.saveToStorage();
+    this.render();
+  },
+
+  deleteSelected() {
+    const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+    const idsToDelete = Array.from(checkboxes).map(cb => cb.dataset.id);
+    
+    if (idsToDelete.length === 0) return;
+    
+    if (confirm(`Delete ${idsToDelete.length} selected image(s)? This cannot be undone.`)) {
+      this.items = this.items.filter(item => !idsToDelete.includes(item.id));
+      this.saveToStorage();
+      this.render();
+      toast(`Deleted ${idsToDelete.length} image(s)`);
+    }
+  },
+
+  setupCollapsible() {
+    // Activity log collapsible
+    if (els.logHeader && els.logContent && els.logToggleIcon) {
+      const logCollapsed = localStorage.getItem('chutes_log_collapsed') === 'true';
+      if (logCollapsed) {
+        els.logContent.classList.add('collapsed');
+        els.logToggleIcon.classList.add('collapsed');
+      }
+
+      els.logHeader.addEventListener('click', (e) => {
+        if (e.target.closest('#logHeader')) {
+          const isCollapsed = els.logContent.classList.toggle('collapsed');
+          els.logToggleIcon.classList.toggle('collapsed');
+          localStorage.setItem('chutes_log_collapsed', isCollapsed);
+        }
+      });
+    }
+
+    // History collapsible
+    if (els.historyHeader && els.historyContent && els.historyToggleIcon) {
+      const historyCollapsed = localStorage.getItem('chutes_history_collapsed') === 'true';
+      if (historyCollapsed) {
+        els.historyContent.classList.add('collapsed');
+        els.historyToggleIcon.classList.add('collapsed');
+      }
+
+      els.historyHeader.addEventListener('click', (e) => {
+        if (e.target.closest('#historyHeader') && !e.target.closest('#historyControls')) {
+          const isCollapsed = els.historyContent.classList.toggle('collapsed');
+          els.historyToggleIcon.classList.toggle('collapsed');
+          localStorage.setItem('chutes_history_collapsed', isCollapsed);
+        }
+      });
+    }
+  },
+
+  setupHistoryControls() {
+    if (els.toggleCheckboxBtn) {
+      els.toggleCheckboxBtn.addEventListener('click', () => {
+        this.isSelectionMode = !this.isSelectionMode;
+        this.updateSelectionMode();
+      });
+    }
+
+    if (els.selectAllBtn) {
+      els.selectAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = true);
+      });
+    }
+
+    if (els.deselectAllBtn) {
+      els.deselectAllBtn.addEventListener('click', () => {
+        document.querySelectorAll('.history-checkbox').forEach(cb => cb.checked = false);
+      });
+    }
+
+    if (els.deleteSelectedBtn) {
+      els.deleteSelectedBtn.addEventListener('click', () => {
+        this.deleteSelected();
+      });
+    }
+  },
+
+  updateSelectionMode() {
+    const items = document.querySelectorAll('.history-item');
+    items.forEach(item => {
+      if (this.isSelectionMode) {
+        item.classList.add('selection-mode');
+      } else {
+        item.classList.remove('selection-mode');
+      }
+    });
+
+    els.toggleCheckboxBtn.textContent = this.isSelectionMode ? '✗ Cancel' : '☑️ Select';
+    els.selectAllBtn.style.display = this.isSelectionMode ? 'inline-block' : 'none';
+    els.deselectAllBtn.style.display = this.isSelectionMode ? 'inline-block' : 'none';
+    els.deleteSelectedBtn.style.display = this.isSelectionMode ? 'inline-block' : 'none';
+  },
+
+  setupModal() {
+    if (!els.modalCloseBtn || !els.imageModal) {
+      console.warn('Modal elements not found, skipping modal setup');
+      return;
+    }
+    
+    els.modalCloseBtn.addEventListener('click', () => this.closeModal());
+    els.imageModal.addEventListener('click', (e) => {
+      if (e.target === els.imageModal) this.closeModal();
+    });
+
+    if (els.modalDownloadBtn) els.modalDownloadBtn.addEventListener('click', () => this.downloadCurrentImage());
+    if (els.modalDownloadSourceBtn) els.modalDownloadSourceBtn.addEventListener('click', () => this.downloadCurrentSource());
+    if (els.modalLoadSettingsBtn) els.modalLoadSettingsBtn.addEventListener('click', () => this.loadCurrentSettings());
+    if (els.modalDeleteBtn) els.modalDeleteBtn.addEventListener('click', () => this.deleteCurrentImage());
+
+    // Close modal on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && els.imageModal && els.imageModal.style.display !== 'none') {
+        this.closeModal();
+      }
+    });
+  },
+
+  showModal(item) {
+    this.currentModalItem = item;
+    els.modalImage.src = item.imageUrl;
+    els.modalTitle.textContent = `Generated ${new Date(item.timestamp).toLocaleString()}`;
+    
+    // Show/hide source download button
+    if (item.sourceImageUrl) {
+      els.modalDownloadSourceBtn.style.display = 'flex';
+    } else {
+      els.modalDownloadSourceBtn.style.display = 'none';
+    }
+    
+    els.imageModal.style.display = 'flex';
+  },
+
+  closeModal() {
+    els.imageModal.style.display = 'none';
+    this.currentModalItem = null;
+  },
+
+  downloadCurrentImage() {
+    if (!this.currentModalItem) return;
+    const item = this.currentModalItem;
+    const a = document.createElement('a');
+    a.href = item.imageUrl;
+    const prefix = item.settings.mode === 'image-edit' ? 'qwen-edit' : `${item.settings.model || 'gen'}-gen`;
+    a.download = `${prefix}-${item.timestamp}.jpg`;
+    a.click();
+  },
+
+  downloadCurrentSource() {
+    if (!this.currentModalItem?.sourceImageUrl) return;
+    const a = document.createElement('a');
+    a.href = this.currentModalItem.sourceImageUrl;
+    a.download = `source-${this.currentModalItem.timestamp}.jpg`;
+    a.click();
+  },
+
+  loadCurrentSettings() {
+    if (!this.currentModalItem) return;
+    
+    const settings = this.currentModalItem.settings;
+    
+    // Set mode
+    if (settings.mode === 'image-edit') {
+      els.modeImageEdit.checked = true;
+      switchMode('image-edit');
+    } else {
+      els.modeTextToImage.checked = true;
+      switchMode('text-to-image');
+      if (settings.model) {
+        els.modelSelect.value = settings.model;
+        currentModel = settings.model;
+        updateParametersForModel(settings.model);
+      }
+    }
+    
+    // Set form values
+    els.prompt.value = settings.prompt || '';
+    els.negPrompt.value = settings.negativePrompt || '';
+    els.width.value = settings.width || 1024;
+    els.height.value = settings.height || 1024;
+    if (settings.seed) els.seed.value = settings.seed;
+    els.cfg.value = settings.cfg || 4;
+    els.steps.value = settings.steps || 50;
+    
+    sync(); // Update slider displays
+    
+    toast('Settings loaded ✓');
+    this.closeModal();
+  },
+
+  deleteCurrentImage() {
+    if (!this.currentModalItem) return;
+    
+    if (confirm('Delete this image permanently? This cannot be undone.')) {
+      this.deleteImage(this.currentModalItem.id);
+      toast('Image deleted');
+      this.closeModal();
+    }
+  },
+
+  render() {
+    if (this.items.length === 0) {
+      els.historyGrid.innerHTML = '<div class="history-empty">No images generated yet. Generate your first image to see it here!</div>';
+      return;
+    }
+
+    const itemsHtml = this.items.map(item => {
+      const date = new Date(item.timestamp).toLocaleDateString();
+      const time = new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const modelText = item.settings.mode === 'image-edit' ? 'Image Edit' : item.settings.model || 'Unknown';
+      
+      return `
+        <div class="history-item" data-id="${item.id}">
+          <input type="checkbox" class="history-checkbox" data-id="${item.id}">
+          <img src="${item.imageUrl}" alt="Generated image" loading="lazy">
+          <div class="history-meta">
+            <div>${modelText}</div>
+            <div>${date} ${time}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    els.historyGrid.innerHTML = itemsHtml;
+
+    // Add click handlers for images
+    document.querySelectorAll('.history-item').forEach(item => {
+      const img = item.querySelector('img');
+      img.addEventListener('click', (e) => {
+        if (!this.isSelectionMode) {
+          const itemData = this.items.find(i => i.id === item.dataset.id);
+          if (itemData) this.showModal(itemData);
+        }
+      });
+    });
+
+    this.updateSelectionMode();
+  }
+};
+
+// Initialize image history
+imageHistory.init();
 
 // Setup slider event listeners and initial sync
 els.cfg.addEventListener('input', sync); 

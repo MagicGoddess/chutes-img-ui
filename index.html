@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1757866469109" />
+  <link rel="stylesheet" href="./app.css?v=1757941113268" />
 </head>
 <body>
   <header>
@@ -160,8 +160,34 @@
 
     <div class="spacer"></div>
     <div class="card">
-      <h2>Activity Log</h2>
-      <pre id="logOutput" class="log" aria-live="polite"></pre>
+      <div class="collapsible-header" style="display: flex; align-items: center; gap: 8px; cursor: pointer;" id="logHeader">
+        <h2 style="margin: 0;">Activity Log</h2>
+        <span id="logToggleIcon" class="toggle-icon">▼</span>
+      </div>
+      <div id="logContent" class="collapsible-content">
+        <pre id="logOutput" class="log" aria-live="polite"></pre>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="card">
+      <div class="collapsible-header" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" id="historyHeader">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="margin: 0;">Generated Images</h2>
+          <span id="historyToggleIcon" class="toggle-icon">▼</span>
+        </div>
+        <div id="historyControls" style="display: flex; align-items: center; gap: 8px;">
+          <button id="toggleCheckboxBtn" class="secondary" style="font-size: 12px; padding: 4px 8px;">☑️ Select</button>
+          <button id="selectAllBtn" class="secondary" style="font-size: 12px; padding: 4px 8px; display: none;">✓ All</button>
+          <button id="deselectAllBtn" class="secondary" style="font-size: 12px; padding: 4px 8px; display: none;">✗ None</button>
+          <button id="deleteSelectedBtn" class="secondary" style="font-size: 12px; padding: 4px 8px; display: none; color: #ef4444;">🗑️ Delete</button>
+        </div>
+      </div>
+      <div id="historyContent" class="collapsible-content">
+        <div id="historyGrid" class="history-grid">
+          <div class="history-empty">No images generated yet. Generate your first image to see it here!</div>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -173,7 +199,40 @@
     </div>
   </footer>
 
-  <script src="./app.js?v=1757866469109"></script>
+  <script src="./app.js?v=1757941113268"></script>
   <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Image Preview Modal -->
+  <div id="imageModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Image Preview</h3>
+        <button class="modal-close" id="modalCloseBtn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-image-container">
+          <img id="modalImage" alt="Preview" />
+        </div>
+        <div class="modal-actions">
+          <button id="modalDownloadBtn" class="modal-action-btn">
+            <span class="action-icon">⬇️</span>
+            Download Image
+          </button>
+          <button id="modalDownloadSourceBtn" class="modal-action-btn" style="display: none;">
+            <span class="action-icon">📁</span>
+            Download Source
+          </button>
+          <button id="modalLoadSettingsBtn" class="modal-action-btn">
+            <span class="action-icon">⚙️</span>
+            Load Settings
+          </button>
+          <button id="modalDeleteBtn" class="modal-action-btn delete-btn">
+            <span class="action-icon">🗑️</span>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
