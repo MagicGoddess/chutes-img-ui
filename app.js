@@ -353,7 +353,10 @@ function updateParametersForImageEdit() {
     <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
     <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
     <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
-    <option value="2048x2048">2048 × 2048 (HiRes square)</option>
+  <option value="2048x2048">2048 × 2048 (HiRes square)</option>
+  <option value="2024x2024">2024 × 2024 (HiRes square)</option>
+  <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
+  <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
     <option value="custom">Custom…</option>
   `;
   
@@ -411,6 +414,9 @@ function updateParametersForModel(modelKey) {
     <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
     <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
     <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
+  <option value="2024x2024">2024 × 2024 (HiRes square)</option>
+  <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
+  <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
     <option value="custom">Custom…</option>
   `;
   
@@ -508,7 +514,10 @@ const PRESETS = {
   '1024x1024': { w:1024, h:1024 },
   '1536x1024': { w:1536, h:1024 },
   '1024x1536': { w:1024, h:1536 },
-  '2048x2048': { w:2048, h:2048 }
+  '2048x2048': { w:2048, h:2048 },
+  '2024x2024': { w:2024, h:2024 },
+  '1920x1080': { w:1920, h:1080 },
+  '1080x1920': { w:1080, h:1920 }
 };
 let autoDimsCache = null; // {w,h}
 
