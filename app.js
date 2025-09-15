@@ -884,6 +884,26 @@ async function handleImageFile(file){
   sourceB64 = (b64||'').split(',')[1] || null;
   sourceMime = file.type || 'image/png';
   log(`[${ts()}] Image ready (Base64 in memory).`);
+
+  // If the user has the resolution preset set to "auto", compute auto dims
+  // immediately for dropped images (matches behavior of file input change).
+  try {
+    if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+      // Disable manual dim inputs and show waiting message
+      toggleDimInputs(false);
+      if (els.autoDims) { els.autoDims.style.display = 'block'; els.autoDims.textContent = 'Auto: (waiting for image)'; }
+
+      // If we already have cached auto dims, populate immediately; otherwise compute
+      if (autoDimsCache) {
+        if (els.width && els.height) { els.width.value = autoDimsCache.w; els.height.value = autoDimsCache.h; }
+      } else {
+        await computeAndDisplayAutoDims(url);
+      }
+    }
+  } catch (err) {
+    // computeAndDisplayAutoDims already updates UI on failure; log for debugging
+    console.warn('Failed to compute auto dimensions on drop:', err);
+  }
 }
 ['dragenter','dragover'].forEach(ev=>{
   els.imgThumb.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); els.imgThumb.classList.add('drop-hover'); });
