@@ -173,15 +173,14 @@ const MODEL_CONFIGS = {
   },
   'neta-lumina': {
     name: 'Neta Lumina',
-    endpoint: 'https://chutes-neta-lumina.chutes.ai/generate',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'neta-lumina',
     params: {
       width: { min: 768, max: 2048, default: 1024, step: 64 },
       height: { min: 768, max: 2048, default: 1024, step: 64 },
-      cfg: { min: 4, max: 5.5, default: 4.5, step: 0.1 },
-      steps: { min: 20, max: 50, default: 30, step: 1 },
-      seed: { min: 0, max: null, default: 0 },
-      sampler: { default: 'res_multistep' },
-      scheduler: { default: 'linear_quadratic' },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 20, max: 50, default: 30, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: 'blurry, worst quality, low quality' }
     }
   }
