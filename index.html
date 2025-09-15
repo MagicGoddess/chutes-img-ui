@@ -160,8 +160,77 @@
 
     <div class="spacer"></div>
     <div class="card">
-      <h2>Activity Log</h2>
-      <pre id="logOutput" class="log" aria-live="polite"></pre>
+      <div class="collapsible-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleActivityLog()">
+        <h2>Activity Log</h2>
+        <button id="logToggleBtn" class="secondary" style="padding: 6px 10px; font-size: 12px;">
+          <span id="logToggleIcon">▼</span> <span id="logToggleText">Collapse</span>
+        </button>
+      </div>
+      <div id="logContainer" style="display: none;">
+        <pre id="logOutput" class="log" aria-live="polite"></pre>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2>Generated Images</h2>
+        <div class="toolbar">
+          <button id="toggleSelectionBtn" class="secondary" style="display: none;">
+            <span id="selectionIcon">☐</span> Select
+          </button>
+          <button id="selectAllBtn" class="secondary" style="display: none;">Select All</button>
+          <button id="selectNoneBtn" class="secondary" style="display: none;">Select None</button>
+          <button id="deleteSelectedBtn" class="secondary" style="display: none;">Delete Selected</button>
+          <button id="clearHistoryBtn" class="secondary">Clear All</button>
+        </div>
+      </div>
+      <div id="imageGrid" class="image-grid">
+        <div class="empty-state">
+          <span class="muted">No images generated yet. Create your first image to see it here!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">Image Preview</h3>
+          <button id="closeModalBtn" class="secondary" style="padding: 6px 10px;">✕</button>
+        </div>
+        <div class="modal-body">
+          <img id="modalImage" alt="Generated image preview" />
+          <div class="modal-metadata">
+            <div class="metadata-item">
+              <strong>Model:</strong> <span id="modalModel">-</span>
+            </div>
+            <div class="metadata-item">
+              <strong>Resolution:</strong> <span id="modalResolution">-</span>
+            </div>
+            <div class="metadata-item">
+              <strong>Seed:</strong> <span id="modalSeed">-</span>
+            </div>
+            <div class="metadata-item">
+              <strong>Created:</strong> <span id="modalDate">-</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="modalDownloadBtn" class="secondary">
+            <span>📥</span> Download Image
+          </button>
+          <button id="modalDownloadSourceBtn" class="secondary" style="display: none;">
+            <span>📥</span> Download Source
+          </button>
+          <button id="modalLoadSettingsBtn" class="">
+            <span>⚙️</span> Load Settings
+          </button>
+          <button id="modalDeleteBtn" class="secondary">
+            <span>🗑️</span> Delete
+          </button>
+        </div>
+      </div>
     </div>
   </main>
 

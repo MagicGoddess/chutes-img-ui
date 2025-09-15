@@ -581,3 +581,414 @@ input[type="range"]:disabled::-moz-range-thumb {
 }
 
 /* Single quota class can be styled via .quota-counter or .quota if needed */
+
+/* Image Grid Styles */
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media(min-width: 768px) {
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media(min-width: 1200px) {
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+
+.image-grid-item {
+  position: relative;
+  background: #0b1020;
+  border: 1px solid #253047;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  aspect-ratio: 1;
+}
+
+.image-grid-item:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.15);
+}
+
+.image-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.image-grid-item .overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+  color: white;
+  padding: 12px;
+  font-size: 12px;
+  backdrop-filter: blur(3px);
+}
+
+.image-grid-item .checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.image-grid-item .checkbox:hover {
+  border-color: var(--accent);
+  background: rgba(124, 58, 237, 0.2);
+}
+
+.image-grid-item .checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.1);
+}
+
+.image-grid-item .checkbox.checked::after {
+  content: '✓';
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.selection-mode .image-grid-item .checkbox {
+  display: flex;
+}
+
+.selection-mode .image-grid-item.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+  background: rgba(11, 16, 32, 0.3);
+  border: 2px dashed #334155;
+  border-radius: 16px;
+  margin: 20px 0;
+}
+
+.empty-state::before {
+  content: '🎨';
+  display: block;
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(8px);
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+.modal-content {
+  background: var(--panel);
+  border: 1px solid #1f2937;
+  border-radius: 20px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Closing animation (fade + subtle shrink) */
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+}
+
+.modal.closing {
+  animation: modalFadeOut 0.18s ease-in forwards;
+}
+
+.modal.closing .modal-content {
+  animation: modalFadeOut 0.18s ease-in forwards;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-header button {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.modal-body img {
+  max-width: 100%;
+  max-height: 60vh;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.metadata-item {
+  background: linear-gradient(135deg, #0b1020, #0e1328);
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  border: 1px solid #1f2937;
+}
+
+.metadata-item strong {
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #1f2937;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@media(min-width: 768px) {
+  .modal-actions {
+    justify-content: flex-end;
+  }
+}
+
+.modal-actions button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.modal-actions button span {
+  font-size: 16px;
+}
+
+/* Make the delete button prominent (red background) */
+#modalDeleteBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+#modalDeleteBtn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+/* Collapsible header styles */
+.collapsible-header {
+  user-select: none;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+}
+
+.collapsible-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+  margin: -8px;
+  padding: 8px;
+}
+
+.collapsible-header button {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.collapsible-header button:hover {
+  background: #374151;
+  transform: translateY(-1px);
+}
+
+/* Animation for log container */
+#logContainer {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+#logContainer.collapsed {
+  display: none;
+}
+
+/* Enhanced toolbar styling */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.toolbar button {
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.toolbar button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.toolbar button.secondary:hover {
+  background: #374151;
+}
+
+/* Image grid header toolbar */
+.card h2 + .toolbar button {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+/* Loading state improvements */
+.loading::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid var(--muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  vertical-align: -4px;
+}
+
+/* Responsive improvements */
+@media(max-width: 767px) {
+  .modal-content {
+    margin: 10px;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .toolbar {
+    justify-content: center;
+  }
+  
+  .image-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+}
+
+/* Ensure modal appears above header */
+.modal {
+  z-index: 10000;
+}

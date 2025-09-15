@@ -513,6 +513,22 @@ const PRESETS = {
 };
 let autoDimsCache = null; // {w,h}
 
+// Helper function to find preset that matches given dimensions
+function findPresetForDimensions(width, height, mode = 'text-to-image') {
+  // For image edit mode, if the dimensions match the source image exactly,
+  // it should use "auto". However, since we don't have source image dimensions here,
+  // we'll check standard presets first, then fall back to custom.
+  
+  for (const [presetKey, preset] of Object.entries(PRESETS)) {
+    if (preset.w === width && preset.h === height) {
+      return presetKey;
+    }
+  }
+  
+  // If no standard preset matches, return 'custom'
+  return 'custom';
+}
+
 async function computeAndDisplayAutoDims(imgUrl){
   try{
     const dims = await computeAutoDims(imgUrl);
@@ -769,6 +785,18 @@ els.generateBtn.addEventListener('click', async ()=>{
     toast('Done ✓');
     log(`[${ts()}] Done ✓`);
     
+    // Save to image history
+    const imageSettings = {
+      prompt: body.prompt,
+      negativePrompt: body.negative_prompt || '',
+      width: body.width,
+      height: body.height,
+      cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
+      steps: body.steps || body.num_inference_steps,
+      seed: body.seed
+    };
+    saveGeneratedImage(blob, imageSettings);
+    
     // Refresh quota usage after successful generation
     await refreshQuotaUsage();
   } catch(err){
@@ -879,3 +907,441 @@ els.saveKeyBtn.addEventListener('click', ()=>{ els.keyStatus.classList.remove('e
 els.cfg.addEventListener('input', sync); 
 els.steps.addEventListener('input', sync); 
 sync();
+
+// ---- Image History System ----
+
+// Image history storage
+function getImageHistory() {
+  try {
+    return JSON.parse(localStorage.getItem('chutes_image_history') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveImageHistory(history) {
+  try {
+    localStorage.setItem('chutes_image_history', JSON.stringify(history));
+  } catch (e) {
+    console.warn('Failed to save image history:', e);
+  }
+}
+
+function saveGeneratedImage(imageBlob, settings) {
+  const reader = new FileReader();
+  reader.onload = function() {
+    const imageData = {
+      id: Date.now() + Math.random().toString(36).substr(2, 9),
+      imageData: reader.result, // base64 data URL
+      sourceImageData: sourceB64 ? `data:${sourceMime};base64,${sourceB64}` : null,
+      settings: {
+        mode: currentMode,
+        model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
+        prompt: settings.prompt,
+        negativePrompt: settings.negativePrompt || '',
+        width: settings.width,
+        height: settings.height,
+        cfgScale: settings.cfgScale,
+        steps: settings.steps,
+        seed: settings.seed
+      },
+      timestamp: Date.now(),
+      filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
+    };
+    
+    const history = getImageHistory();
+    history.unshift(imageData); // Add to beginning
+    
+    // Keep only last 50 images to prevent storage bloat
+    if (history.length > 50) {
+      history.splice(50);
+    }
+    
+    saveImageHistory(history);
+    refreshImageGrid();
+    log(`[${ts()}] Image saved to history`);
+  };
+  reader.readAsDataURL(imageBlob);
+}
+
+function deleteImageFromHistory(imageId) {
+  const history = getImageHistory();
+  const newHistory = history.filter(img => img.id !== imageId);
+  saveImageHistory(newHistory);
+  refreshImageGrid();
+}
+
+function clearImageHistory() {
+  localStorage.removeItem('chutes_image_history');
+  refreshImageGrid();
+  toast('Image history cleared');
+}
+
+let selectionMode = false;
+let selectedImages = new Set();
+
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  selectedImages.clear();
+  
+  const grid = document.getElementById('imageGrid');
+  const toggleBtn = document.getElementById('toggleSelectionBtn');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const selectNoneBtn = document.getElementById('selectNoneBtn');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  const selectionIcon = document.getElementById('selectionIcon');
+  
+  if (selectionMode) {
+    grid.classList.add('selection-mode');
+    toggleBtn.innerHTML = '<span id="selectionIcon">☑</span> Cancel';
+    selectAllBtn.style.display = 'inline-block';
+    selectNoneBtn.style.display = 'inline-block';
+    deleteSelectedBtn.style.display = 'inline-block';
+  } else {
+    grid.classList.remove('selection-mode');
+    toggleBtn.innerHTML = '<span id="selectionIcon">☐</span> Select';
+    selectAllBtn.style.display = 'none';
+    selectNoneBtn.style.display = 'none';
+    deleteSelectedBtn.style.display = 'none';
+  }
+  
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  deleteSelectedBtn.disabled = selectedImages.size === 0;
+  deleteSelectedBtn.textContent = `Delete Selected (${selectedImages.size})`;
+}
+
+function selectAllImages() {
+  const images = document.querySelectorAll('.image-grid-item');
+  selectedImages.clear();
+  images.forEach(item => {
+    const imageId = item.dataset.imageId;
+    if (imageId) {
+      selectedImages.add(imageId);
+      item.classList.add('selected');
+      const checkbox = item.querySelector('.checkbox');
+      if (checkbox) checkbox.classList.add('checked');
+    }
+  });
+  updateSelectionUI();
+}
+
+function selectNoneImages() {
+  selectedImages.clear();
+  document.querySelectorAll('.image-grid-item').forEach(item => {
+    item.classList.remove('selected');
+    const checkbox = item.querySelector('.checkbox');
+    if (checkbox) checkbox.classList.remove('checked');
+  });
+  updateSelectionUI();
+}
+
+function deleteSelectedImages() {
+  if (selectedImages.size === 0) return;
+  
+  if (!confirm(`Delete ${selectedImages.size} selected image(s)? This cannot be undone.`)) {
+    return;
+  }
+  
+  const history = getImageHistory();
+  const newHistory = history.filter(img => !selectedImages.has(img.id));
+  saveImageHistory(newHistory);
+
+  // Capture count before clearing the selection set
+  const deletedCount = selectedImages.size;
+
+  selectedImages.clear();
+  refreshImageGrid();
+  toast(`Deleted ${deletedCount} image(s)`);
+
+  if (selectionMode) {
+    toggleSelectionMode(); // Exit selection mode
+  }
+}
+
+function refreshImageGrid() {
+  const grid = document.getElementById('imageGrid');
+  const history = getImageHistory();
+  
+  if (history.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><span class="muted">No images generated yet. Create your first image to see it here!</span></div>';
+    document.getElementById('toggleSelectionBtn').style.display = 'none';
+    return;
+  }
+  
+  document.getElementById('toggleSelectionBtn').style.display = 'inline-block';
+  
+  grid.innerHTML = history.map(img => `
+    <div class="image-grid-item" data-image-id="${img.id}" onclick="openImageModal('${img.id}')">
+      <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
+      <img src="${img.imageData}" alt="Generated image" loading="lazy" />
+      <div class="overlay">
+        <div style="font-weight: 600;">${img.settings.model}</div>
+        <div style="opacity: 0.8;">${img.settings.width}×${img.settings.height}</div>
+        <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleImageSelection(imageId) {
+  if (!selectionMode) return;
+  
+  const item = document.querySelector(`[data-image-id="${imageId}"]`);
+  const checkbox = item.querySelector('.checkbox');
+  
+  if (selectedImages.has(imageId)) {
+    selectedImages.delete(imageId);
+    item.classList.remove('selected');
+    checkbox.classList.remove('checked');
+  } else {
+    selectedImages.add(imageId);
+    item.classList.add('selected');
+    checkbox.classList.add('checked');
+  }
+  
+  updateSelectionUI();
+}
+
+// Modal functionality
+let currentModalImage = null;
+
+function openImageModal(imageId) {
+  if (selectionMode) {
+    toggleImageSelection(imageId);
+    return;
+  }
+  
+  const history = getImageHistory();
+  const image = history.find(img => img.id === imageId);
+  if (!image) return;
+  
+  currentModalImage = image;
+  
+  const modal = document.getElementById('imageModal');
+  const modalImage = document.getElementById('modalImage');
+  const modalModel = document.getElementById('modalModel');
+  const modalResolution = document.getElementById('modalResolution');
+  const modalSeed = document.getElementById('modalSeed');
+  const modalDate = document.getElementById('modalDate');
+  const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
+  
+  modalImage.src = image.imageData;
+  modalModel.textContent = image.settings.model;
+  modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
+  modalSeed.textContent = image.settings.seed || 'Random';
+  // Format date as YYYY-MM-DD and time as 24h HH:MM
+  const d = new Date(image.timestamp);
+  const pad = (n) => String(n).padStart(2, '0');
+  const formattedDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const formattedTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  modalDate.textContent = `${formattedDate} ${formattedTime}`;
+  
+  // Show/hide source download button
+  if (image.sourceImageData) {
+    modalDownloadSourceBtn.style.display = 'inline-flex';
+  } else {
+    modalDownloadSourceBtn.style.display = 'none';
+  }
+  
+  // Show modal (remove any closing class)
+  modal.classList.remove('closing');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeImageModal() {
+  const modal = document.getElementById('imageModal');
+  if (!modal) return;
+  // Add closing animation class and wait for animation to finish
+  modal.classList.add('closing');
+  const onAnimEnd = (e) => {
+    if (e.target !== modal) return;
+    modal.style.display = 'none';
+    modal.classList.remove('closing');
+    modal.removeEventListener('animationend', onAnimEnd);
+    document.body.style.overflow = ''; // Restore scrolling
+    currentModalImage = null;
+  };
+  modal.addEventListener('animationend', onAnimEnd);
+}
+
+function downloadModalImage() {
+  if (!currentModalImage) return;
+  
+  const a = document.createElement('a');
+  a.href = currentModalImage.imageData;
+  a.download = `${currentModalImage.filename}.jpg`;
+  a.click();
+}
+
+function downloadModalSourceImage() {
+  if (!currentModalImage || !currentModalImage.sourceImageData) return;
+  
+  const a = document.createElement('a');
+  a.href = currentModalImage.sourceImageData;
+  a.download = `${currentModalImage.filename}-source.jpg`;
+  a.click();
+}
+
+function loadModalSettings() {
+  if (!currentModalImage) return;
+  
+  const settings = currentModalImage.settings;
+  
+  // Set mode
+  if (settings.mode === 'image-edit') {
+    els.modeImageEdit.checked = true;
+    els.modeTextToImage.checked = false;
+    switchMode('image-edit');
+  } else {
+    els.modeImageEdit.checked = false;
+    els.modeTextToImage.checked = true;
+    switchMode('text-to-image');
+    // Set model for text-to-image
+    els.modelSelect.value = settings.model;
+    currentModel = settings.model;
+    updateParametersForModel(settings.model);
+  }
+  
+  // Load settings
+  els.prompt.value = settings.prompt || '';
+  els.negPrompt.value = settings.negativePrompt || '';
+  els.width.value = settings.width || 1024;
+  els.height.value = settings.height || 1024;
+  els.cfg.value = settings.cfgScale || 4;
+  els.steps.value = settings.steps || 50;
+  els.seed.value = settings.seed || '';
+  
+  // Set resolution preset dropdown to match the loaded dimensions
+  const matchingPreset = findPresetForDimensions(settings.width || 1024, settings.height || 1024, settings.mode);
+  if (els.resolutionPreset) {
+    els.resolutionPreset.value = matchingPreset;
+    // If it's custom, we need to enable the width/height inputs
+    if (matchingPreset === 'custom') {
+      toggleDimInputs(true);
+      if (els.autoDims) els.autoDims.style.display = 'none';
+    } else {
+      // Apply preset logic to update UI state
+      applyPreset();
+    }
+  }
+  
+  // Update UI
+  sync();
+  
+  // Load source image if available
+  if (currentModalImage.sourceImageData && settings.mode === 'image-edit') {
+    els.imgThumb.innerHTML = `<img src="${currentModalImage.sourceImageData}" alt="source"/>`;
+    // Convert back to base64 for API
+    sourceB64 = currentModalImage.sourceImageData.split(',')[1];
+    sourceMime = 'image/jpeg'; // Assume JPEG for stored images
+  }
+  
+  closeImageModal();
+  toast('Settings loaded from image');
+  log(`[${ts()}] Settings loaded from saved image`);
+}
+
+function deleteModalImage() {
+  if (!currentModalImage) return;
+  
+  if (!confirm('Delete this image? This cannot be undone.')) {
+    return;
+  }
+  
+  deleteImageFromHistory(currentModalImage.id);
+  closeImageModal();
+  toast('Image deleted');
+}
+
+// Activity Log Collapse
+function getLogCollapsedState() {
+  return localStorage.getItem('chutes_log_collapsed') === 'true';
+}
+
+function setLogCollapsedState(collapsed) {
+  localStorage.setItem('chutes_log_collapsed', collapsed.toString());
+}
+
+function toggleActivityLog() {
+  const container = document.getElementById('logContainer');
+  const toggleIcon = document.getElementById('logToggleIcon');
+  const toggleText = document.getElementById('logToggleText');
+  
+  const isCollapsed = container.style.display === 'none';
+  
+  if (isCollapsed) {
+    container.style.display = 'block';
+    toggleIcon.textContent = '▼';
+    toggleText.textContent = 'Collapse';
+    setLogCollapsedState(false);
+  } else {
+    container.style.display = 'none';
+    toggleIcon.textContent = '▶';
+    toggleText.textContent = 'Expand';
+    setLogCollapsedState(true);
+  }
+}
+
+// Initialize log state
+function initializeActivityLog() {
+  const container = document.getElementById('logContainer');
+  const toggleIcon = document.getElementById('logToggleIcon');
+  const toggleText = document.getElementById('logToggleText');
+  
+  const isCollapsed = getLogCollapsedState();
+  
+  if (isCollapsed) {
+    container.style.display = 'none';
+    toggleIcon.textContent = '▶';
+    toggleText.textContent = 'Expand';
+  } else {
+    container.style.display = 'block';
+    toggleIcon.textContent = '▼';
+    toggleText.textContent = 'Collapse';
+  }
+}
+
+// Event Listeners
+document.getElementById('toggleSelectionBtn').addEventListener('click', toggleSelectionMode);
+document.getElementById('selectAllBtn').addEventListener('click', selectAllImages);
+document.getElementById('selectNoneBtn').addEventListener('click', selectNoneImages);
+document.getElementById('deleteSelectedBtn').addEventListener('click', deleteSelectedImages);
+document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+  if (confirm('Clear all image history? This cannot be undone.')) {
+    clearImageHistory();
+  }
+});
+
+document.getElementById('closeModalBtn').addEventListener('click', closeImageModal);
+document.getElementById('modalDownloadBtn').addEventListener('click', downloadModalImage);
+document.getElementById('modalDownloadSourceBtn').addEventListener('click', downloadModalSourceImage);
+document.getElementById('modalLoadSettingsBtn').addEventListener('click', loadModalSettings);
+document.getElementById('modalDeleteBtn').addEventListener('click', deleteModalImage);
+
+// Close modal on background click
+document.getElementById('imageModal').addEventListener('click', (e) => {
+  if (e.target.id === 'imageModal') {
+    closeImageModal();
+  }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && currentModalImage) {
+    closeImageModal();
+  }
+});
+
+// Initialize
+initializeActivityLog();
+refreshImageGrid();
+
+// Global functions for HTML onclick handlers
+window.toggleActivityLog = toggleActivityLog;
+window.openImageModal = openImageModal;
+window.toggleImageSelection = toggleImageSelection;
