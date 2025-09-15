@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1757941012832" />
+  <link rel="stylesheet" href="./app.css?v=1757955107928" />
 </head>
 <body>
   <header>
@@ -34,7 +34,8 @@
   </header>
 
   <main>
-    <div class="card" id="keyCard">
+    <div class="two-col top-two">
+      <div class="card" id="keyCard">
       <h2>1) API Key</h2>
       <div class="row">
         <label for="apiKey">Chutes API Key</label>
@@ -46,17 +47,16 @@
           <span id="keyStatus" class="muted"></span>
         </div>
       </div>
-    </div>
+      </div>
 
-    <div class="spacer"></div>
-
-    <div class="card" id="modeCard">
+      <div class="card" id="modeCard">
       <h2>2) Mode</h2>
       <div class="mode-toggle">
         <input type="radio" id="modeImageEdit" name="mode" value="image-edit" checked />
         <label for="modeImageEdit">Image Edit</label>
         <input type="radio" id="modeTextToImage" name="mode" value="text-to-image" />
         <label for="modeTextToImage">Text to Image</label>
+      </div>
       </div>
     </div>
 
@@ -242,7 +242,7 @@
     </div>
   </footer>
 
-  <script src="./app.js?v=1757941012832"></script>
+  <script src="./app.js?v=1757955107928"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

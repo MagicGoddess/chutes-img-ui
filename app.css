@@ -309,10 +309,37 @@ pre.log {
   gap: 12px
 }
 
-@media(min-width:980px) {
+@media(min-width:1280px) {
   .two-col {
     grid-template-columns: 1fr 1fr;
     align-items: start
+  }
+}
+
+/* Make the top two cards (API Key + Mode) sit side-by-side at >=768px */
+@media(min-width:768px) {
+  .two-col.top-two {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+/* Ensure cards inside the top-two container stretch to equal height and content aligns */
+@media(min-width:768px) {
+  .two-col.top-two .card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  /* Keep the card's main content from stretching oddly; allow internal spanners to grow */
+  .two-col.top-two .card > .row,
+  .two-col.top-two .card > .toolbar,
+  .two-col.top-two .card > .thumb,
+  .two-col.top-two .card > .preview {
+    flex: 0 0 auto;
+  }
+  .two-col.top-two .card > .row:last-child {
+    margin-top: auto;
   }
 }
 
@@ -373,10 +400,12 @@ pre.log {
 .mode-toggle {
   display: flex;
   gap: 0;
-  background: #1f2937;
   border-radius: 8px;
   padding: 4px;
   max-width: 320px;
+  label:not(last-of-type) {
+    margin-right: 10px;
+  }
 }
 
 .mode-toggle input[type="radio"] {
