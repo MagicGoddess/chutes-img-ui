@@ -800,6 +800,8 @@ els.generateBtn.addEventListener('click', async ()=>{
     
     // Refresh quota usage after successful generation
     await refreshQuotaUsage();
+    // Signal generation completed (title + audio)
+    generationComplete();
   } catch(err){
     console.error(err);
     toast(err.message || String(err), true);
@@ -833,10 +835,14 @@ function setBusy(state, msg='Working…'){
     update();
     if (genTimer) clearInterval(genTimer);
     genTimer = setInterval(update, 50);
+    // Update page title to reflect generation in progress
+    startGenerationTitle();
   } else {
     if (genTimer) { clearInterval(genTimer); genTimer = null; }
     els.runStatus.className = 'muted';
     els.runStatus.textContent = '';
+    // When clearing busy state we don't automatically change the title here
+    // generationComplete() will handle the success case and title/audio.
   }
 }
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
@@ -856,6 +862,50 @@ function log(line){
   if (!el) return;
   el.textContent += (el.textContent ? '\n' : '') + line;
   el.scrollTop = el.scrollHeight;
+}
+
+// --- Generation title and audio helpers ---
+let _originalTitle = document.title || 'Chutes Image UI';
+let _doneTimer = null;
+let _audioEl = null;
+
+function ensureAudio() {
+  if (_audioEl) return _audioEl;
+  try {
+    _audioEl = new Audio('./audio/completed.ogg');
+    _audioEl.preload = 'auto';
+  } catch (e) {
+    _audioEl = null;
+  }
+  return _audioEl;
+}
+
+function startGenerationTitle() {
+  // If a done timer was running, cancel it so title stays as generating
+  if (_doneTimer) { clearTimeout(_doneTimer); _doneTimer = null; }
+  // Save original title once
+  if (!_originalTitle) _originalTitle = document.title || 'Chutes Image UI';
+  document.title = `Generating... - ${_originalTitle.replace(/ - Chutes Image UI$/,'') ? 'Chutes Image UI' : 'Chutes Image UI'}`;
+}
+
+function generationComplete() {
+  // Play audio (non-blocking)
+  const audio = ensureAudio();
+  if (audio) {
+    // Attempt to play; browsers may block autoplay until user interacted
+    const p = audio.play();
+    if (p && p.catch) p.catch(()=>{});
+  }
+
+  // Update title to done
+  if (_doneTimer) { clearTimeout(_doneTimer); _doneTimer = null; }
+  const base = 'Chutes Image UI';
+  document.title = `Generation done! - ${base}`;
+  // After 30s, restore original title unless a new generation has started
+  _doneTimer = setTimeout(()=>{
+    document.title = _originalTitle || base;
+    _doneTimer = null;
+  }, 30000);
 }
 
 els.downloadBtn.addEventListener('click', ()=>{

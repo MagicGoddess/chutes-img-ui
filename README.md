@@ -92,3 +92,7 @@ This project is community-built and not affiliated with Chutes.
 
 ## References
 - [Image Models Documentation](./reference/img-models.md)
+
+
+## Credits
+Audio notification: "completed.ogg" (original filename: "powerUp2.ogg") by Kenny (https://kenney.nl/), used under CC0.
