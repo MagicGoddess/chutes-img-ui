@@ -464,13 +464,13 @@ switchMode('image-edit');
 els.saveKeyBtn.addEventListener('click', async ()=>{
   const v = els.apiKey.value.trim();
   if (!v) { els.keyStatus.textContent='Enter a key first.'; return; }
-  localStorage.setItem('chutes_api_key', v);
+  localStorage.setItem('chutes_api_key', v); 
   els.keyStatus.textContent='Saved ✓';
   log(`[${ts()}] Saved API key to localStorage.`);
   // Refresh quota usage when API key is saved
   await refreshQuotaUsage();
 });
-els.forgetKeyBtn.addEventListener('click', ()=>{
+els.forgetKeyBtn.addEventListener('click', ()=>{ 
   localStorage.removeItem('chutes_api_key'); els.apiKey.value=''; els.keyStatus.textContent='Removed from localStorage';
   log(`[${ts()}] Removed API key from localStorage.`);
   // Hide quota counter when API key is removed
@@ -592,7 +592,7 @@ function applyPreset(){
     const src = lastSourceObjectUrl();
     if (src){
       // If we already computed auto dims earlier, use cache to populate inputs immediately
-      if (autoDimsCache){ if (els.width && els.height){ els.width.value = autoDimsCache.w; els.height.value = autoDimsCache.h; } }
+      if (autoDimsCache){ if (els.width && els.height){ els.width.value = autoDimsCache.w; els.height.value = autoDimsCache.h; } } 
       else { computeAndDisplayAutoDims(src); }
     }
     log(`[${ts()}] Preset: auto`);
@@ -654,7 +654,7 @@ els.generateBtn.addEventListener('click', async ()=>{
         if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
       } else if (preset && PRESETS[preset]){
         width = PRESETS[preset].w; height = PRESETS[preset].h;
-      } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) {
+      } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) { 
         // Handle resolution presets like "1024x1024"
         const [w, h] = preset.split('x').map(Number);
         width = w; height = h;
@@ -759,7 +759,7 @@ els.generateBtn.addEventListener('click', async ()=>{
 
     setBusy(true, 'Generating…');
     log(`[${ts()}] Sending request to ${currentMode === 'image-edit' ? 'Qwen Image Edit' : config.name}…`);
-    log(`[${ts()}] Request body: ${JSON.stringify(body, null, 2)}`);
+    log(`[${ts()}] Request body: ${JSON.stringify(body, (key, value) => (key === 'image_b64' && typeof value === 'string') ? `${value.substring(0, 40)}...[truncated]` : value, 2)}`);
     const t0 = performance.now();
     const resp = await fetch(endpoint, {
       method: 'POST',
@@ -783,7 +783,7 @@ els.generateBtn.addEventListener('click', async ()=>{
       } catch(_) {}
       const msg = `HTTP ${resp.status} — ${text || resp.statusText}`;
       log(`[${ts()}] Error: ${msg}`);
-      log(`[${ts()}] Full request details - Endpoint: ${endpoint}, Body: ${JSON.stringify(body, null, 2)}`);
+      log(`[${ts()}] Full request details - Endpoint: ${endpoint}, Body: ${JSON.stringify(body, (key, value) => (key === 'image_b64' && typeof value === 'string') ? `${value.substring(0, 40)}...[truncated]` : value, 2)}`);
       throw new Error(msg);
     }
 
