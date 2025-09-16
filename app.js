@@ -153,8 +153,8 @@ const MODEL_CONFIGS = {
     params: {
       width: { min: 200, max: 2048, default: 1024, step: 64 },
       height: { min: 200, max: 2048, default: 1024, step: 64 },
-      cfg: { min: 1, max: 7.5, default: 4.5, step: 0.1 },
-      steps: { min: 5, max: 50, default: 30, step: 1 },
+      guidance_scale: { min: 1, max: 7.5, default: 4.5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 50, default: 30, step: 1 },
       seed: { min: 0, max: null, default: 0 }
     }
   },
@@ -747,6 +747,7 @@ els.generateBtn.addEventListener('click', async ()=>{
 
     setBusy(true, 'Generating…');
     log(`[${ts()}] Sending request to ${currentMode === 'image-edit' ? 'Qwen Image Edit' : config.name}…`);
+    log(`[${ts()}] Request body: ${JSON.stringify(body, null, 2)}`);
     const t0 = performance.now();
     const resp = await fetch(endpoint, {
       method: 'POST',
@@ -770,6 +771,7 @@ els.generateBtn.addEventListener('click', async ()=>{
       } catch(_) {}
       const msg = `HTTP ${resp.status} — ${text || resp.statusText}`;
       log(`[${ts()}] Error: ${msg}`);
+      log(`[${ts()}] Full request details - Endpoint: ${endpoint}, Body: ${JSON.stringify(body, null, 2)}`);
       throw new Error(msg);
     }
 
