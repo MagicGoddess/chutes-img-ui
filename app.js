@@ -932,67 +932,321 @@ sync();
 // ---- Image History System ----
 
 // Image history storage
-function getImageHistory() {
+// We'll keep a small metadata array in localStorage (ids, settings, timestamps)
+// but store binary image blobs in IndexedDB to avoid localStorage quota errors.
+const IDB_DB_NAME = 'chutes_images';
+const IDB_STORE = 'images';
+
+// Metadata store name
+const IDB_META_STORE = 'meta';
+
+function openIdb() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open(IDB_DB_NAME, 1);
+    r.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+      }
+      if (!db.objectStoreNames.contains(IDB_META_STORE)) {
+        db.createObjectStore(IDB_META_STORE, { keyPath: 'id' });
+      }
+    };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+async function idbPutBlob(key, blob, type) {
   try {
-    return JSON.parse(localStorage.getItem('chutes_image_history') || '[]');
-  } catch {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.put({ key, blob, type });
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch (e) {
+    console.warn('IDB put failed', e);
+    throw e;
+  }
+}
+
+async function idbGetBlob(key) {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => { db.close(); resolve(req.result ? req.result.blob : null); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  } catch (e) {
+    console.warn('IDB get failed', e);
+    return null;
+  }
+}
+
+async function idbPutMeta(meta) {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_META_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_META_STORE);
+      store.put(meta);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch (e) {
+    console.warn('IDB put meta failed', e);
+    throw e;
+  }
+}
+
+async function idbGetAllMeta() {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_META_STORE, 'readonly');
+      const store = tx.objectStore(IDB_META_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => { db.close(); resolve(req.result || []); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  } catch (e) {
+    console.warn('IDB getAll meta failed', e);
     return [];
   }
+}
+
+async function idbDeleteMeta(id) {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_META_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_META_STORE);
+      store.delete(id);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch (e) {
+    console.warn('IDB delete meta failed', e);
+  }
+}
+
+async function idbClearMeta() {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_META_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_META_STORE);
+      store.clear();
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch (e) {
+    console.warn('IDB clear meta failed', e);
+  }
+}
+
+async function idbDelete(key) {
+  try {
+    const db = await openIdb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.delete(key);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch (e) {
+    console.warn('IDB delete failed', e);
+  }
+}
+
+// Migration: move legacy localStorage-inlined images into IndexedDB (run once)
+async function migrateLocalStorageToIdb() {
+  try {
+    const raw = localStorage.getItem('chutes_image_history');
+    if (!raw) return;
+    const history = JSON.parse(raw || '[]');
+    let changed = false;
+    for (const entry of history) {
+      // If entry already references imageKey, skip
+      if (entry.imageKey) continue;
+      // If there's an inlined imageData, move it to IDB
+      if (entry.imageData && typeof entry.imageData === 'string' && entry.imageData.startsWith('data:')) {
+        const blob = dataURLToBlob(entry.imageData);
+        const imageKey = `${entry.id}:img`;
+        try { await idbPutBlob(imageKey, blob, blob.type); entry.imageKey = imageKey; delete entry.imageData; changed = true; } catch (e) { console.warn('Migration image put failed', e); }
+      }
+      if (entry.sourceImageData && typeof entry.sourceImageData === 'string' && entry.sourceImageData.startsWith('data:')) {
+        const sblob = dataURLToBlob(entry.sourceImageData);
+        const sourceKey = `${entry.id}:src`;
+        try { await idbPutBlob(sourceKey, sblob, sblob.type); entry.sourceKey = sourceKey; delete entry.sourceImageData; changed = true; } catch (e) { console.warn('Migration source put failed', e); }
+      }
+    }
+    if (changed) {
+      // Save updated metadata back to localStorage (or to IDB later if migrating metadata)
+      localStorage.setItem('chutes_image_history', JSON.stringify(history));
+      console.log('Migrated some images to IndexedDB');
+    }
+  } catch (e) {
+    console.warn('Migration failed', e);
+  }
+}
+
+
+function getImageHistory() {
+  // Prefer metadata in IndexedDB; fall back to localStorage
+  // This returns a synchronous array if stored in localStorage, or if IDB used,
+  // the calling code should call refreshImageGrid which will read from IDB async.
+  try {
+    const metaRaw = localStorage.getItem('chutes_image_history');
+    if (metaRaw) return JSON.parse(metaRaw);
+  } catch (e) { console.warn('Failed to read localStorage history', e); }
+  // If no localStorage metadata, return empty and rely on async IDB loader to populate UI
+  return [];
 }
 
 function saveImageHistory(history) {
   try {
     localStorage.setItem('chutes_image_history', JSON.stringify(history));
   } catch (e) {
-    console.warn('Failed to save image history:', e);
+    console.warn('Failed to save image history metadata to localStorage:', e);
   }
 }
 
-function saveGeneratedImage(imageBlob, settings) {
-  const reader = new FileReader();
-  reader.onload = function() {
-    const imageData = {
-      id: Date.now() + Math.random().toString(36).substr(2, 9),
-      imageData: reader.result, // base64 data URL
-      sourceImageData: sourceB64 ? `data:${sourceMime};base64,${sourceB64}` : null,
-      settings: {
-        mode: currentMode,
-        model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
-        prompt: settings.prompt,
-        negativePrompt: settings.negativePrompt || '',
-        width: settings.width,
-        height: settings.height,
-        cfgScale: settings.cfgScale,
-        steps: settings.steps,
-        seed: settings.seed
-      },
-      timestamp: Date.now(),
-      filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
-    };
-    
-    const history = getImageHistory();
-    history.unshift(imageData); // Add to beginning
-    
-    // Keep only last 50 images to prevent storage bloat
-    if (history.length > 50) {
-      history.splice(50);
-    }
-    
-    saveImageHistory(history);
-    refreshImageGrid();
-    log(`[${ts()}] Image saved to history`);
-  };
-  reader.readAsDataURL(imageBlob);
+// Convert DataURL (base64) to Blob
+function dataURLToBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const meta = parts[0];
+  const b64 = parts[1] || '';
+  const mime = meta.match(/:(.*?);/)[1] || 'image/png';
+  const binary = atob(b64);
+  const len = binary.length;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
+  return new Blob([u8], { type: mime });
 }
 
-function deleteImageFromHistory(imageId) {
+async function saveGeneratedImage(imageBlob, settings) {
+  const id = Date.now() + Math.random().toString(36).substr(2, 9);
+  const imageKey = `${id}:img`;
+  const sourceKey = sourceB64 ? `${id}:src` : null;
+
+  // Save blobs to IDB first
+  try {
+    await idbPutBlob(imageKey, imageBlob, imageBlob.type || 'image/jpeg');
+    if (sourceKey) {
+      // convert sourceB64 data to blob
+      const srcDataUrl = `data:${sourceMime};base64,${sourceB64}`;
+      const srcBlob = dataURLToBlob(srcDataUrl);
+      await idbPutBlob(sourceKey, srcBlob, srcBlob.type || 'image/jpeg');
+    }
+  } catch (e) {
+    console.warn('Failed to store images in IndexedDB, falling back to localStorage for image data', e);
+    // On failure, fall back to inlining base64 in metadata (older behavior)
+    const reader = new FileReader();
+    reader.onload = function() {
+      const history = getImageHistory();
+      const imageData = {
+        id,
+        imageData: reader.result,
+        sourceImageData: sourceB64 ? `data:${sourceMime};base64,${sourceB64}` : null,
+        settings: {
+          mode: currentMode,
+          model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
+          prompt: settings.prompt,
+          negativePrompt: settings.negativePrompt || '',
+          width: settings.width,
+          height: settings.height,
+          cfgScale: settings.cfgScale,
+          steps: settings.steps,
+          seed: settings.seed
+        },
+        timestamp: Date.now(),
+        filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
+      };
+      history.unshift(imageData);
+      if (history.length > 50) history.splice(50);
+      saveImageHistory(history);
+      refreshImageGrid();
+      log(`[${ts()}] Image saved to history (fallback localStorage)`);
+    };
+    reader.readAsDataURL(imageBlob);
+    return;
+  }
+
+  // Prepare metadata entry
+  const meta = {
+    id,
+    imageKey,
+    sourceKey,
+    settings: {
+      mode: currentMode,
+      model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
+      prompt: settings.prompt,
+      negativePrompt: settings.negativePrompt || '',
+      width: settings.width,
+      height: settings.height,
+      cfgScale: settings.cfgScale,
+      steps: settings.steps,
+      seed: settings.seed
+    },
+    timestamp: Date.now(),
+    filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
+  };
+
   const history = getImageHistory();
+  history.unshift(meta);
+  if (history.length > 50) history.splice(50);
+  // Try to save metadata into IDB meta store; fall back to localStorage
+  try {
+    await idbPutMeta(meta);
+    // Also update localStorage summary list (simple array) for quick sync
+    const ls = getImageHistory();
+    ls.unshift(meta);
+    if (ls.length > 50) ls.splice(50);
+    saveImageHistory(ls);
+  } catch (e) {
+    // If IDB meta store isn't available, persist metadata to localStorage
+    saveImageHistory(history);
+  }
+  refreshImageGrid();
+  log(`[${ts()}] Image saved to history (IndexedDB)`);
+}
+
+async function deleteImageFromHistory(imageId) {
+  const history = getImageHistory();
+  const entry = history.find(img => img.id === imageId);
+  if (entry) {
+    if (entry.imageKey) await idbDelete(entry.imageKey).catch(()=>{});
+    if (entry.sourceKey) await idbDelete(entry.sourceKey).catch(()=>{});
+  }
   const newHistory = history.filter(img => img.id !== imageId);
-  saveImageHistory(newHistory);
+  // Remove metadata from IDB meta store if present
+  try {
+    await idbDeleteMeta(imageId).catch(()=>{});
+    // Also update localStorage snapshot
+    saveImageHistory(newHistory);
+  } catch (e) {
+    saveImageHistory(newHistory);
+  }
   refreshImageGrid();
 }
 
-function clearImageHistory() {
+async function clearImageHistory() {
+  // Remove metadata
+  const history = await idbGetAllMeta().catch(() => getImageHistory());
+  for (const img of history) {
+    if (img.imageKey) await idbDelete(img.imageKey).catch(()=>{});
+    if (img.sourceKey) await idbDelete(img.sourceKey).catch(()=>{});
+    if (img.id) await idbDeleteMeta(img.id).catch(()=>{});
+  }
+  try { await idbClearMeta(); } catch(e){}
   localStorage.removeItem('chutes_image_history');
   refreshImageGrid();
   toast('Image history cleared');
@@ -1085,28 +1339,66 @@ function deleteSelectedImages() {
 
 function refreshImageGrid() {
   const grid = document.getElementById('imageGrid');
-  const history = getImageHistory();
-  
-  if (history.length === 0) {
-    grid.innerHTML = '<div class="empty-state"><span class="muted">No images generated yet. Create your first image to see it here!</span></div>';
-    document.getElementById('toggleSelectionBtn').style.display = 'none';
-    return;
-  }
-  
-  document.getElementById('toggleSelectionBtn').style.display = 'inline-block';
-  
-  grid.innerHTML = history.map(img => `
-    <div class="image-grid-item" data-image-id="${img.id}" onclick="openImageModal('${img.id}')">
-      <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
-      <img src="${img.imageData}" alt="Generated image" loading="lazy" />
-      <div class="overlay">
-        <div style="font-weight: 600;">${img.settings.model}</div>
-        <div style="opacity: 0.8;">${img.settings.width}×${img.settings.height}</div>
-        <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+  // First try to load metadata from IndexedDB meta store
+  (async () => {
+    let history = [];
+    try {
+      const idbMeta = await idbGetAllMeta();
+      if (idbMeta && idbMeta.length) {
+        history = idbMeta.sort((a,b) => b.timestamp - a.timestamp);
+      } else {
+        // Fallback to localStorage metadata
+        history = getImageHistory();
+      }
+    } catch (e) {
+      console.warn('Failed to read metadata from IDB, falling back', e);
+      history = getImageHistory();
+    }
+
+    if (!history || history.length === 0) {
+      grid.innerHTML = '<div class="empty-state"><span class="muted">No images generated yet. Create your first image to see it here!</span></div>';
+      document.getElementById('toggleSelectionBtn').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('toggleSelectionBtn').style.display = 'inline-block';
+
+    // Render grid items with placeholders; if metadata includes imageKey, load blob async
+    grid.innerHTML = history.map(img => `
+      <div class="image-grid-item" data-image-id="${img.id}" onclick="openImageModal('${img.id}')">
+        <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
+        <img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated image" loading="lazy" />
+        <div class="overlay">
+          <div style="font-weight: 600;">${img.settings.model}</div>
+          <div style="opacity: 0.8;">${img.settings.width}×${img.settings.height}</div>
+          <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+
+    // After rendering, asynchronously replace images that have imageKey
+    history.forEach(async (img) => {
+      if (!img.imageKey) return; // already inlined or fallback
+      try {
+        const itemEl = document.querySelector(`.image-grid-item[data-image-id="${img.id}"]`);
+        if (itemEl) itemEl.classList.add('loading-thumb');
+        const blob = await idbGetBlob(img.imageKey);
+        if (!blob) { if (itemEl) itemEl.classList.remove('loading-thumb'); return; }
+        const objectUrl = URL.createObjectURL(blob);
+        const imgEl = document.querySelector(`img[data-image-id-src="${img.imageKey}"]`);
+        if (imgEl) imgEl.src = objectUrl;
+        if (itemEl) itemEl.classList.remove('loading-thumb');
+      } catch (e) {
+        console.warn('Failed to load image blob for', img.id, e);
+        const itemEl = document.querySelector(`.image-grid-item[data-image-id="${img.id}"]`);
+        if (itemEl) itemEl.classList.remove('loading-thumb');
+      }
+    });
+  })();
 }
+
+// Run migration at startup (non-blocking)
+migrateLocalStorageToIdb().catch(e => console.warn('Migration routine failed', e));
 
 function toggleImageSelection(imageId) {
   if (!selectionMode) return;
@@ -1150,7 +1442,20 @@ function openImageModal(imageId) {
   const modalDate = document.getElementById('modalDate');
   const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
   
-  modalImage.src = image.imageData;
+  // If the image is stored in IDB, load it async; otherwise use inlined data URL
+  modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+  if (image.imageKey) {
+    idbGetBlob(image.imageKey).then(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      modalImage.src = url;
+    }).catch(e => {
+      console.warn('Failed to load modal image blob', e);
+      if (image.imageData) modalImage.src = image.imageData;
+    });
+  } else if (image.imageData) {
+    modalImage.src = image.imageData;
+  }
   modalModel.textContent = image.settings.model;
   modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
   modalSeed.textContent = image.settings.seed || 'Random';
@@ -1162,7 +1467,8 @@ function openImageModal(imageId) {
   modalDate.textContent = `${formattedDate} ${formattedTime}`;
   
   // Show/hide source download button
-  if (image.sourceImageData) {
+  // If we stored source in IDB, indicate accordingly
+  if (image.sourceImageData || image.sourceKey) {
     modalDownloadSourceBtn.style.display = 'inline-flex';
   } else {
     modalDownloadSourceBtn.style.display = 'none';
@@ -1192,20 +1498,41 @@ function closeImageModal() {
 
 function downloadModalImage() {
   if (!currentModalImage) return;
-  
-  const a = document.createElement('a');
-  a.href = currentModalImage.imageData;
-  a.download = `${currentModalImage.filename}.jpg`;
-  a.click();
+  // If image is stored as imageKey, fetch blob from IDB first
+  (async () => {
+    try {
+      if (currentModalImage.imageKey) {
+        const blob = await idbGetBlob(currentModalImage.imageKey);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `${currentModalImage.filename}.jpg`; a.click();
+        URL.revokeObjectURL(url);
+      } else if (currentModalImage.imageData) {
+        const a = document.createElement('a'); a.href = currentModalImage.imageData; a.download = `${currentModalImage.filename}.jpg`; a.click();
+      }
+    } catch (e) {
+      console.warn('Download modal image failed', e);
+    }
+  })();
 }
 
 function downloadModalSourceImage() {
-  if (!currentModalImage || !currentModalImage.sourceImageData) return;
-  
-  const a = document.createElement('a');
-  a.href = currentModalImage.sourceImageData;
-  a.download = `${currentModalImage.filename}-source.jpg`;
-  a.click();
+  if (!currentModalImage) return;
+  (async () => {
+    try {
+      if (currentModalImage.sourceKey) {
+        const blob = await idbGetBlob(currentModalImage.sourceKey);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = `${currentModalImage.filename}-source.jpg`; a.click();
+        URL.revokeObjectURL(url);
+      } else if (currentModalImage.sourceImageData) {
+        const a = document.createElement('a'); a.href = currentModalImage.sourceImageData; a.download = `${currentModalImage.filename}-source.jpg`; a.click();
+      }
+    } catch (e) {
+      console.warn('Download modal source failed', e);
+    }
+  })();
 }
 
 function loadModalSettings() {
@@ -1255,11 +1582,21 @@ function loadModalSettings() {
   sync();
   
   // Load source image if available
-  if (currentModalImage.sourceImageData && settings.mode === 'image-edit') {
-    els.imgThumb.innerHTML = `<img src="${currentModalImage.sourceImageData}" alt="source"/>`;
-    // Convert back to base64 for API
-    sourceB64 = currentModalImage.sourceImageData.split(',')[1];
-    sourceMime = 'image/jpeg'; // Assume JPEG for stored images
+  if (settings.mode === 'image-edit') {
+    if (currentModalImage.sourceImageData) {
+      els.imgThumb.innerHTML = `<img src="${currentModalImage.sourceImageData}" alt="source"/>`;
+      sourceB64 = currentModalImage.sourceImageData.split(',')[1];
+      sourceMime = 'image/jpeg';
+    } else if (currentModalImage.sourceKey) {
+      // fetch blob from IDB and create object URL
+      idbGetBlob(currentModalImage.sourceKey).then(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        els.imgThumb.innerHTML = `<img src="${url}" alt="source"/>`;
+        // Also prepare base64 for API by reading blob (async)
+        const r = new FileReader(); r.onload = () => { sourceB64 = (r.result || '').split(',')[1]; sourceMime = blob.type || 'image/jpeg'; }; r.readAsDataURL(blob);
+      }).catch(e => console.warn('Failed to load source blob for modal load', e));
+    }
   }
   
   closeImageModal();
@@ -1360,7 +1697,13 @@ document.addEventListener('keydown', (e) => {
 
 // Initialize
 initializeActivityLog();
-refreshImageGrid();
+// Run migration then refresh grid (migration is non-blocking but we want a refresh after it finishes)
+migrateLocalStorageToIdb().then(() => {
+  // After migration, attempt to move localStorage snapshot into IDB meta if needed
+  refreshImageGrid();
+}).catch(() => {
+  refreshImageGrid();
+});
 
 // Global functions for HTML onclick handlers
 window.toggleActivityLog = toggleActivityLog;
