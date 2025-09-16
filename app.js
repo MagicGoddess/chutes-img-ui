@@ -102,8 +102,8 @@ const MODEL_CONFIGS = {
     name: 'Hidream',
     endpoint: 'https://kikakkz-hidream-i1-full.chutes.ai/generate',
     params: {
-      width: { min: 256, max: 2560, default: 512, step: 64 },
-      height: { min: 256, max: 2560, default: 512, step: 64 },
+      width: { min: 256, max: 2560, default: 1024, step: 64 },
+      height: { min: 256, max: 2560, default: 1024, step: 64 },
       guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
       num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
       seed: { min: 0, max: 100000000, default: null }
