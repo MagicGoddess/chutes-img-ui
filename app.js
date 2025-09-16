@@ -353,7 +353,10 @@ function updateParametersForImageEdit() {
     <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
     <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
     <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
-    <option value="2048x2048">2048 × 2048 (HiRes square)</option>
+  <option value="2048x2048">2048 × 2048 (HiRes square)</option>
+  <option value="2024x2024">2024 × 2024 (HiRes square)</option>
+  <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
+  <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
     <option value="custom">Custom…</option>
   `;
   
@@ -411,6 +414,9 @@ function updateParametersForModel(modelKey) {
     <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
     <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
     <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
+  <option value="2024x2024">2024 × 2024 (HiRes square)</option>
+  <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
+  <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
     <option value="custom">Custom…</option>
   `;
   
@@ -508,7 +514,12 @@ const PRESETS = {
   '1024x1024': { w:1024, h:1024 },
   '1536x1024': { w:1536, h:1024 },
   '1024x1536': { w:1024, h:1536 },
-  '2048x2048': { w:2048, h:2048 }
+  '768x1360': { w:768, h:1360 },
+  '1360x768': { w:1360, h:768 },
+  '2048x2048': { w:2048, h:2048 },
+  '2024x2024': { w:2024, h:2024 },
+  '1920x1080': { w:1920, h:1080 },
+  '1080x1920': { w:1080, h:1920 }
 };
 let autoDimsCache = null; // {w,h}
 
@@ -594,6 +605,7 @@ function applyPreset(){
     els.height.value = p.h;
     if (els.autoDims) els.autoDims.style.display='none';
     log(`[${ts()}] Preset selected: ${val}`);
+    return;
   }
 }
 
@@ -918,11 +930,124 @@ els.downloadBtn.addEventListener('click', ()=>{
 els.copyBtn.addEventListener('click', async ()=>{
   if (!hasResultImg()) return;
   const img = getResultImgElement();
-  const res = await fetch(img.src); const blob = await res.blob();
-  try{
-    await navigator.clipboard.write([ new ClipboardItem({ [blob.type]: blob }) ]);
-    toast('Copied to clipboard ✓');
-  } catch(e){ toast('Clipboard not supported here', true); }
+  const res = await fetch(img.src); 
+  const blob = await res.blob();
+  
+  // Try multiple clipboard methods with fallbacks
+  let success = false;
+  let method = '';
+  
+  // Method 1: Modern clipboard API with image blob - try multiple MIME types
+  if (!success && navigator.clipboard && navigator.clipboard.write) {
+    const mimeTypes = [blob.type, 'image/png', 'image/jpeg'];
+    
+    for (const mimeType of mimeTypes) {
+      if (success) break;
+      try {
+        // For non-matching MIME types, convert the blob
+        let targetBlob = blob;
+        if (mimeType !== blob.type) {
+          // Convert image to target format using canvas
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const tempImg = new Image();
+          
+          await new Promise((resolve, reject) => {
+            tempImg.onload = resolve;
+            tempImg.onerror = reject;
+            tempImg.src = img.src;
+          });
+          
+          canvas.width = tempImg.naturalWidth;
+          canvas.height = tempImg.naturalHeight;
+          ctx.drawImage(tempImg, 0, 0);
+          
+          targetBlob = await new Promise(resolve => {
+            canvas.toBlob(resolve, mimeType, 0.95);
+          });
+        }
+        
+        await navigator.clipboard.write([new ClipboardItem({ [mimeType]: targetBlob })]);
+        success = true;
+        method = 'image';
+        console.log(`Successfully copied image using MIME type: ${mimeType}`);
+        break;
+      } catch(e) {
+        console.log(`ClipboardItem method failed with ${mimeType}:`, e.message);
+      }
+    }
+  }
+  
+  // Method 2: Try copying image using different ClipboardItem approach
+  if (!success && navigator.clipboard && navigator.clipboard.write) {
+    try {
+      // Some browsers prefer this syntax
+      const clipboardItem = new ClipboardItem({
+        'image/png': blob.type === 'image/png' ? blob : new Promise(async (resolve) => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const tempImg = new Image();
+          
+          tempImg.onload = () => {
+            canvas.width = tempImg.naturalWidth;
+            canvas.height = tempImg.naturalHeight;
+            ctx.drawImage(tempImg, 0, 0);
+            canvas.toBlob(resolve, 'image/png', 0.95);
+          };
+          tempImg.src = img.src;
+        })
+      });
+      
+      await navigator.clipboard.write([clipboardItem]);
+      success = true;
+      method = 'image';
+      console.log('Successfully copied image using Promise-based ClipboardItem');
+    } catch(e) {
+      console.log('Promise-based ClipboardItem method failed:', e.message);
+    }
+  }
+  
+  // Method 3: Clipboard API with image URL (avoid data URL fallback for now)
+  if (!success && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(img.src);
+      success = true;
+      method = 'URL';
+    } catch(e) {
+      console.log('URL clipboard method failed:', e.message);
+    }
+  }
+  
+  // Method 4: Legacy execCommand fallback with image URL
+  if (!success) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = img.src;
+      document.body.appendChild(textarea);
+      textarea.select();
+      const result = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (result) {
+        success = true;
+        method = 'legacy URL';
+      }
+    } catch(e) {
+      console.log('Legacy execCommand method failed:', e.message);
+    }
+  }
+  
+  // Show appropriate message
+  if (success) {
+    if (method === 'image') {
+      toast('Image copied to clipboard ✓');
+    } else if (method === 'URL' || method === 'legacy URL') {
+      toast('Image URL copied to clipboard ✓');
+    } else {
+      toast('Copied to clipboard ✓');
+    }
+  } else {
+    toast('Clipboard copy failed - try right-click and copy image instead', true);
+  }
 });
 
 // Drag & drop support for source image
