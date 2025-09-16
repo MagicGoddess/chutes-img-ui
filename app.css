@@ -933,6 +933,18 @@ input[type="range"]:disabled::-moz-range-thumb {
   transform: translateY(-1px);
 }
 
+/* Match the modal delete button styling for the bulk delete button in the gallery */
+#deleteSelectedBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+#deleteSelectedBtn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
 /* Collapsible header styles */
 .collapsible-header {
   user-select: none;
