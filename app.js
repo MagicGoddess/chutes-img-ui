@@ -1489,13 +1489,37 @@ function selectNoneImages() {
   updateSelectionUI();
 }
 
-function deleteSelectedImages() {
+async function deleteSelectedImages() {
   if (selectedImages.size === 0) return;
   
   if (!confirm(`Delete ${selectedImages.size} selected image(s)? This cannot be undone.`)) {
     return;
   }
   
+  // Get all metadata to find entries to delete
+  let allHistory = [];
+  try {
+    const idbMeta = await idbGetAllMeta();
+    if (idbMeta && idbMeta.length) {
+      allHistory = idbMeta;
+    } else {
+      allHistory = getImageHistory();
+    }
+  } catch (e) {
+    allHistory = getImageHistory();
+  }
+
+  // Delete blobs and metadata from IDB for selected images
+  for (const imageId of selectedImages) {
+    const entry = allHistory.find(img => img.id === imageId);
+    if (entry) {
+      if (entry.imageKey) await idbDelete(entry.imageKey).catch(()=>{});
+      if (entry.sourceKey) await idbDelete(entry.sourceKey).catch(()=>{});
+      await idbDeleteMeta(imageId).catch(()=>{});
+    }
+  }
+
+  // Also update localStorage snapshot
   const history = getImageHistory();
   const newHistory = history.filter(img => !selectedImages.has(img.id));
   saveImageHistory(newHistory);
@@ -1597,15 +1621,30 @@ function toggleImageSelection(imageId) {
 // Modal functionality
 let currentModalImage = null;
 
-function openImageModal(imageId) {
+async function openImageModal(imageId) {
   if (selectionMode) {
     toggleImageSelection(imageId);
     return;
   }
   
-  const history = getImageHistory();
+  // Find image metadata from the same source as the grid
+  let history = [];
+  try {
+    const idbMeta = await idbGetAllMeta();
+    if (idbMeta && idbMeta.length) {
+      history = idbMeta;
+    } else {
+      history = getImageHistory();
+    }
+  } catch (e) {
+    history = getImageHistory();
+  }
+  
   const image = history.find(img => img.id === imageId);
-  if (!image) return;
+  if (!image) {
+    console.warn('Image not found:', imageId);
+    return;
+  }
   
   currentModalImage = image;
   
