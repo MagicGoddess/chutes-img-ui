@@ -65,7 +65,6 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ```
 /
 ├── index.html              # Main HTML file with UI structure
-├── app.js                  # All client-side logic and API calls  
 ├── app.css                 # All styles and responsive layout
 ├── service-worker.js       # PWA caching logic
 ├── manifest.webmanifest    # PWA manifest
@@ -73,6 +72,17 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ├── package.json            # Dependencies and scripts
 ├── README.md               # User documentation
 ├── CACHE-BUSTING.md        # Cache management details
+├── js/                     # Modular JavaScript files
+│   ├── main.js             # Entry point, coordinates all modules
+│   ├── models.js           # MODEL_CONFIGS and model definitions
+│   ├── api.js              # API communication (quota, generate, etc.)
+│   ├── storage.js          # localStorage/IndexedDB operations
+│   ├── ui.js               # UI state management and DOM manipulation
+│   ├── helpers.js          # Common utility functions
+│   ├── imageUtils.js       # Image manipulation and processing
+│   ├── activityLog.js      # Activity log functionality
+│   ├── serviceWorker.js    # Service worker registration logic
+│   └── modal.js            # Modal dialog functionality
 ├── reference/              
 │   └── img-models.md       # API schemas for all models
 ├── icons/                  # PWA icon files
@@ -81,15 +91,20 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 
 ### Key Files to Understand
 
-#### app.js Structure:
-- `MODEL_CONFIGS`: Defines all available AI models and their parameters
-- `els`: DOM element references
-- Image handling: `computeAutoDims()`, file upload logic
-- API communication: Generate button event handler
-- UI state management: Mode switching, parameter validation
+#### Modular Architecture:
+- `js/main.js`: Entry point that imports and coordinates all modules
+- `js/models.js`: Contains `MODEL_CONFIGS` with all AI model definitions
+- `js/api.js`: API communication functions for quota and image generation
+- `js/ui.js`: DOM element references, UI state management, event handlers
+- `js/storage.js`: localStorage and IndexedDB operations for persistence
+- `js/helpers.js`: Common utility functions (clamp, snap, timestamp, etc.)
+- `js/imageUtils.js`: Image processing utilities and resolution presets
+- `js/activityLog.js`: Activity log management and display
+- `js/modal.js`: Image history modal dialogs
+- `js/serviceWorker.js`: Service worker registration and update handling
 
 #### Model Configuration:
-Models are defined in `MODEL_CONFIGS` with:
+Models are defined in `js/models.js` with:
 - `name`: Display name
 - `endpoint`: API endpoint URL  
 - `modelName`: API model parameter (for some models)
@@ -103,7 +118,7 @@ Models are defined in `MODEL_CONFIGS` with:
 ### Making Changes
 
 #### Adding a New Model:
-1. Add model configuration to `MODEL_CONFIGS` in app.js
+1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
 2. Reference the API schema from `reference/img-models.md`
 3. Test with both default and edge-case parameter values
 4. Verify model switching updates UI controls correctly
@@ -111,13 +126,15 @@ Models are defined in `MODEL_CONFIGS` with:
 #### UI Changes:
 1. Modify HTML structure in `index.html` 
 2. Update styles in `app.css`
-3. Test responsive layout at different screen sizes
-4. Validate PWA functionality still works
+3. For UI logic changes, edit `js/ui.js`
+4. Test responsive layout at different screen sizes
+5. Validate PWA functionality still works
 
 #### API Changes:
-1. Update endpoint URLs or parameters in `MODEL_CONFIGS`
-2. Validate against schemas in `reference/img-models.md`
-3. Test with actual API calls (requires valid API key)
+1. Update endpoint URLs or parameters in `js/models.js`
+2. Modify API functions in `js/api.js` if needed
+3. Validate against schemas in `reference/img-models.md`
+4. Test with actual API calls (requires valid API key)
 4. Check error handling for failed requests
 
 ## Deployment
@@ -149,13 +166,14 @@ Models are defined in `MODEL_CONFIGS` with:
 - Local storage for API key persistence
 
 ### No Build Process:
-- Pure vanilla JavaScript, HTML, CSS
+- Pure vanilla JavaScript ES modules, HTML, CSS
 - No bundling or compilation required
 - Direct file serving via `serve` package
 - Cache busting via query parameters
+- Modular architecture using ES6 imports/exports
 
 ### Browser Compatibility:
-- Modern browsers with ES6+ support
+- Modern browsers with ES6+ module support
 - Service Worker API support
 - File API for image uploads
 - LocalStorage for settings
@@ -166,7 +184,7 @@ Models are defined in `MODEL_CONFIGS` with:
 - **API key required**: Enter valid Chutes API key in the API Key section
 - **CORS errors**: Chutes API endpoints are properly configured for browser requests
 - **Image upload failures**: Verify file is a valid image format (jpg, png, etc.)
-- **Model parameters not updating**: Check MODEL_CONFIGS definition for the selected model
+- **Model parameters not updating**: Check MODEL_CONFIGS definition in `js/models.js` for the selected model
 - **Cache not updating**: Run `node update-cache-version.js` before deployment
 
 ### Development Tips:
