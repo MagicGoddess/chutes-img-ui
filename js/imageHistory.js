@@ -502,5 +502,6 @@ export {
   toggleImageSelection,
   loadModalSettings,
   deleteModalImage,
+  cleanupGridObjectUrls,
   initializeImageHistory
 };
