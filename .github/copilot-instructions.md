@@ -65,7 +65,17 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ```
 /
 ├── index.html              # Main HTML file with UI structure
-├── app.js                  # All client-side logic and API calls  
+├── js/                     # Modular JavaScript files
+│   ├── main.js             # Entry point, wires everything together
+│   ├── serviceWorker.js    # Service Worker registration logic
+│   ├── ui.js               # UI event listeners and DOM updates
+│   ├── api.js              # API calls (quota, generate, etc.)
+│   ├── models.js           # MODEL_CONFIGS and model helpers
+│   ├── storage.js          # localStorage/IndexedDB logic (image history)
+│   ├── imageUtils.js       # Image/file manipulation helpers
+│   ├── modal.js            # Modal dialog logic
+│   ├── activityLog.js      # Activity log helpers
+│   └── helpers.js          # Common utility functions
 ├── app.css                 # All styles and responsive layout
 ├── service-worker.js       # PWA caching logic
 ├── manifest.webmanifest    # PWA manifest
@@ -76,20 +86,26 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ├── reference/              
 │   └── img-models.md       # API schemas for all models
 ├── icons/                  # PWA icon files
+├── app.js.backup           # Original monolithic file (backup)
 └── favicon files
 ```
 
 ### Key Files to Understand
 
-#### app.js Structure:
-- `MODEL_CONFIGS`: Defines all available AI models and their parameters
-- `els`: DOM element references
-- Image handling: `computeAutoDims()`, file upload logic
-- API communication: Generate button event handler
-- UI state management: Mode switching, parameter validation
+#### JavaScript Module Structure:
+- `js/main.js`: Entry point that imports and wires all modules together
+- `js/models.js`: MODEL_CONFIGS definitions and model state management
+- `js/ui.js`: DOM element references, UI state management, mode switching
+- `js/api.js`: Chutes API communication and quota management
+- `js/storage.js`: IndexedDB and localStorage for image history
+- `js/imageUtils.js`: Image processing, file handling, resolution presets
+- `js/modal.js`: Image viewing modal and settings management
+- `js/activityLog.js`: Activity logging functionality
+- `js/helpers.js`: Common utilities and helper functions
+- `js/serviceWorker.js`: Service worker registration and update handling
 
-#### Model Configuration:
-Models are defined in `MODEL_CONFIGS` with:
+#### Module Configuration:
+Models are defined in `js/models.js` with:
 - `name`: Display name
 - `endpoint`: API endpoint URL  
 - `modelName`: API model parameter (for some models)
@@ -103,7 +119,7 @@ Models are defined in `MODEL_CONFIGS` with:
 ### Making Changes
 
 #### Adding a New Model:
-1. Add model configuration to `MODEL_CONFIGS` in app.js
+1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
 2. Reference the API schema from `reference/img-models.md`
 3. Test with both default and edge-case parameter values
 4. Verify model switching updates UI controls correctly
@@ -111,14 +127,23 @@ Models are defined in `MODEL_CONFIGS` with:
 #### UI Changes:
 1. Modify HTML structure in `index.html` 
 2. Update styles in `app.css`
-3. Test responsive layout at different screen sizes
-4. Validate PWA functionality still works
+3. Update corresponding JavaScript module in `js/` directory
+4. Test responsive layout at different screen sizes
+5. Validate PWA functionality still works
 
 #### API Changes:
-1. Update endpoint URLs or parameters in `MODEL_CONFIGS`
-2. Validate against schemas in `reference/img-models.md`
-3. Test with actual API calls (requires valid API key)
-4. Check error handling for failed requests
+1. Update endpoint URLs or parameters in `js/models.js`
+2. Update API functions in `js/api.js` if needed
+3. Validate against schemas in `reference/img-models.md`
+4. Test with actual API calls (requires valid API key)
+5. Check error handling for failed requests
+
+#### Adding New Functionality:
+1. Create new module in `js/` directory if needed
+2. Export functions from the new module
+3. Import and use in `js/main.js` or other modules
+4. Update service worker cache list in `service-worker.js`
+5. Test module interactions and dependencies
 
 ## Deployment
 
@@ -149,10 +174,11 @@ Models are defined in `MODEL_CONFIGS` with:
 - Local storage for API key persistence
 
 ### No Build Process:
-- Pure vanilla JavaScript, HTML, CSS
+- Pure vanilla JavaScript ES6 modules, HTML, CSS
 - No bundling or compilation required
 - Direct file serving via `serve` package
 - Cache busting via query parameters
+- ES6 import/export for modular organization
 
 ### Browser Compatibility:
 - Modern browsers with ES6+ support

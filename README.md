@@ -18,6 +18,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - Activity log for quick debugging and status
 - Copies output to clipboard and allows download
 - No server code; pure static files
+- **Modular Architecture**: Organized ES6 modules for maintainability (main, ui, api, models, storage, etc.)
 
 ## Configure
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
