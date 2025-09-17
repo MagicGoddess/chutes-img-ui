@@ -10,7 +10,7 @@ const IDB_META_STORE = 'meta';
  */
 function openIdb() {
   return new Promise((resolve, reject) => {
-    const r = indexedDB.open(IDB_DB_NAME, 1);
+    const r = indexedDB.open(IDB_DB_NAME, 2);
     r.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains(IDB_STORE)) {
@@ -76,6 +76,13 @@ export async function idbPutMeta(meta) {
   try {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
+      if (!db.objectStoreNames.contains(IDB_META_STORE)) {
+        console.warn('Meta object store does not exist');
+        db.close();
+        resolve();
+        return;
+      }
+      
       const tx = db.transaction(IDB_META_STORE, 'readwrite');
       const store = tx.objectStore(IDB_META_STORE);
       store.put(meta);
@@ -96,11 +103,20 @@ export async function idbGetAllMeta() {
   try {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
+      // Check if the object store exists before creating the transaction
+      if (!db.objectStoreNames.contains(IDB_META_STORE)) {
+        console.warn('Meta object store does not exist');
+        db.close();
+        resolve([]);
+        return;
+      }
+      
       const tx = db.transaction(IDB_META_STORE, 'readonly');
       const store = tx.objectStore(IDB_META_STORE);
       const req = store.getAll();
       req.onsuccess = () => { db.close(); resolve(req.result || []); };
       req.onerror = () => { db.close(); reject(req.error); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
     });
   } catch (e) {
     console.warn('IDB getAll meta failed', e);
@@ -116,6 +132,13 @@ export async function idbDeleteMeta(id) {
   try {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
+      if (!db.objectStoreNames.contains(IDB_META_STORE)) {
+        console.warn('Meta object store does not exist');
+        db.close();
+        resolve();
+        return;
+      }
+      
       const tx = db.transaction(IDB_META_STORE, 'readwrite');
       const store = tx.objectStore(IDB_META_STORE);
       store.delete(id);
@@ -134,6 +157,13 @@ export async function idbClearMeta() {
   try {
     const db = await openIdb();
     return new Promise((resolve, reject) => {
+      if (!db.objectStoreNames.contains(IDB_META_STORE)) {
+        console.warn('Meta object store does not exist');
+        db.close();
+        resolve();
+        return;
+      }
+      
       const tx = db.transaction(IDB_META_STORE, 'readwrite');
       const store = tx.objectStore(IDB_META_STORE);
       store.clear();
