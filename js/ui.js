@@ -51,6 +51,19 @@ export let autoDimsCache = null; // {w,h}
 let imgThumbObjectUrl = null; // Track object URL for imgThumb to prevent memory leaks
 
 /**
+ * Cleanup function to revoke imgThumbObjectUrl to prevent memory leaks.
+ */
+export function cleanupImgThumbObjectUrl() {
+  if (imgThumbObjectUrl) {
+    URL.revokeObjectURL(imgThumbObjectUrl);
+    imgThumbObjectUrl = null;
+  }
+}
+
+// Ensure cleanup on page unload/navigation
+window.addEventListener('beforeunload', cleanupImgThumbObjectUrl);
+
+/**
  * Updates the current mode
  * @param {string} mode - The mode to set
  */
