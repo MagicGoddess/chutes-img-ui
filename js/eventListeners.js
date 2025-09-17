@@ -18,7 +18,7 @@ import {
   setLastBlobUrl, createResultImg, hasResultImg, getResultImgElement, sync,
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
-  applyPreset, handleImageFile, setSourceImage
+  applyPreset, handleImageFile, setSourceImage, setImgThumbContent
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -80,14 +80,14 @@ export function setupEventListeners() {
   els.imgInput.addEventListener('change', async (e)=>{
     const f = e.target.files?.[0];
     if (!f) { 
-      els.imgThumb.innerHTML = '<span class="muted">No image selected</span>'; 
+      setImgThumbContent('<span class="muted">No image selected</span>'); 
       setSourceImage(null, null); 
       return; 
     }
     
     const mime = f.type || 'image/png';
     const url = URL.createObjectURL(f);
-    els.imgThumb.innerHTML = `<img src="${url}" alt="source"/>`;
+    setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
     log(`[${ts()}] Reading file: ${f.name}`);
     const b64 = await fileToBase64(f);
     // Strip data URL header; API expects pure base64 string

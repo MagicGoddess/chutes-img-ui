@@ -8,6 +8,7 @@ import { log } from './activityLog.js';
 
 // Current modal state
 let currentModalImage = null;
+let modalObjectUrl = null; // Track modal object URL for cleanup
 
 /**
  * Opens the image modal dialog
@@ -43,12 +44,19 @@ export async function openImageModal(imageId) {
   const modalDate = document.getElementById('modalDate');
   const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
   
+  // Clean up previous modal object URL
+  if (modalObjectUrl) {
+    URL.revokeObjectURL(modalObjectUrl);
+    modalObjectUrl = null;
+  }
+  
   // If the image is stored in IDB, load it async; otherwise use inlined data URL
   modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   if (image.imageKey) {
     idbGetBlob(image.imageKey).then(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
+      modalObjectUrl = url; // Track for cleanup
       modalImage.src = url;
     }).catch(e => {
       console.warn('Failed to load modal image blob', e);
@@ -88,6 +96,12 @@ export async function openImageModal(imageId) {
 export function closeImageModal() {
   const modal = document.getElementById('imageModal');
   if (!modal) return;
+  
+  // Clean up modal object URL
+  if (modalObjectUrl) {
+    URL.revokeObjectURL(modalObjectUrl);
+    modalObjectUrl = null;
+  }
   
   // Add closing animation class and wait for animation to finish
   modal.classList.add('closing');

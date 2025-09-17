@@ -10,7 +10,7 @@ import { toast } from './serviceWorker.js';
 import { 
   els, currentMode, currentModel, sourceB64, sourceMime,
   setCurrentModel, setSourceImage, switchMode, updateParametersForModel,
-  toggleDimInputs, applyPreset, sync
+  toggleDimInputs, applyPreset, sync, setImgThumbContent
 } from './ui.js';
 import { findPresetForDimensions } from './imageUtils.js';
 import { 
@@ -19,6 +19,16 @@ import {
 } from './modal.js';
 
 // Image History System
+// Track object URLs for grid images to prevent memory leaks
+let gridObjectUrls = new Set();
+
+// Clean up grid object URLs
+function cleanupGridObjectUrls() {
+  for (const url of gridObjectUrls) {
+    URL.revokeObjectURL(url);
+  }
+  gridObjectUrls.clear();
+}
 async function migrateLocalStorageToIdb() {
   try {
     const raw = localStorage.getItem('chutes_image_history');
@@ -295,6 +305,10 @@ async function deleteSelectedImages() {
 
 function refreshImageGrid() {
   const grid = document.getElementById('imageGrid');
+  
+  // Clean up previous grid object URLs to prevent memory leaks
+  cleanupGridObjectUrls();
+  
   // First try to load metadata from IndexedDB meta store
   (async () => {
     let history = [];
@@ -341,6 +355,7 @@ function refreshImageGrid() {
         const blob = await idbGetBlob(img.imageKey);
         if (!blob) { if (itemEl) itemEl.classList.remove('loading-thumb'); return; }
         const objectUrl = URL.createObjectURL(blob);
+        gridObjectUrls.add(objectUrl); // Track for cleanup
         const imgEl = document.querySelector(`img[data-image-id-src="${img.imageKey}"]`);
         if (imgEl) imgEl.src = objectUrl;
         if (itemEl) itemEl.classList.remove('loading-thumb');
@@ -423,14 +438,14 @@ function loadModalSettings() {
   // Load source image if available
   if (settings.mode === 'image-edit') {
     if (currentModalImage.sourceImageData) {
-      els.imgThumb.innerHTML = `<img src="${currentModalImage.sourceImageData}" alt="source"/>`;
+      setImgThumbContent(`<img src="${currentModalImage.sourceImageData}" alt="source"/>`);
       setSourceImage(currentModalImage.sourceImageData.split(',')[1], 'image/jpeg');
     } else if (currentModalImage.sourceKey) {
       // fetch blob from IDB and create object URL
       idbGetBlob(currentModalImage.sourceKey).then(blob => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
-        els.imgThumb.innerHTML = `<img src="${url}" alt="source"/>`;
+        setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
         // Also prepare base64 for API by reading blob (async)
         const r = new FileReader(); 
         r.onload = () => { 
@@ -487,5 +502,6 @@ export {
   toggleImageSelection,
   loadModalSettings,
   deleteModalImage,
+  cleanupGridObjectUrls,
   initializeImageHistory
 };

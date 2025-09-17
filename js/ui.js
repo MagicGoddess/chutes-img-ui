@@ -48,6 +48,20 @@ export let sourceB64 = null;
 export let sourceMime = null; 
 export let lastBlobUrl = null;
 export let autoDimsCache = null; // {w,h}
+let imgThumbObjectUrl = null; // Track object URL for imgThumb to prevent memory leaks
+
+/**
+ * Cleanup function to revoke imgThumbObjectUrl to prevent memory leaks.
+ */
+export function cleanupImgThumbObjectUrl() {
+  if (imgThumbObjectUrl) {
+    URL.revokeObjectURL(imgThumbObjectUrl);
+    imgThumbObjectUrl = null;
+  }
+}
+
+// Ensure cleanup on page unload/navigation
+window.addEventListener('beforeunload', cleanupImgThumbObjectUrl);
 
 /**
  * Updates the current mode
@@ -90,6 +104,27 @@ export function setAutoDimsCache(dims) {
 export function setLastBlobUrl(url) {
   if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
   lastBlobUrl = url;
+}
+
+/**
+ * Sets imgThumb content with proper object URL cleanup
+ * @param {string} html - The HTML content to set
+ * @param {string} objectUrl - Optional object URL to track for cleanup
+ */
+export function setImgThumbContent(html, objectUrl = null) {
+  // Clean up previous object URL if it exists
+  if (imgThumbObjectUrl) {
+    URL.revokeObjectURL(imgThumbObjectUrl);
+    imgThumbObjectUrl = null;
+  }
+  
+  // Set new content
+  els.imgThumb.innerHTML = html;
+  
+  // Track new object URL if provided
+  if (objectUrl) {
+    imgThumbObjectUrl = objectUrl;
+  }
 }
 
 /**
@@ -385,7 +420,7 @@ export function applyPreset() {
  */
 export async function handleImageFile(file) {
   if (!file) { 
-    els.imgThumb.innerHTML = '<span class="muted">No image selected</span>'; 
+    setImgThumbContent('<span class="muted">No image selected</span>'); 
     sourceB64 = null; 
     return; 
   }
@@ -396,7 +431,7 @@ export async function handleImageFile(file) {
   }
   
   const url = URL.createObjectURL(file);
-  els.imgThumb.innerHTML = `<img src="${url}" alt="source"/>`;
+  setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
   log(`[${ts()}] Reading file: ${file.name}`);
   const b64 = await fileToBase64(file);
   sourceB64 = (b64 || '').split(',')[1] || null;
