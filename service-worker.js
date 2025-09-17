@@ -1,11 +1,20 @@
 /* Simple app-shell cache. Avoid caching authenticated API calls. */
-const CACHE_VERSION = 1758054030707; // Dynamic cache version - updated by build script
+const CACHE_VERSION = 1700000000000; // Dynamic cache version - updated by build script
 const CACHE = `qwen-edit-cache-v${CACHE_VERSION}`;
 const APP_SHELL = [
   './',
   './index.html',
   './app.css',
-  './app.js',
+  './js/main.js',
+  './js/models.js',
+  './js/api.js',
+  './js/storage.js',
+  './js/helpers.js',
+  './js/imageUtils.js',
+  './js/activityLog.js',
+  './js/serviceWorker.js',
+  './js/modal.js',
+  './js/ui.js',
   './manifest.webmanifest',
   './service-worker.js'
 ];
