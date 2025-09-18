@@ -310,7 +310,14 @@ export function setupEventListeners() {
       generationComplete();
     } catch(err){
       console.error(err);
+      // Show toast and also append the error to the activity log
       toast(err.message || String(err), true);
+      try {
+        log(`[${ts()}] Error: ${err.message || String(err)}`);
+      } catch(e) {
+        // Don't let logging failures break the UI - just warn
+        console.warn('Failed to write to activity log:', e);
+      }
     } finally{
       setBusy(false);
     }
