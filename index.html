@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1758111402715" />
+  <link rel="stylesheet" href="./app.css?v=1758206578085" />
 </head>
 <body>
   <header>
@@ -132,13 +132,13 @@
         <div class="grid-cols-2">
           <div>
             <label for="cfg">CFG Scale (0–10)</label>
-            <input id="cfg" type="range" min="0" max="10" step="0.1" value="4" />
-            <div class="muted">Value: <span id="cfgVal">4</span></div>
+            <input id="cfg" type="number" min="0" max="10" step="0.1" placeholder="4" />
+            <div class="muted">Value: <span id="cfgVal">default</span></div>
           </div>
           <div>
             <label for="steps">Inference Steps (5–100)</label>
-            <input id="steps" type="range" min="5" max="100" step="1" value="50" />
-            <div class="muted">Value: <span id="stepsVal">50</span></div>
+            <input id="steps" type="number" min="5" max="100" step="1" placeholder="50" />
+            <div class="muted">Value: <span id="stepsVal">default</span></div>
           </div>
         </div>
 

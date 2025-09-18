@@ -130,14 +130,21 @@ export function setupEventListeners() {
       // Standard width/height handling
       if (els.resolutionPreset){
         const preset = els.resolutionPreset.value;
-        if (preset === 'auto' && currentMode === 'image-edit'){
-          if (!autoDimsCache){
-            const srcUrl = lastSourceObjectUrl();
-            if (srcUrl){
-              await computeAndDisplayAutoDims(srcUrl);
+        if (preset === 'auto') {
+          if (currentMode === 'image-edit') {
+            // For image edit mode, derive from source image
+            if (!autoDimsCache){
+              const srcUrl = lastSourceObjectUrl();
+              if (srcUrl){
+                await computeAndDisplayAutoDims(srcUrl);
+              }
             }
+            if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
+          } else if (config && config.params.width && config.params.height) {
+            // For text-to-image mode, use model defaults
+            width = config.params.width.default;
+            height = config.params.height.default;
           }
-          if (autoDimsCache){ width = autoDimsCache.w; height = autoDimsCache.h; }
         } else if (preset && PRESETS[preset]){
           width = PRESETS[preset].w; height = PRESETS[preset].h;
         } else if (preset !== 'auto' && preset !== 'custom' && preset.includes('x')) { 
@@ -163,9 +170,10 @@ export function setupEventListeners() {
       let endpoint;
       
       if (currentMode === 'image-edit') {
-        // Original image editing logic
-        const steps = clamp(parseInt(els.steps.value||'50',10), 5, 100);
-        const cfg = clamp(parseFloat(els.cfg.value||'4'), 0, 10);
+        // Image editing logic - use Qwen Image Edit defaults if inputs are empty
+        const qwenEditDefaults = { steps: 50, cfg: 4 }; // Default values for Qwen Image Edit
+        const steps = els.steps.value ? clamp(parseInt(els.steps.value,10), 5, 100) : qwenEditDefaults.steps;
+        const cfg = els.cfg.value ? clamp(parseFloat(els.cfg.value), 0, 10) : qwenEditDefaults.cfg;
         const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
         const prompt = els.prompt.value.trim(); 
         if (!prompt) return toast('Prompt cannot be empty', true);
@@ -200,16 +208,23 @@ export function setupEventListeners() {
         };
         
         // Add model-specific parameters with correct names
-        if (config.params.cfg) {
-          body.cfg = parseFloat(els.cfg.value);
-        } else if (config.params.guidance_scale || config.params.true_cfg_scale) {
-          body.guidance_scale = parseFloat(els.cfg.value);
+        // Use model defaults if input fields are empty
+        const cfgParam = config.params.guidance_scale || config.params.true_cfg_scale || config.params.cfg;
+        const stepsParam = config.params.num_inference_steps || config.params.steps;
+        
+        const cfgValue = els.cfg.value ? parseFloat(els.cfg.value) : (cfgParam ? cfgParam.default : null);
+        const stepsValue = els.steps.value ? parseInt(els.steps.value) : (stepsParam ? stepsParam.default : null);
+        
+        if (config.params.cfg && cfgValue !== null) {
+          body.cfg = cfgValue;
+        } else if ((config.params.guidance_scale || config.params.true_cfg_scale) && cfgValue !== null) {
+          body.guidance_scale = cfgValue;
         }
         
-        if (config.params.steps) {
-          body.steps = parseInt(els.steps.value);
-        } else if (config.params.num_inference_steps) {
-          body.num_inference_steps = parseInt(els.steps.value);
+        if (config.params.steps && stepsValue !== null) {
+          body.steps = stepsValue;
+        } else if (config.params.num_inference_steps && stepsValue !== null) {
+          body.num_inference_steps = stepsValue;
         }
         
         // Add model parameter for unified API (except for models with separate endpoints)

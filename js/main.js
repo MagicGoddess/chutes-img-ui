@@ -5,7 +5,7 @@ import { getStoredApiKey } from './storage.js';
 import { initializeActivityLog, toggleActivityLog } from './activityLog.js';
 import { registerServiceWorker } from './serviceWorker.js';
 import { openImageModal } from './modal.js';
-import { els, switchMode, applyPreset } from './ui.js';
+import { els, switchMode, applyPreset, sync } from './ui.js';
 import { refreshQuotaUsage } from './quota.js';
 import { setupEventListeners } from './eventListeners.js';
 import { initializeImageHistory, toggleImageSelection } from './imageHistory.js';
@@ -37,6 +37,9 @@ switchMode('image-edit');
 
 // Initialize resolution preset
 applyPreset();
+
+// Initialize UI display values
+sync();
 
 // Setup all event listeners
 setupEventListeners();

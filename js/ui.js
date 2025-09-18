@@ -168,8 +168,8 @@ export function getResultImgElement() {
  * Syncs slider display values
  */
 export function sync() { 
-  els.cfgVal.textContent = els.cfg.value; 
-  els.stepsVal.textContent = els.steps.value; 
+  els.cfgVal.textContent = els.cfg.value || (els.cfg.placeholder ? `default (${els.cfg.placeholder})` : 'default'); 
+  els.stepsVal.textContent = els.steps.value || (els.steps.placeholder ? `default (${els.steps.placeholder})` : 'default'); 
 }
 
 /**
@@ -204,6 +204,8 @@ export function switchMode(mode) {
   // Update resolution presets for text-to-image
   if (isTextToImage) {
     updateParametersForModel(currentModel);
+    // Hide autoDims element in text-to-image mode - auto dims are not applicable here
+    if (els.autoDims) { els.autoDims.style.display = 'none'; els.autoDims.textContent = ''; }
   } else {
     // Restore original image edit controls
     updateParametersForImageEdit();
@@ -216,9 +218,21 @@ export function switchMode(mode) {
  * Updates parameters for image editing mode
  */
 export function updateParametersForImageEdit() {
-  // Restore original CFG and steps ranges for image editing
-  els.cfg.min = 0; els.cfg.max = 10; els.cfg.step = 0.1; els.cfg.value = 4;
-  els.steps.min = 5; els.steps.max = 100; els.steps.step = 1; els.steps.value = 50;
+  // Set up CFG and steps for image editing with placeholders (use Qwen Image Edit defaults)
+  els.cfg.min = 0; els.cfg.max = 10; els.cfg.step = 0.1; 
+  els.cfg.placeholder = '4';
+  els.cfg.value = '';
+  
+  els.steps.min = 5; els.steps.max = 100; els.steps.step = 1; 
+  els.steps.placeholder = '50';
+  els.steps.value = '';
+  
+  // Update labels
+  const cfgLabel = document.querySelector('label[for="cfg"]');
+  if (cfgLabel) cfgLabel.textContent = 'CFG Scale (0–10)';
+  
+  const stepsLabel = document.querySelector('label[for="steps"]');
+  if (stepsLabel) stepsLabel.textContent = 'Inference Steps (5–100)';
   
   // Update resolution preset options for image editing
   const preset = els.resolutionPreset;
@@ -235,9 +249,13 @@ export function updateParametersForImageEdit() {
     <option value="custom">Custom…</option>
   `;
   
-  // Reset to defaults
-  els.width.value = 1024; els.height.value = 1024; els.seed.value = '';
-  els.negPrompt.value = '';
+  // Reset to defaults but preserve user inputs for seed and negative prompt
+  els.width.value = 1024; els.height.value = 1024; 
+  // Don't reset seed and negative prompt as they might be user-set
+  
+  // Set negative prompt placeholder for image editing (uses Qwen Image Edit defaults)
+  els.negPrompt.placeholder = 'Things to avoid (optional)';
+  
   sync();
 }
 
@@ -252,43 +270,77 @@ export function updateParametersForModel(modelKey) {
   currentModel = modelKey;
   const params = config.params;
   
-  // Update CFG/guidance scale (models use different parameter names)
+  // Store current resolution preset selection to preserve it
+  const currentPreset = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
+  
+  // Update CFG/guidance scale (models use different parameter names) - update range and placeholder only
   const cfgParam = params.guidance_scale || params.true_cfg_scale || params.cfg;
   if (cfgParam) {
     els.cfg.min = cfgParam.min;
     els.cfg.max = cfgParam.max;
     els.cfg.step = cfgParam.step;
-    els.cfg.value = cfgParam.default;
+    els.cfg.placeholder = cfgParam.default;
+    // Clear value to show placeholder
+    els.cfg.value = '';
+    // Update label to show the range
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) {
+      cfgLabel.textContent = `CFG Scale (${cfgParam.min}–${cfgParam.max})`;
+    }
   }
   
-  // Update inference steps (models use different parameter names)
+  // Update inference steps (models use different parameter names) - update range and placeholder only
   const stepsParam = params.num_inference_steps || params.steps;
   if (stepsParam) {
     els.steps.min = stepsParam.min;
     els.steps.max = stepsParam.max;
     els.steps.step = stepsParam.step;
-    els.steps.value = stepsParam.default;
+    els.steps.placeholder = stepsParam.default;
+    // Clear value to show placeholder
+    els.steps.value = '';
+    // Update label to show the range
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) {
+      stepsLabel.textContent = `Inference Steps (${stepsParam.min}–${stepsParam.max})`;
+    }
   }
   
-  // Update width/height (now all models use width/height)
+  // Update width/height constraints but only set values if Auto is selected
   if (params.width) {
     els.width.min = params.width.min;
     els.width.max = params.width.max;
     els.width.step = params.width.step;
-    els.width.value = params.width.default;
+    // Only set default values if Auto preset is selected
+    if (currentPreset === 'auto') {
+      els.width.value = params.width.default;
+    }
   }
   if (params.height) {
     els.height.min = params.height.min;
     els.height.max = params.height.max;
     els.height.step = params.height.step;
-    els.height.value = params.height.default;
+    // Only set default values if Auto preset is selected
+    if (currentPreset === 'auto') {
+      els.height.value = params.height.default;
+    }
   }
   
-  // Update standard resolution presets for text-to-image
+  // Update standard resolution presets, preserving current selection
   const preset = els.resolutionPreset;
+  let autoLabel;
+  if (currentMode === 'image-edit') {
+    autoLabel = 'Auto (derive from source)';
+  } else {
+    // For text-to-image mode, show model default resolution
+    autoLabel = params.width && params.height ? 
+      `Auto (${params.width.default} × ${params.height.default})` : 
+      'Auto (model default)';
+  }
+  
   preset.innerHTML = `
+    <option value="auto">${autoLabel}</option>
     <option value="512x512">512 × 512 (Low-res square 1:1)</option>
-    <option value="1024x1024" selected>1024 × 1024 (Square 1:1)</option>
+    <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
     <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
     <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
     <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
@@ -299,6 +351,9 @@ export function updateParametersForModel(modelKey) {
     <option value="custom">Custom…</option>
   `;
   
+  // Restore the previously selected preset, or default to auto
+  preset.value = currentPreset || 'auto';
+  
   // Update seed
   if (params.seed) {
     els.seed.min = params.seed.min;
@@ -307,14 +362,20 @@ export function updateParametersForModel(modelKey) {
     } else {
       els.seed.removeAttribute('max');
     }
-    els.seed.value = params.seed.default || '';
+    // Only clear seed if it was empty before
+    if (!els.seed.value) {
+      els.seed.value = params.seed.default || '';
+    }
   }
   
-  // Update negative prompt default
-  if (params.negative_prompt) {
-    els.negPrompt.value = params.negative_prompt.default;
+  // Update negative prompt placeholder based on model default
+  const negPromptParam = params.negative_prompt;
+  if (negPromptParam && negPromptParam.default) {
+    // Model has a default negative prompt - include it in placeholder
+    els.negPrompt.placeholder = `Things to avoid (optional)\nDefault: ${negPromptParam.default}`;
   } else {
-    els.negPrompt.value = '';
+    // No default negative prompt - use basic placeholder
+    els.negPrompt.placeholder = 'Things to avoid (optional)';
   }
   
   // Update the display values
@@ -349,18 +410,27 @@ export async function computeAndDisplayAutoDims(imgUrl) {
   try {
     const dims = await computeAutoDims(imgUrl);
     autoDimsCache = dims;
-    if (els.autoDims) {
-      els.autoDims.style.display = 'block';
-      els.autoDims.textContent = `Auto: ${dims.w} × ${dims.h}`;
-    }
-    // Update width/height inputs even when they are disabled so user can see values
-    if (els.width && els.height) { 
-      els.width.value = dims.w; 
-      els.height.value = dims.h; 
+    // Only update the autoDims UI when in image-edit mode and auto preset is selected
+    if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+      if (els.autoDims) {
+        els.autoDims.style.display = 'block';
+        els.autoDims.textContent = `Auto: ${dims.w} × ${dims.h}`;
+      }
+      // Update width/height inputs even when they are disabled so user can see values
+      if (els.width && els.height) { 
+        els.width.value = dims.w; 
+        els.height.value = dims.h; 
+      }
+    } else {
+      // If not image-edit/auto, still update width/height for visibility
+      if (els.width && els.height) {
+        els.width.value = dims.w;
+        els.height.value = dims.h;
+      }
     }
     log(`[${ts()}] Auto resolution computed: ${dims.w}x${dims.h}`);
   } catch(e) {
-    if (els.autoDims) { 
+    if (currentMode === 'image-edit' && els.autoDims) { 
       els.autoDims.style.display = 'block'; 
       els.autoDims.textContent = 'Auto: (failed to read image)'; 
     }
@@ -383,12 +453,16 @@ export function applyPreset() {
   
   if (val === 'auto') {
     toggleDimInputs(false); // disable manual editing during auto
-    if (els.autoDims) { 
-      els.autoDims.style.display = 'block'; 
-      els.autoDims.textContent = 'Auto: (waiting for image)'; 
-    }
     const src = lastSourceObjectUrl();
-    if (src) {
+    // Only update and show the autoDims UI when in image-edit mode
+    if (currentMode === 'image-edit') {
+      if (els.autoDims) {
+        els.autoDims.style.display = 'block';
+        els.autoDims.textContent = 'Auto: (waiting for image)';
+      }
+    }
+
+    if (src && currentMode === 'image-edit') {
       // If we already computed auto dims earlier, use cache to populate inputs immediately
       if (autoDimsCache) { 
         if (els.width && els.height) { 
@@ -397,6 +471,14 @@ export function applyPreset() {
         } 
       } else { 
         computeAndDisplayAutoDims(src); 
+      }
+    }
+    // For text-to-image mode, do not touch the autoDims element; populate width/height
+    if (currentMode === 'text-to-image') {
+      const config = MODEL_CONFIGS[currentModel];
+      if (config && config.params.width && config.params.height) {
+        els.width.value = config.params.width.default;
+        els.height.value = config.params.height.default;
       }
     }
     log(`[${ts()}] Preset: auto`);
@@ -441,7 +523,7 @@ export async function handleImageFile(file) {
   // If the user has the resolution preset set to "auto", compute auto dims
   // immediately for dropped images (matches behavior of file input change).
   try {
-    if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+    if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
       // Disable manual dim inputs and show waiting message
       toggleDimInputs(false);
       if (els.autoDims) { 

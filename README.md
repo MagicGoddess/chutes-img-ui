@@ -6,6 +6,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports two modes: Image Edit and Text-to-Image generation
 - Model selector for Text-to-Image with multiple models (e.g., Hidream, JuggernautXL, Chroma)
+- **Smart Parameter Management**: Auto resolution preset, empty fields use model defaults, settings preserved when switching models
 - **Image History**: Automatically saves generated images with full metadata
   - **Collapsible Activity Log**: Clean, space-saving interface (collapsed by default)
   - **Grid View**: Visual gallery of all generated images with model and settings preview
@@ -78,7 +79,7 @@ See `CACHE-BUSTING.md` for detailed information about the cache management syste
 ## Files
 - `index.html` — markup only
 - `app.css` — styles
-- `app.js` — client logic and Chutes calls
+- `js/` — modular JavaScript files (main.js, models.js, ui.js, api.js, etc.)
 - `manifest.webmanifest` — PWA manifest
 - `service-worker.js` — app-shell caching (skips caching any `*.chutes.ai` request)
 

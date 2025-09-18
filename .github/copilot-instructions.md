@@ -36,16 +36,19 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 2. Switch to "Text to Image" mode
 3. Select a model (e.g., "Hidream", "FLUX.1 Dev", etc.)
 4. Enter a test prompt: "a beautiful sunset over mountains"
-5. Verify all controls work: resolution presets, sliders, seed input
-6. Check that model-specific parameters update correctly (ranges and defaults)
+5. Set custom CFG and Steps values, choose a resolution preset
+6. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt)
+7. Verify model-specific parameter ranges update correctly while preserving user values
+8. Test "Auto" resolution preset shows model default dimensions
 
 #### Image Edit Mode Testing:
 1. Switch to "Image Edit" mode  
 2. Upload a test image (any jpg/png)
 3. Verify the image appears in the thumbnail
 4. Enter an edit prompt: "make it more colorful"
-5. Check that resolution auto-derives from source image
-6. Verify all controls are appropriate for Qwen Image Edit model
+5. Check that "Auto" resolution shows "derive from source" and calculates from uploaded image
+6. Verify user settings are preserved when switching between modes
+7. Test that CFG and Steps use placeholder defaults when empty
 
 #### Cache System Testing:
 1. Run `node update-cache-version.js`
