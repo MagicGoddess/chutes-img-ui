@@ -1159,3 +1159,784 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+
+## Nova Anime3d Xl (nova-anime3d-xl)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "nova-anime3d-xl",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 25,
+            "maximum": 50,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Illustrij (Illustrij)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "Illustrij",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 25,
+            "maximum": 50,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Orphic Lora (orphic-lora)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "orphic-lora",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "pixel_scale": {
+            "type": "number",
+            "title": "Pixel Scale",
+            "default": 0.7,
+            "maximum": 1,
+            "minimum": 0
+          },
+          "turbo_scale": {
+            "type": "number",
+            "title": "Turbo Scale",
+            "default": 0.7,
+            "maximum": 1,
+            "minimum": 0
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 10,
+            "maximum": 30,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          },
+          "pixel_scale": {
+            "type": "number",
+            "title": "Pixel Scale",
+            "default": 0.7
+          },
+          "turbo_scale": {
+            "type": "number",
+            "title": "Turbo Scale",
+            "default": 0.7
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Animij (Animij)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "Animij",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 25,
+            "maximum": 50,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## HassakuXL (HassakuXL)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "HassakuXL",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 25,
+            "maximum": 50,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Nova Cartoon Xl (nova-cartoon-xl)
+### Example
+```sh
+curl -X POST \
+		https://image.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "model": "nova-cartoon-xl",
+    "prompt": "A beautiful sunset over mountains",
+    "negative_prompt": "blur, distortion, low quality",
+    "guidance_scale": 7.5,
+    "width": 1024,
+    "height": 1024,
+    "num_inference_steps": 50
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5,
+            "maximum": 20,
+            "minimum": 1
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 25,
+            "maximum": 50,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a beautiful mountain landscape"
+          }
+        }
+      }
+    }
+  }
+}
+```

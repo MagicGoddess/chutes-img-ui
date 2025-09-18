@@ -103,4 +103,84 @@ export const MODEL_CONFIGS = {
       negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
     }
   }
+  ,
+  'nova-anime3d-xl': {
+    name: 'Nova Anime3d Xl',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'nova-anime3d-xl',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'illustrij': {
+    name: 'Illustrij',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'Illustrij',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'orphic-lora': {
+    name: 'Orphic Lora',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'orphic-lora',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      pixel_scale: { min: 0, max: 1, default: 0.7, step: 0.01 },
+      turbo_scale: { min: 0, max: 1, default: 0.7, step: 0.01 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 30, default: 10, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null }
+    }
+  },
+  'animij': {
+    name: 'Animij',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'Animij',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'hassaku-xl': {
+    name: 'HassakuXL',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'HassakuXL',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'nova-cartoon-xl': {
+    name: 'Nova Cartoon Xl',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'nova-cartoon-xl',
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  }
 };
