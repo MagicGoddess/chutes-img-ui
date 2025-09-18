@@ -335,7 +335,7 @@ function refreshImageGrid() {
 
     // Render grid items with placeholders; if metadata includes imageKey, load blob async
     grid.innerHTML = history.map(img => `
-      <div class="image-grid-item" data-image-id="${img.id}" onclick="openImageModal('${img.id}')">
+      <div class="image-grid-item" data-image-id="${img.id}">
         <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
         <img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated image" loading="lazy" />
         <div class="overlay">
@@ -345,6 +345,28 @@ function refreshImageGrid() {
         </div>
       </div>
     `).join('');
+
+    // Attach click handlers to each grid item so clicks behave differently
+    // depending on whether selectionMode is active. Also restore selected
+    // visual state for items present in selectedImages.
+    document.querySelectorAll('.image-grid-item').forEach(item => {
+      const imageId = item.dataset.imageId;
+      item.onclick = (e) => {
+        // If selection mode is active, toggle selection instead of opening modal
+        if (selectionMode) {
+          toggleImageSelection(imageId);
+        } else {
+          openImageModal(imageId);
+        }
+      };
+
+      // Reflect selection state if this image is already selected
+      if (selectedImages.has(imageId)) {
+        item.classList.add('selected');
+        const checkbox = item.querySelector('.checkbox');
+        if (checkbox) checkbox.classList.add('checked');
+      }
+    });
 
     // After rendering, asynchronously replace images that have imageKey
     history.forEach(async (img) => {
