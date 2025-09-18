@@ -945,6 +945,18 @@ input[type="range"]:disabled::-moz-range-thumb {
   transform: translateY(-1px);
 }
 
+/* Make the clear-all history button a red danger action */
+#clearHistoryBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+}
+
+#clearHistoryBtn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
 /* Collapsible header styles */
 .collapsible-header {
   user-select: none;
