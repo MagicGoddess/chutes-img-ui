@@ -49,6 +49,8 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 5. Check that "Auto" resolution shows "derive from source" and calculates from uploaded image
 6. Verify user settings are preserved when switching between modes
 7. Test that CFG and Steps use placeholder defaults when empty
+8. From the Result panel, click "Send to Image Edit" and verify the generated image appears as the source thumbnail and Auto resolution computes from it
+9. From Image History, open an image modal and click "Send to Image Edit"; verify the same behavior
 
 #### Cache System Testing:
 1. Run `node update-cache-version.js`

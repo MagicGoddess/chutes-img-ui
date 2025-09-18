@@ -38,6 +38,7 @@ export const els = {
   resultImg: document.getElementById('resultImg'), 
   downloadBtn: document.getElementById('downloadBtn'), 
   copyBtn: document.getElementById('copyBtn'), 
+  sendToEditBtn: document.getElementById('sendToEditBtn'), 
   outMeta: document.getElementById('outMeta')
 };
 
@@ -124,6 +125,62 @@ export function setImgThumbContent(html, objectUrl = null) {
   // Track new object URL if provided
   if (objectUrl) {
     imgThumbObjectUrl = objectUrl;
+  }
+}
+
+/**
+ * Loads an image blob or URL into the Source Image area and prepares base64 for API.
+ * Also computes Auto dimensions if that preset is selected.
+ * @param {Blob|string} input - Image blob or object/data URL
+ */
+export async function loadSourceFromBlobOrUrl(input) {
+  try {
+    let blob;
+    let url;
+    if (typeof input === 'string') {
+      url = input;
+      // If it's a data URL, convert to blob for uniform handling
+      if (url.startsWith('data:')) {
+        const res = await fetch(url);
+        blob = await res.blob();
+      } else {
+        blob = await (await fetch(url)).blob();
+      }
+    } else {
+      blob = input;
+    }
+
+    if (!url) {
+      url = URL.createObjectURL(blob);
+    }
+
+    // Update thumbnail and track object URL
+    setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+
+    // Prepare base64 for API
+    const reader = new FileReader();
+    await new Promise((resolve, reject) => {
+      reader.onload = () => resolve();
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    const dataUrl = String(reader.result || '');
+    const parts = dataUrl.split(',');
+    if (parts.length === 2) {
+      setSourceImage(parts[1], blob.type || 'image/jpeg');
+    }
+
+    // If auto preset is selected in image-edit mode, compute auto dims
+    if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+      toggleDimInputs(false);
+      if (els.autoDims) {
+        els.autoDims.style.display = 'block';
+        els.autoDims.textContent = 'Auto: (waiting for image)';
+      }
+      await computeAndDisplayAutoDims(url);
+    }
+  } catch (e) {
+    console.warn('Failed to load source from blob/url', e);
   }
 }
 

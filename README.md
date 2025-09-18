@@ -29,6 +29,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
   - Wan2.1 14b: `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
 - Request body (flat):
   - Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
+  - **Send to Image Edit**: One-click button on result and in modal to use an image as the source for Image Edit
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
   - Wan2.1 14b: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `sample_shift`, `seed`, `negative_prompt` (see model schema for details).
 
@@ -42,6 +43,8 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 ## Image History System
 
 The app automatically saves every generated image with complete metadata to your browser's localStorage:
+8. From the Result panel, click "Send to Image Edit" and verify the generated image appears as the source thumbnail and Auto resolution computes from it
+9. From Image History, open an image modal and click "Send to Image Edit"; verify the same behavior
 
 ### Features
 - **Automatic Saving**: Every generated image is saved with settings, timestamp, and source image (for edits)

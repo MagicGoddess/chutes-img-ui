@@ -159,8 +159,9 @@
         <h2>4) Result</h2>
         <div class="thumb"><div id="resultImg" class="result-placeholder">Result will appear here</div></div>
         <div class="toolbar" style="margin-top:8px">
-          <button id="downloadBtn" class="secondary" disabled>Download</button>
-          <button id="copyBtn" class="secondary" disabled>Copy to Clipboard</button>
+          <button id="downloadBtn" class="secondary" disabled><span>📥</span> Download</button>
+          <button id="copyBtn" class="secondary" disabled><span>📋</span> Copy to Clipboard</button>
+          <button id="sendToEditBtn" class="secondary" disabled><span>↪️</span> Send to Image Edit</button>
           <span id="outMeta" class="muted"></span>
         </div>
       </div>
@@ -232,6 +233,9 @@
           </button>
           <button id="modalDownloadSourceBtn" class="secondary" style="display: none;">
             <span>📥</span> Download Source
+          </button>
+          <button id="modalSendToEditBtn" class="secondary">
+            <span>↪️</span> Send to Image Edit
           </button>
           <button id="modalLoadSettingsBtn" class="">
             <span>⚙️</span> Load Settings

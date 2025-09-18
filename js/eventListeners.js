@@ -286,6 +286,7 @@ export function setupEventListeners() {
       createResultImg(newBlobUrl);
       els.downloadBtn.disabled = false; 
       els.copyBtn.disabled = false;
+  if (els.sendToEditBtn) els.sendToEditBtn.disabled = false;
       const dt = ((performance.now()-t0)/1000).toFixed(1);
       els.outMeta.textContent = `Output ${blob.type || 'image/jpeg'} • ${(blob.size/1024).toFixed(0)} KB • ${dt}s`;
       toast('Done ✓');
@@ -449,6 +450,39 @@ export function setupEventListeners() {
     }
   });
 
+  // Send to Image Edit from Result button
+  if (els.sendToEditBtn) {
+    els.sendToEditBtn.addEventListener('click', async () => {
+      if (!hasResultImg()) return;
+      try {
+        // Switch to Image Edit mode
+        els.modeImageEdit.checked = true;
+        els.modeTextToImage.checked = false;
+        switchMode('image-edit');
+
+        // Fetch the current result image as blob and load as source
+        const img = getResultImgElement();
+        const res = await fetch(img.src);
+        const blob = await res.blob();
+
+        // Reuse helper from ui.js: handleImageFile works with File, but we have Blob
+        // Create a File from Blob to preserve type
+        const file = new File([blob], 'result.jpg', { type: blob.type || 'image/jpeg' });
+        await handleImageFile(file);
+
+        // Ensure preset logic applies
+        if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+          const srcUrl = lastSourceObjectUrl();
+          if (srcUrl) await computeAndDisplayAutoDims(srcUrl);
+        }
+        toast('Sent to Image Edit ✓');
+      } catch (e) {
+        console.warn('Send to Image Edit failed', e);
+        toast('Failed to send image to edit', true);
+      }
+    });
+  }
+
   // Drag & drop support for source image
   ['dragenter','dragover'].forEach(ev=>{
     els.imgThumb.addEventListener(ev, (e)=>{ 
@@ -499,6 +533,43 @@ export function setupEventListeners() {
   document.getElementById('closeModalBtn').addEventListener('click', closeImageModal);
   document.getElementById('modalDownloadBtn').addEventListener('click', downloadModalImage);
   document.getElementById('modalDownloadSourceBtn').addEventListener('click', downloadModalSourceImage);
+  document.getElementById('modalSendToEditBtn').addEventListener('click', async () => {
+    try {
+      const modalImage = getCurrentModalImage();
+      if (!modalImage) return;
+      // Switch to Image Edit mode
+      els.modeImageEdit.checked = true;
+      els.modeTextToImage.checked = false;
+      switchMode('image-edit');
+
+      // Prefer the generated image as source for editing
+      if (modalImage.imageKey) {
+        const blob = await (await import('./storage.js')).idbGetBlob(modalImage.imageKey);
+        if (blob) {
+          const file = new File([blob], 'history.jpg', { type: blob.type || 'image/jpeg' });
+          await handleImageFile(file);
+        }
+      } else if (modalImage.imageData) {
+        // imageData is a data URL
+        const res = await fetch(modalImage.imageData);
+        const blob = await res.blob();
+        const file = new File([blob], 'history.jpg', { type: blob.type || 'image/jpeg' });
+        await handleImageFile(file);
+      }
+
+      // Apply preset auto dims if needed
+      if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+        const srcUrl = lastSourceObjectUrl();
+        if (srcUrl) await computeAndDisplayAutoDims(srcUrl);
+      }
+
+      closeImageModal();
+      toast('Sent to Image Edit ✓');
+    } catch (e) {
+      console.warn('Modal send to edit failed', e);
+      toast('Failed to send image to edit', true);
+    }
+  });
   document.getElementById('modalLoadSettingsBtn').addEventListener('click', loadModalSettings);
   document.getElementById('modalDeleteBtn').addEventListener('click', deleteModalImage);
 
