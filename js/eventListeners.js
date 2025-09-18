@@ -201,11 +201,24 @@ export function setupEventListeners() {
         if (!config) return toast('Invalid model selected', true);
         
         // Build body with model-specific parameter names
-        body = { 
-          prompt,
-          width,
-          height
-        };
+        // Some models (like wan2.1-14b) expect a `resolution` enum instead of width/height.
+        if (config.params.resolution && Array.isArray(config.params.resolution.options)) {
+          // Build resolution string like '832*480'
+          let resolutionStr;
+          const presetVal = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
+          if (presetVal === 'auto') {
+            // Prefer model default resolution when auto is selected
+            resolutionStr = config.params.resolution.default || `${width}*${height}`;
+          } else if (presetVal === 'custom') {
+            resolutionStr = `${width}*${height}`;
+          } else {
+            // Preset values are in the form '1024x1024' or matching PRESETS keys
+            resolutionStr = `${width}*${height}`;
+          }
+          body = { prompt, resolution: resolutionStr };
+        } else {
+          body = { prompt, width, height };
+        }
         
         // Add model-specific parameters with correct names
         // Use model defaults if input fields are empty
@@ -237,12 +250,14 @@ export function setupEventListeners() {
           body.negative_prompt = negative_prompt;
         }
         
-        // Add seed if provided
+        // Add seed: use user-provided seed if present, otherwise use model default if available
         if (els.seed.value && els.seed.value !== '') {
           const seedVal = parseInt(els.seed.value);
           if (!Number.isNaN(seedVal)) {
             body.seed = seedVal;
           }
+        } else if (config.params.seed && typeof config.params.seed.default !== 'undefined') {
+          body.seed = config.params.seed.default;
         }
         
         // Add additional parameters if they exist in the model config

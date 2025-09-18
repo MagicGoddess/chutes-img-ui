@@ -1030,3 +1030,132 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+## Wan2.1 14b Image (wan2.1-14b)
+### Example
+```sh
+curl -X POST \
+		https://chutes-wan2-1-14b.chutes.ai/text2image \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "seed": 42,
+    "prompt": "example-string",
+    "negative_prompt": "Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion"
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/text_to_image",
+  "function": "text_to_image",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/text2image",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "args"
+    ],
+    "properties": {
+      "args": {
+        "$ref": "#/definitions/ImageGenInput"
+      }
+    },
+    "definitions": {
+      "ImageGenInput": {
+        "type": "object",
+        "$defs": {
+          "Resolution": {
+            "enum": [
+              "1280*720",
+              "720*1280",
+              "832*480",
+              "480*832",
+              "1024*1024"
+            ],
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": 42
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Resolution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "832*480"
+          },
+          "sample_shift": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Shift",
+            "default": null
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7.5,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 5
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion"
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": "image/png",
+  "minimal_input_schema": null
+}
+```

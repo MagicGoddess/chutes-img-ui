@@ -113,6 +113,22 @@ Models are defined in `js/models.js` with:
 - `modelName`: API model parameter (for some models)
 - `params`: Parameter definitions with min/max/default values
 
+**Resolution Enums for Specific Models:**
+Some models, like Wan2.1 14b, use predefined resolution options instead of free-form width and height inputs. These are defined in the model's `params` object with a `resolutions` array containing objects with `label`, `width`, and `height` properties.
+
+Example for Wan2.1 14b:
+```javascript
+resolutions: [
+  { label: "1024x1024", width: 1024, height: 1024 },
+  { label: "1280x720", width: 1280, height: 720 },
+  // ... more options
+]
+```
+
+- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has a `resolutions` array. If so, populate the dropdown with the `label` values instead of generating width/height options.
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter (e.g., "1024x1024") in the API request instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` for the exact payload structure.
+- **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
+
 #### Cache Management:
 - `update-cache-version.js`: Updates version timestamps in HTML and service worker
 - Service worker caches app shell, skips caching Chutes API requests
@@ -124,12 +140,13 @@ Models are defined in `js/models.js` with:
 1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
 2. Reference the API schema from `reference/img-models.md`
 3. Test with both default and edge-case parameter values
-4. Verify model switching updates UI controls correctly
+4. For models like Wan2.1 14b, ensure the UI uses the model's supported resolution enum and sends the correct payload shape (see schema).
+5. Verify model switching updates UI controls correctly
 
 #### UI Changes:
-1. Modify HTML structure in `index.html` 
+1. Modify HTML structure in `index.html` (add new model to model select)
 2. Update styles in `app.css`
-3. For UI logic changes, edit `js/ui.js`
+3. For UI logic changes, edit `js/ui.js` (ensure resolution enum is supported for models like Wan2.1 14b)
 4. Test responsive layout at different screen sizes
 5. Validate PWA functionality still works
 
@@ -159,7 +176,8 @@ Models are defined in `js/models.js` with:
 ### API Integration:
 - Uses Chutes API endpoints for image generation
 - API key stored in localStorage
-- Supports multiple models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina
+- Supports multiple models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b
+- Wan2.1 14b uses a dedicated endpoint and only supports a fixed set of resolutions (see model schema).
 - Image Edit mode uses Qwen Image Edit endpoint specifically
 
 ### PWA Features:

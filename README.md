@@ -5,8 +5,8 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports two modes: Image Edit and Text-to-Image generation
-- Model selector for Text-to-Image with multiple models (e.g., Hidream, JuggernautXL, Chroma)
-- **Smart Parameter Management**: Auto resolution preset, empty fields use model defaults, settings preserved when switching models
+- Model selector for Text-to-Image with multiple models (e.g., Hidream, JuggernautXL, Chroma, Wan2.1 14b)
+- **Smart Parameter Management**: Auto resolution preset, empty fields use model defaults, settings preserved when switching models. Models like Wan2.1 14b use a fixed set of supported resolutions.
 - **Image History**: Automatically saves generated images with full metadata
   - **Collapsible Activity Log**: Clean, space-saving interface (collapsed by default)
   - **Grid View**: Visual gallery of all generated images with model and settings preview
@@ -26,9 +26,11 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - API endpoints:
   - Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
+  - Wan2.1 14b: `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
 - Request body (flat):
   - Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
+  - Wan2.1 14b: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `sample_shift`, `seed`, `negative_prompt` (see model schema for details).
 
 ## Usage
 - Use online: https://magicgoddess.github.io/chutes-img-ui
@@ -93,6 +95,7 @@ This project is community-built and not affiliated with Chutes.
 
 ## References
 - [Image Models Documentation](./reference/img-models.md)
+- Wan2.1 14b schema: see `reference/img-models.md` for details on supported resolutions and parameters.
 
 
 ## Credits

@@ -86,4 +86,21 @@ export const MODEL_CONFIGS = {
       negative_prompt: { default: 'blurry, worst quality, low quality' }
     }
   }
+  ,
+  'wan2.1-14b': {
+    name: 'Wan2.1 14b',
+    endpoint: 'https://chutes-wan2-1-14b.chutes.ai/text2image',
+    params: {
+      // This model uses named resolution presets rather than free width/height inputs
+      resolution: {
+        // allowed enum values: "1280*720", "720*1280", "832*480", "480*832", "1024*1024"
+        options: ['1280*720', '720*1280', '832*480', '480*832', '1024*1024'],
+        default: '832*480'
+      },
+      sample_shift: { min: 1, max: 7, default: null, step: 0.1 },
+      guidance_scale: { min: 1, max: 7.5, default: 5, step: 0.1 },
+      seed: { min: 0, max: null, default: null },
+      negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
+    }
+  }
 };

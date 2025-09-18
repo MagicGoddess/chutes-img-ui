@@ -331,25 +331,61 @@ export function updateParametersForModel(modelKey) {
   if (currentMode === 'image-edit') {
     autoLabel = 'Auto (derive from source)';
   } else {
-    // For text-to-image mode, show model default resolution
-    autoLabel = params.width && params.height ? 
-      `Auto (${params.width.default} × ${params.height.default})` : 
-      'Auto (model default)';
+    // For text-to-image mode, show model default resolution. Some models expose
+    // a `resolution` enum instead of free width/height; handle both cases.
+    if (params.width && params.height) {
+      autoLabel = `Auto (${params.width.default} × ${params.height.default})`;
+    } else if (params.resolution && params.resolution.default) {
+      // resolution default like '832*480' -> display with ×
+      const parts = (params.resolution.default || '').split(/[*x]/);
+      if (parts.length === 2) {
+        autoLabel = `Auto (${parts[0]} × ${parts[1]})`;
+      } else {
+        autoLabel = 'Auto (model default)';
+      }
+    } else {
+      autoLabel = 'Auto (model default)';
+    }
   }
-  
-  preset.innerHTML = `
-    <option value="auto">${autoLabel}</option>
-    <option value="512x512">512 × 512 (Low-res square 1:1)</option>
-    <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
-    <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
-    <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
-    <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
-    <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
-    <option value="2024x2024">2024 × 2024 (HiRes square)</option>
-    <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
-    <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
-    <option value="custom">Custom…</option>
-  `;
+  // If the model provides a discrete set of supported resolutions, show those
+  // first (converting '832*480' -> '832x480' keys used by PRESETS), otherwise
+  // fall back to the standard preset list.
+  if (params.resolution && Array.isArray(params.resolution.options)) {
+    // Build options from model resolution enum
+    let optsHtml = `<option value="auto">${autoLabel}</option>`;
+    params.resolution.options.forEach(opt => {
+      // opt may be like '832*480' - normalize to '832x480' for PRESETS lookup
+      const val = String(opt).replace('*', 'x');
+      const display = String(opt).replace(/[*x]/, ' × ');
+      optsHtml += `<option value="${val}">${display}</option>`;
+    });
+    optsHtml += `<option value="custom">Custom…</option>`;
+    preset.innerHTML = optsHtml;
+    // If auto is selected, populate width/height from the model default resolution
+    if (currentPreset === 'auto' && params.resolution.default) {
+      const dparts = String(params.resolution.default).split(/[*x]/);
+      if (dparts.length === 2) {
+        if (els.width && els.height) {
+          els.width.value = parseInt(dparts[0], 10);
+          els.height.value = parseInt(dparts[1], 10);
+        }
+      }
+    }
+  } else {
+    preset.innerHTML = `
+      <option value="auto">${autoLabel}</option>
+      <option value="512x512">512 × 512 (Low-res square 1:1)</option>
+      <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
+      <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
+      <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
+      <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
+      <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
+      <option value="2024x2024">2024 × 2024 (HiRes square)</option>
+      <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
+      <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
+      <option value="custom">Custom…</option>
+    `;
+  }
   
   // Restore the previously selected preset, or default to auto
   preset.value = currentPreset || 'auto';
