@@ -33,8 +33,8 @@ indexContent = indexContent.replace(
 
 // Update JS script
 indexContent = indexContent.replace(
-  /src="\.\/app\.js(\?v=\d+)?"/g,
-  `src="./app.js?${versionParam}"`
+  /src="\.\/js\/main\.js(\?v=\d+)?"/g,
+  `src="./js/main.js?${versionParam}"`
 );
 
 fs.writeFileSync(indexPath, indexContent);

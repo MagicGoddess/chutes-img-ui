@@ -39,7 +39,7 @@ This script automatically:
 ### Method 2: Manual Version Updates
 1. Edit `index.html` and update the version numbers in:
    - `<link rel="stylesheet" href="./app.css?v=NEW_VERSION">`
-   - `<script src="./app.js?v=NEW_VERSION">`
+    - `<script src="./js/main.js?v=NEW_VERSION">`
 
 2. Edit `service-worker.js` and update:
    - `const CACHE_VERSION = NEW_VERSION;`
