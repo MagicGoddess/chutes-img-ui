@@ -9,6 +9,8 @@ let _originalTitle = document.title || 'Chutes Image UI';
 let _doneTimer = null;
 let _audioEl = null;
 
+let _errorAudioEl = null;
+
 function ensureAudio() {
   if (_audioEl) return _audioEl;
   try {
@@ -18,6 +20,17 @@ function ensureAudio() {
     _audioEl = null;
   }
   return _audioEl;
+}
+
+function ensureErrorAudio() {
+  if (_errorAudioEl) return _errorAudioEl;
+  try {
+    _errorAudioEl = new Audio('./audio/error.ogg');
+    _errorAudioEl.preload = 'auto';
+  } catch (e) {
+    _errorAudioEl = null;
+  }
+  return _errorAudioEl;
 }
 
 function startGenerationTitle() {
@@ -42,6 +55,24 @@ function generationComplete() {
   const base = 'Chutes Image UI';
   document.title = `Generation done! - ${base}`;
   // After 30s, restore original title unless a new generation has started
+  _doneTimer = setTimeout(()=>{
+    document.title = _originalTitle || base;
+    _doneTimer = null;
+  }, 30000);
+}
+
+function generationFailed() {
+  // Play error sound if available
+  const errAudio = ensureErrorAudio();
+  if (errAudio) {
+    const p = errAudio.play();
+    if (p && p.catch) p.catch(()=>{});
+  }
+
+  // Update title to failed and clear after 30s
+  if (_doneTimer) { clearTimeout(_doneTimer); _doneTimer = null; }
+  const base = 'Chutes Image UI';
+  document.title = `Generation failed - ${base}`;
   _doneTimer = setTimeout(()=>{
     document.title = _originalTitle || base;
     _doneTimer = null;
@@ -79,5 +110,6 @@ export {
   ensureAudio,
   startGenerationTitle,
   generationComplete,
+  generationFailed,
   setBusy
 };

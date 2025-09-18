@@ -103,3 +103,4 @@ This project is community-built and not affiliated with Chutes.
 
 ## Credits
 Audio notification: "completed.ogg" (original filename: "powerUp2.ogg") by Kenny (https://kenney.nl/), used under CC0.
+Error notification: "error.ogg" (original filename: "pepSound1.ogg") by Kenny (https://kenney.nl/), used under CC0.

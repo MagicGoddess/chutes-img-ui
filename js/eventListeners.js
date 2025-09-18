@@ -318,6 +318,12 @@ export function setupEventListeners() {
         // Don't let logging failures break the UI - just warn
         console.warn('Failed to write to activity log:', e);
       }
+      try {
+        // Also update the page title and play error sound
+        (await import('./generation.js')).generationFailed();
+      } catch(e) {
+        console.warn('Failed to trigger generationFailed behavior:', e);
+      }
     } finally{
       setBusy(false);
     }
