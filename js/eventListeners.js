@@ -1,7 +1,7 @@
 // Event listeners setup - centralizes all UI event bindings
 
-import { MODEL_CONFIGS } from './models.js';
-import { generateImage } from './api.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS } from './models.js';
+import { generateImage, generateVideo } from './api.js';
 import { 
   getStoredApiKey, saveApiKey, removeApiKey 
 } from './storage.js';
@@ -18,7 +18,8 @@ import {
   setLastBlobUrl, createResultImg, hasResultImg, getResultImgElement, sync,
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
-  applyPreset, handleImageFile, setSourceImage, setImgThumbContent
+  applyPreset, handleImageFile, setSourceImage, setImgThumbContent,
+  updateVideoModeUI, updateVideoParametersForModel
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -39,11 +40,39 @@ export function setupEventListeners() {
   els.modeTextToImage.addEventListener('change', () => {
     if (els.modeTextToImage.checked) switchMode('text-to-image');
   });
+  
+  // Video generation mode listener
+  if (els.modeVideoGeneration) {
+    els.modeVideoGeneration.addEventListener('change', () => {
+      if (els.modeVideoGeneration.checked) switchMode('video-generation');
+    });
+  }
+  
+  // Video sub-mode listeners
+  if (els.videoModeText2Video) {
+    els.videoModeText2Video.addEventListener('change', () => {
+      if (els.videoModeText2Video.checked) {
+        // Switch to text-to-video mode
+        updateVideoModeUI();
+      }
+    });
+  }
+  if (els.videoModeImage2Video) {
+    els.videoModeImage2Video.addEventListener('change', () => {
+      if (els.videoModeImage2Video.checked) {
+        // Switch to image-to-video mode
+        updateVideoModeUI();
+      }
+    });
+  }
 
   // Event listener for model selection
   els.modelSelect.addEventListener('change', () => {
     if (currentMode === 'text-to-image') {
       updateParametersForModel(els.modelSelect.value);
+      setCurrentModel(els.modelSelect.value);
+    } else if (currentMode === 'video-generation') {
+      updateVideoParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
     }
   });
@@ -123,6 +152,14 @@ export function setupEventListeners() {
         return toast('Select a source image for image editing', true);
       }
       
+      // Check video generation requirements
+      if (currentMode === 'video-generation') {
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        if (videoMode === 'image-to-video' && !sourceB64) {
+          return toast('Select a source image for image-to-video generation', true);
+        }
+      }
+      
       // Resolve width/height depending on preset and model
       let width, height;
       const config = currentMode === 'text-to-image' ? MODEL_CONFIGS[currentModel] : null;
@@ -192,6 +229,136 @@ export function setupEventListeners() {
         if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
         
         endpoint = 'https://chutes-qwen-image-edit.chutes.ai/generate';
+      } else if (currentMode === 'video-generation') {
+        // Video generation logic
+        const prompt = els.prompt.value.trim();
+        if (!prompt) return toast('Prompt cannot be empty', true);
+        
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        const videoConfig = VIDEO_MODEL_CONFIGS[currentModel];
+        if (!videoConfig) return toast('Invalid video model selected', true);
+        
+        // Get the appropriate endpoint based on video mode
+        endpoint = videoMode === 'image-to-video' ? 
+          videoConfig.endpoints.image2video : 
+          videoConfig.endpoints.text2video;
+        
+        // Build video request body based on model type
+        if (currentModel === 'wan2.1-14b-video') {
+          // Build body for Wan2.1 14b video model
+          const payload = { prompt };
+          
+          // Add resolution - Wan2.1 14b uses '*' format like '832*480'
+          let resolutionStr;
+          if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
+            // Convert 'x' format to '*' format for Wan2.1 14b
+            resolutionStr = els.resolutionPreset.value.replace('x', '*');
+          } else {
+            resolutionStr = videoConfig.params.resolution.default;
+          }
+          payload.resolution = resolutionStr;
+          
+          // Add video-specific parameters with proper null handling
+          if (els.fps.value) {
+            payload.fps = parseInt(els.fps.value);
+          } else {
+            payload.fps = videoConfig.params.fps.default;
+          }
+          
+          if (els.steps.value) {
+            payload.steps = parseInt(els.steps.value);
+          } else {
+            payload.steps = videoConfig.params.steps.default;
+          }
+          
+          if (els.frames.value) {
+            payload.frames = parseInt(els.frames.value);
+          } else {
+            payload.frames = videoConfig.params.frames.default;
+          }
+          
+          if (els.cfg.value) {
+            payload.guidance_scale = parseFloat(els.cfg.value);
+          } else {
+            payload.guidance_scale = videoConfig.params.guidance_scale.default;
+          }
+          
+          if (els.seed.value) {
+            payload.seed = parseInt(els.seed.value);
+          } else {
+            payload.seed = videoConfig.params.seed.default;
+          }
+          
+          // Add optional parameters only if they have values
+          if (els.sampleShift && els.sampleShift.value) {
+            payload.sample_shift = parseFloat(els.sampleShift.value);
+          } else {
+            payload.sample_shift = videoConfig.params.sample_shift.default; // null
+          }
+          
+          if (els.singleFrame && els.singleFrame.value) {
+            payload.single_frame = els.singleFrame.value === 'true';
+          } else {
+            payload.single_frame = videoConfig.params.single_frame.default;
+          }
+          
+          // Add negative prompt
+          const negativePrompt = els.negPrompt.value.trim();
+          if (negativePrompt) {
+            payload.negative_prompt = negativePrompt;
+          } else {
+            payload.negative_prompt = videoConfig.params.negative_prompt.default;
+          }
+          
+          // For image-to-video, add image data
+          if (videoMode === 'image-to-video') {
+            payload.image_b64 = sourceB64;
+          }
+          
+          // Public endpoint expects FLAT JSON (no args wrapper)
+          body = payload;
+        } else if (currentModel === 'skyreels-video') {
+          // Build body for Skyreels video model
+          const payload = { prompt };
+          
+          // Add resolution - Skyreels uses 'x' format like '544x960'
+          let resolutionStr;
+          if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
+            resolutionStr = els.resolutionPreset.value;
+          } else {
+            resolutionStr = videoConfig.params.resolution.default;
+          }
+          payload.resolution = resolutionStr;
+          
+          // Add Skyreels-specific parameters
+          if (els.cfg.value) {
+            payload.guidance_scale = parseFloat(els.cfg.value);
+          } else {
+            payload.guidance_scale = videoConfig.params.guidance_scale.default;
+          }
+          
+          if (els.seed.value) {
+            payload.seed = parseInt(els.seed.value);
+          } else {
+            payload.seed = videoConfig.params.seed.default;
+          }
+          
+          // Add negative prompt
+          const negativePrompt = els.negPrompt.value.trim();
+          if (negativePrompt) {
+            payload.negative_prompt = negativePrompt;
+          } else {
+            payload.negative_prompt = videoConfig.params.negative_prompt.default;
+          }
+          
+          // For image-to-video, add image data
+          if (videoMode === 'image-to-video') {
+            payload.image_b64 = sourceB64;
+          }
+          
+          // Public endpoint expects FLAT JSON (no input_args wrapper)
+          body = payload;
+        }
       } else {
         // Text-to-image generation
         const prompt = els.prompt.value.trim(); 
@@ -273,36 +440,109 @@ export function setupEventListeners() {
       }
 
       setBusy(true, 'Generating…');
-      log(`[${ts()}] Sending request to ${currentMode === 'image-edit' ? 'Qwen Image Edit' : config.name}…`);
+      
+      // Determine what we're generating for logging
+      let generationType;
+      if (currentMode === 'image-edit') {
+        generationType = 'Qwen Image Edit';
+      } else if (currentMode === 'video-generation') {
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        generationType = `${VIDEO_MODEL_CONFIGS[currentModel]?.name || currentModel} (${videoMode})`;
+      } else {
+        generationType = config?.name || currentModel;
+      }
+      
+      log(`[${ts()}] Sending request to ${generationType}…`);
       log(`[${ts()}] Request body: ${JSON.stringify(body, (key, value) => (key === 'image_b64' && typeof value === 'string') ? `${value.substring(0, 40)}...[truncated]` : value, 2)}`);
       
       const t0 = performance.now();
-      const blob = await generateImage(endpoint, key, body);
+      
+      // Use appropriate API function based on mode
+      let blob;
+      if (currentMode === 'video-generation') {
+        blob = await generateVideo(endpoint, key, body);
+      } else {
+        blob = await generateImage(endpoint, key, body);
+      }
 
-      // Display
+      // Display result
       if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
       const newBlobUrl = URL.createObjectURL(blob);
       setLastBlobUrl(newBlobUrl);
-      createResultImg(newBlobUrl);
+      
+      // Show appropriate result element based on content type
+      if (currentMode === 'video-generation') {
+        // Show video player
+        els.resultImg.style.display = 'none';
+        els.resultVideo.style.display = 'block';
+        els.resultVideo.src = newBlobUrl;
+        els.resultVideo.load(); // Force reload of video element
+      } else {
+        // Show image
+        els.resultVideo.style.display = 'none';
+        els.resultImg.style.display = 'block';
+        createResultImg(newBlobUrl);
+      }
+      
       els.downloadBtn.disabled = false; 
       els.copyBtn.disabled = false;
-  if (els.sendToEditBtn) els.sendToEditBtn.disabled = false;
+      
+      // Only show/enable "Send to Image Edit" for image results
+      if (els.sendToEditBtn) {
+        if (currentMode === 'video-generation') {
+          els.sendToEditBtn.disabled = true;
+          els.sendToEditBtn.style.display = 'none';
+        } else {
+          els.sendToEditBtn.disabled = false;
+          els.sendToEditBtn.style.display = '';
+        }
+      }
       const dt = ((performance.now()-t0)/1000).toFixed(1);
-      els.outMeta.textContent = `Output ${blob.type || 'image/jpeg'} • ${(blob.size/1024).toFixed(0)} KB • ${dt}s`;
+      
+      // Update metadata display based on content type
+      const contentType = currentMode === 'video-generation' ? 'video/mp4' : (blob.type || 'image/jpeg');
+      const sizeDisplay = blob.size > 1024*1024 ? 
+        `${(blob.size/(1024*1024)).toFixed(1)} MB` : 
+        `${(blob.size/1024).toFixed(0)} KB`;
+      els.outMeta.textContent = `Output ${contentType} • ${sizeDisplay} • ${dt}s`;
       toast('Done ✓');
       log(`[${ts()}] Done ✓`);
       
-      // Save to image history
-      const imageSettings = {
-        prompt: body.prompt,
-        negativePrompt: body.negative_prompt || '',
-        width: body.width,
-        height: body.height,
-        cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
-        steps: body.steps || body.num_inference_steps,
-        seed: body.seed
-      };
-      await saveGeneratedImage(blob, imageSettings);
+      // Save to generation history
+      let generationSettings;
+      if (currentMode === 'video-generation') {
+        // Video generation settings from flat payload
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        generationSettings = {
+          prompt: body.prompt,
+          negativePrompt: body.negative_prompt || '',
+          resolution: body.resolution,
+          cfgScale: body.guidance_scale,
+          steps: body.steps,
+          frames: body.frames,
+          fps: body.fps,
+          seed: body.seed,
+          model: currentModel,
+          mode: 'video-generation',
+          videoMode: videoMode,
+          type: 'video'
+        };
+      } else {
+        // Image generation settings
+        generationSettings = {
+          prompt: body.prompt,
+          negativePrompt: body.negative_prompt || '',
+          width: body.width,
+          height: body.height,
+          cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
+          steps: body.steps || body.num_inference_steps,
+          seed: body.seed,
+          model: currentModel,
+          mode: currentMode,
+          type: 'image'
+        };
+      }
+      await saveGeneratedImage(blob, generationSettings);
       
       // Refresh quota usage after successful generation
       await refreshQuotaUsage();
@@ -331,16 +571,52 @@ export function setupEventListeners() {
 
   // Download and copy functionality
   els.downloadBtn.addEventListener('click', ()=>{
-    if (!hasResultImg()) return;
-    const img = getResultImgElement();
-    const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
-    const a = document.createElement('a'); 
-    a.href = img.src; 
-    a.download = `${prefix}-${Date.now()}.jpg`; 
-    a.click();
+    if (currentMode === 'video-generation') {
+      // Download video
+      if (!els.resultVideo.src) return;
+      const prefix = `${currentModel}-video`;
+      const a = document.createElement('a'); 
+      a.href = els.resultVideo.src; 
+      a.download = `${prefix}-${Date.now()}.mp4`; 
+      a.click();
+    } else {
+      // Download image
+      if (!hasResultImg()) return;
+      const img = getResultImgElement();
+      const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
+      const a = document.createElement('a'); 
+      a.href = img.src; 
+      a.download = `${prefix}-${Date.now()}.jpg`; 
+      a.click();
+    }
   });
 
   els.copyBtn.addEventListener('click', async ()=>{
+    if (currentMode === 'video-generation') {
+      // For videos, copy the URL (browsers don't support video clipboard)
+      if (!els.resultVideo.src) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(els.resultVideo.src);
+          toast('Video URL copied to clipboard');
+        } else {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = els.resultVideo.src;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          toast('Video URL copied to clipboard');
+        }
+        return;
+      } catch (e) {
+        toast('Copy failed - ' + e.message, true);
+        return;
+      }
+    }
+    
+    // Handle image copying (existing code)
     if (!hasResultImg()) return;
     const img = getResultImgElement();
     const res = await fetch(img.src); 
@@ -530,6 +806,11 @@ export function setupEventListeners() {
   // Setup slider event listeners and initial sync
   els.cfg.addEventListener('input', sync); 
   els.steps.addEventListener('input', sync); 
+  
+  // Video parameter sync listeners
+  if (els.fps) els.fps.addEventListener('input', sync);
+  if (els.frames) els.frames.addEventListener('input', sync);
+  if (els.sampleShift) els.sampleShift.addEventListener('input', sync); 
 
   // Event Listeners for image history
   document.getElementById('toggleSelectionBtn').addEventListener('click', toggleSelectionMode);

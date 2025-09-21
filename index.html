@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1758226499403" />
+  <link rel="stylesheet" href="./app.css?v=1758481723203" />
 </head>
 <body>
   <header>
@@ -56,6 +56,19 @@
         <label for="modeImageEdit">Image Edit</label>
         <input type="radio" id="modeTextToImage" name="mode" value="text-to-image" />
         <label for="modeTextToImage">Text to Image</label>
+        <input type="radio" id="modeVideoGeneration" name="mode" value="video-generation" />
+        <label for="modeVideoGeneration">Video Generation</label>
+      </div>
+      
+      <!-- Video sub-mode toggle -->
+      <div class="video-mode-toggle" id="videoModeToggle" style="display: none;">
+        <h3>Video Mode</h3>
+        <div class="mode-toggle">
+          <input type="radio" id="videoModeText2Video" name="videoMode" value="text-to-video" checked />
+          <label for="videoModeText2Video">Text to Video</label>
+          <input type="radio" id="videoModeImage2Video" name="videoMode" value="image-to-video" />
+          <label for="videoModeImage2Video">Image to Video</label>
+        </div>
       </div>
       </div>
     </div>
@@ -66,10 +79,11 @@
       <div class="card">
         <h2 id="inputCardTitle">3) Input</h2>
         
-        <!-- Model Selection for Text-to-Image -->
+        <!-- Model Selection for Text-to-Image and Video Generation -->
         <div class="row" id="modelRow" style="display: none;">
           <label for="modelSelect">Model</label>
           <select id="modelSelect">
+            <!-- Image models -->
             <option value="hidream">Hidream</option>
             <option value="qwen-image">Qwen Image</option>
             <option value="flux-dev">FLUX.1 Dev</option>
@@ -84,6 +98,9 @@
             <option value="animij">Animij</option>
             <option value="hassaku-xl">HassakuXL</option>
             <option value="nova-cartoon-xl">Nova Cartoon Xl</option>
+            <!-- Video models -->
+            <option value="wan2.1-14b-video">Wan2.1 14b Video</option>
+            <option value="skyreels-video">Skyreels</option>
           </select>
         </div>
 
@@ -149,6 +166,39 @@
           </div>
         </div>
 
+        <!-- Video-specific parameters -->
+        <div id="videoParams" style="display: none;">
+          <div class="spacer"></div>
+          <div class="grid-cols-2">
+            <div>
+              <label for="fps">Frame Rate (16–60)</label>
+              <input id="fps" type="number" min="16" max="60" step="1" placeholder="24" />
+              <div class="muted">Value: <span id="fpsVal">default</span></div>
+            </div>
+            <div>
+              <label for="frames">Frames (81–241)</label>
+              <input id="frames" type="number" min="81" max="241" step="1" placeholder="81" />
+              <div class="muted">Value: <span id="framesVal">default</span></div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div class="grid-cols-2">
+            <div>
+              <label for="sampleShift">Sample Shift (1–7)</label>
+              <input id="sampleShift" type="number" min="1" max="7" step="0.1" placeholder="Auto" />
+              <div class="muted">Value: <span id="sampleShiftVal">default</span></div>
+            </div>
+            <div>
+              <label for="singleFrame">Single Frame</label>
+              <select id="singleFrame">
+                <option value="false">False</option>
+                <option value="true">True</option>
+              </select>
+              <div class="muted">Generate single frame vs video</div>
+            </div>
+          </div>
+        </div>
+
         <div class="spacer"></div>
         <div class="toolbar">
           <button id="generateBtn">Generate</button>
@@ -157,7 +207,12 @@
       </div>
       <div class="card">
         <h2>4) Result</h2>
-        <div class="thumb"><div id="resultImg" class="result-placeholder">Result will appear here</div></div>
+        <div class="thumb">
+          <div id="resultImg" class="result-placeholder">Result will appear here</div>
+          <video id="resultVideo" style="display: none; width: 100%; height: auto;" controls>
+            Your browser does not support the video tag.
+          </video>
+        </div>
         <div class="toolbar" style="margin-top:8px">
           <button id="downloadBtn" class="secondary" disabled><span>📥</span> Download</button>
           <button id="copyBtn" class="secondary" disabled><span>📋</span> Copy to Clipboard</button>
@@ -185,7 +240,7 @@
     <div class="spacer"></div>
     <div class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2>Generated Images</h2>
+        <h2>Generation History</h2>
         <div class="toolbar">
           <button id="toggleSelectionBtn" class="secondary" style="display: none;">
             <span id="selectionIcon">☐</span> Select
@@ -193,12 +248,12 @@
           <button id="selectAllBtn" class="secondary" style="display: none;">Select All</button>
           <button id="selectNoneBtn" class="secondary" style="display: none;">Select None</button>
           <button id="deleteSelectedBtn" class="secondary" style="display: none;">Delete Selected</button>
-          <button id="clearHistoryBtn"><span>⚠️</span> Delete all images</button>
+          <button id="clearHistoryBtn"><span>⚠️</span> Delete all history</button>
         </div>
       </div>
       <div id="imageGrid" class="image-grid">
         <div class="empty-state">
-          <span class="muted">No images generated yet. Create your first image to see it here!</span>
+          <span class="muted">No content generated yet. Create your first image or video to see it here!</span>
         </div>
       </div>
     </div>
@@ -256,7 +311,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1758226499403"></script>
+  <script type="module" src="./js/main.js?v=1758481723203"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

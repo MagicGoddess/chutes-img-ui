@@ -59,3 +59,38 @@ export async function generateImage(endpoint, apiKey, body) {
 
   return await resp.blob();
 }
+
+/**
+ * Makes an API call to generate a video
+ * @param {string} endpoint - The API endpoint URL
+ * @param {string} apiKey - The API key for authentication
+ * @param {Object} body - The request body parameters
+ * @returns {Promise<Blob>} The generated video blob
+ */
+export async function generateVideo(endpoint, apiKey, body) {
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!resp.ok) {
+    let text = '';
+    try {
+      const ct = resp.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const j = await resp.json();
+        text = JSON.stringify(j);
+      } else {
+        text = await resp.text();
+      }
+    } catch(_) {}
+    const msg = `HTTP ${resp.status} — ${text || resp.statusText}`;
+    throw new Error(msg);
+  }
+
+  return await resp.blob();
+}

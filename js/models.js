@@ -1,4 +1,4 @@
-// Model configurations based on actual API schemas from img-models.jsonl
+// Model configurations based on actual API schemas from img-models.jsonl and vid-models.md
 export const MODEL_CONFIGS = {
   'hidream': {
     name: 'Hidream',
@@ -181,6 +181,47 @@ export const MODEL_CONFIGS = {
       num_inference_steps: { min: 1, max: 50, default: 25, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
+    }
+  }
+};
+
+// Video model configurations for video generation
+export const VIDEO_MODEL_CONFIGS = {
+  'wan2.1-14b-video': {
+    name: 'Wan2.1 14b Video',
+    endpoints: {
+      text2video: 'https://chutes-wan2-1-14b.chutes.ai/text2video',
+      image2video: 'https://chutes-wan2-1-14b.chutes.ai/image2video'
+    },
+    params: {
+      resolution: {
+        options: ['1280*720', '720*1280', '832*480', '480*832', '1024*1024'],
+        default: '832*480'
+      },
+      fps: { min: 16, max: 60, default: 24, step: 1 },
+      steps: { min: 10, max: 30, default: 25, step: 1 },
+      frames: { min: 81, max: 241, default: 81, step: 1 },
+      sample_shift: { min: 1, max: 7, default: null, step: 0.1 },
+      single_frame: { default: false },
+      guidance_scale: { min: 1, max: 7.5, default: 5, step: 0.1 },
+      seed: { min: 0, max: null, default: 42 },
+      negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
+    }
+  },
+  'skyreels-video': {
+    name: 'Skyreels',
+    endpoints: {
+      text2video: 'https://chutes-skyreels.chutes.ai/generate',
+      image2video: 'https://chutes-skyreels.chutes.ai/animate'
+    },
+    params: {
+      resolution: {
+        options: ['544x960', '960x544'],
+        default: '544x960'
+      },
+      guidance_scale: { min: 1.001, max: 10, default: 6, step: 0.1 },
+      seed: { min: 0, max: null, default: 42 },
+      negative_prompt: { default: 'Aerial view, aerial view, overexposed, low quality, deformation, a poor composition, bad hands, bad teeth, bad eyes, bad limbs, distortion' }
     }
   }
 };

@@ -1,6 +1,6 @@
 // UI state management and DOM manipulation
 
-import { MODEL_CONFIGS } from './models.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS } from './models.js';
 import { PRESETS, findPresetForDimensions, computeAutoDims } from './imageUtils.js';
 import { clamp, snap, ts, fileToBase64 } from './helpers.js';
 import { log } from './activityLog.js';
@@ -14,6 +14,10 @@ export const els = {
   keyStatus: document.getElementById('keyStatus'),
   modeImageEdit: document.getElementById('modeImageEdit'), 
   modeTextToImage: document.getElementById('modeTextToImage'),
+  modeVideoGeneration: document.getElementById('modeVideoGeneration'),
+  videoModeToggle: document.getElementById('videoModeToggle'),
+  videoModeText2Video: document.getElementById('videoModeText2Video'),
+  videoModeImage2Video: document.getElementById('videoModeImage2Video'),
   modelSelect: document.getElementById('modelSelect'), 
   modelRow: document.getElementById('modelRow'),
   imgInput: document.getElementById('imgInput'), 
@@ -33,9 +37,19 @@ export const els = {
   cfgVal: document.getElementById('cfgVal'), 
   steps: document.getElementById('steps'), 
   stepsVal: document.getElementById('stepsVal'),
+  // Video-specific parameters
+  videoParams: document.getElementById('videoParams'),
+  fps: document.getElementById('fps'),
+  fpsVal: document.getElementById('fpsVal'),
+  frames: document.getElementById('frames'),
+  framesVal: document.getElementById('framesVal'),
+  sampleShift: document.getElementById('sampleShift'),
+  sampleShiftVal: document.getElementById('sampleShiftVal'),
+  singleFrame: document.getElementById('singleFrame'),
   generateBtn: document.getElementById('generateBtn'), 
   runStatus: document.getElementById('runStatus'),
   resultImg: document.getElementById('resultImg'), 
+  resultVideo: document.getElementById('resultVideo'),
   downloadBtn: document.getElementById('downloadBtn'), 
   copyBtn: document.getElementById('copyBtn'), 
   sendToEditBtn: document.getElementById('sendToEditBtn'), 
@@ -227,6 +241,17 @@ export function getResultImgElement() {
 export function sync() { 
   els.cfgVal.textContent = els.cfg.value || (els.cfg.placeholder ? `default (${els.cfg.placeholder})` : 'default'); 
   els.stepsVal.textContent = els.steps.value || (els.steps.placeholder ? `default (${els.steps.placeholder})` : 'default'); 
+  
+  // Update video parameter displays if elements exist
+  if (els.fpsVal) {
+    els.fpsVal.textContent = els.fps.value || (els.fps.placeholder ? `default (${els.fps.placeholder})` : 'default');
+  }
+  if (els.framesVal) {
+    els.framesVal.textContent = els.frames.value || (els.frames.placeholder ? `default (${els.frames.placeholder})` : 'default');
+  }
+  if (els.sampleShiftVal) {
+    els.sampleShiftVal.textContent = els.sampleShift.value || (els.sampleShift.placeholder ? `default (${els.sampleShift.placeholder})` : 'default');
+  }
 }
 
 /**
@@ -236,36 +261,68 @@ export function sync() {
 export function switchMode(mode) {
   currentMode = mode;
   const isTextToImage = mode === 'text-to-image';
+  const isVideoGeneration = mode === 'video-generation';
   
   // Update UI visibility
-  els.modelRow.style.display = isTextToImage ? 'block' : 'none';
-  els.sourceImageSection.style.display = isTextToImage ? 'none' : 'block';
+  els.modelRow.style.display = (isTextToImage || isVideoGeneration) ? 'block' : 'none';
+  els.sourceImageSection.style.display = (isTextToImage) ? 'none' : 'block';
   
-  // Add class on the input row so CSS can adapt layout for T2I
+  // Show/hide video mode toggle
+  if (els.videoModeToggle) {
+    els.videoModeToggle.style.display = isVideoGeneration ? 'block' : 'none';
+  }
+  
+  // Show/hide video parameters
+  if (els.videoParams) {
+    els.videoParams.style.display = isVideoGeneration ? 'block' : 'none';
+  }
+  
+  // Add class on the input row so CSS can adapt layout
   if (els.imageInputRow) {
-    if (isTextToImage) {
-      els.imageInputRow.classList.add('t2i');
-    } else {
-      els.imageInputRow.classList.remove('t2i');
-    }
+    els.imageInputRow.classList.toggle('t2i', isTextToImage);
+    els.imageInputRow.classList.toggle('video', isVideoGeneration);
   }
   
   // Update prompt placeholder
-  els.prompt.placeholder = isTextToImage ? 
-    'Describe the image you want to generate...' : 
-    'Describe the edit you want...';
+  if (isVideoGeneration) {
+    els.prompt.placeholder = 'Describe the video you want to generate...';
+  } else {
+    els.prompt.placeholder = isTextToImage ? 
+      'Describe the image you want to generate...' : 
+      'Describe the edit you want...';
+  }
     
   // Update input card title
-  els.inputCardTitle.textContent = isTextToImage ? '3) Input & Model' : '3) Input';
+  if (isVideoGeneration) {
+    els.inputCardTitle.textContent = '3) Input & Video Model';
+  } else {
+    els.inputCardTitle.textContent = isTextToImage ? '3) Input & Model' : '3) Input';
+  }
     
-  // Update resolution presets for text-to-image
-  if (isTextToImage) {
+  // Update resolution presets and parameters based on mode
+  if (isVideoGeneration) {
+    // Set default video model and update parameters
+    currentModel = 'wan2.1-14b-video';
+    els.modelSelect.value = currentModel;
+    updateParametersForVideoGeneration();
+    // Hide autoDims in video generation mode
+    if (els.autoDims) { els.autoDims.style.display = 'none'; }
+    // Disable manual width/height editing in video mode
+    toggleDimInputs(false);
+  } else if (isTextToImage) {
+    restoreModelSelectForImages();
     updateParametersForModel(currentModel);
     // Hide autoDims element in text-to-image mode - auto dims are not applicable here
     if (els.autoDims) { els.autoDims.style.display = 'none'; els.autoDims.textContent = ''; }
   } else {
     // Restore original image edit controls
+    restoreModelSelectForImages();
     updateParametersForImageEdit();
+  }
+  
+  // Update source image visibility based on video sub-mode
+  if (isVideoGeneration) {
+    updateVideoModeUI();
   }
   
   log(`[${ts()}] Switched to ${mode} mode`);
@@ -637,5 +694,205 @@ export async function handleImageFile(file) {
   } catch (err) {
     // computeAndDisplayAutoDims already updates UI on failure; log for debugging
     console.warn('Failed to compute auto dimensions on drop:', err);
+  }
+}
+
+/**
+ * Updates parameters for video generation mode
+ */
+export function updateParametersForVideoGeneration() {
+  // Filter model select to show only video models
+  updateModelSelectForVideo();
+  
+  // Update video-specific parameters based on current model
+  updateVideoParametersForModel(currentModel);
+  
+  // Update resolution presets for video generation
+  const config = VIDEO_MODEL_CONFIGS[currentModel];
+  if (config && config.params.resolution && Array.isArray(config.params.resolution.options)) {
+    const preset = els.resolutionPreset;
+    let optsHtml = '<option value="auto">Auto (model default)</option>';
+    config.params.resolution.options.forEach(opt => {
+      const display = String(opt).replace(/[*x]/, ' × ');
+      optsHtml += `<option value="${opt}">${display}</option>`;
+    });
+    preset.innerHTML = optsHtml;
+    preset.value = 'auto';
+  }
+  
+  sync();
+
+  // Reflect model default resolution in width/height boxes
+  const def = String(config.params.resolution.default || '1024*1024');
+  const parts = def.includes('*') ? def.split('*') : def.split('x');
+  if (els.width && els.height && parts.length === 2) {
+    els.width.value = parseInt(parts[0], 10) || 1024;
+    els.height.value = parseInt(parts[1], 10) || 1024;
+  }
+  // Ensure manual editing is disabled and auto dims hidden
+  toggleDimInputs(false);
+  if (els.autoDims) { els.autoDims.style.display = 'none'; }
+}
+
+/**
+ * Updates the model select dropdown to show only video models
+ */
+export function updateModelSelectForVideo() {
+  const modelSelect = els.modelSelect;
+  if (!modelSelect) return;
+  
+  // Save current selection
+  const currentSelection = modelSelect.value;
+  
+  // Clear and repopulate with video models only
+  modelSelect.innerHTML = '';
+  Object.keys(VIDEO_MODEL_CONFIGS).forEach(key => {
+    const config = VIDEO_MODEL_CONFIGS[key];
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = config.name;
+    modelSelect.appendChild(option);
+  });
+  
+  // Try to restore previous selection if it's a video model, otherwise default to first
+  if (Object.keys(VIDEO_MODEL_CONFIGS).includes(currentSelection)) {
+    modelSelect.value = currentSelection;
+    currentModel = currentSelection;
+  } else {
+    const firstVideoModel = Object.keys(VIDEO_MODEL_CONFIGS)[0];
+    modelSelect.value = firstVideoModel;
+    currentModel = firstVideoModel;
+  }
+}
+
+/**
+ * Updates video-specific parameters for a model
+ * @param {string} modelKey - The video model key
+ */
+export function updateVideoParametersForModel(modelKey) {
+  const config = VIDEO_MODEL_CONFIGS[modelKey];
+  if (!config) return;
+  
+  const params = config.params;
+  
+  // Update CFG/guidance scale
+  if (params.guidance_scale) {
+    els.cfg.min = params.guidance_scale.min;
+    els.cfg.max = params.guidance_scale.max;
+    els.cfg.step = params.guidance_scale.step;
+    els.cfg.placeholder = params.guidance_scale.default;
+    els.cfg.value = '';
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) {
+      cfgLabel.textContent = `Guidance Scale (${params.guidance_scale.min}–${params.guidance_scale.max})`;
+    }
+  }
+  
+  // Update steps
+  if (params.steps) {
+    els.steps.min = params.steps.min;
+    els.steps.max = params.steps.max;
+    els.steps.step = params.steps.step;
+    els.steps.placeholder = params.steps.default;
+    els.steps.value = '';
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) {
+      stepsLabel.textContent = `Steps (${params.steps.min}–${params.steps.max})`;
+    }
+  }
+  
+  // Update video-specific parameters
+  if (params.fps && els.fps) {
+    els.fps.min = params.fps.min;
+    els.fps.max = params.fps.max;
+    els.fps.step = params.fps.step;
+    els.fps.placeholder = params.fps.default;
+    els.fps.value = '';
+    const fpsLabel = document.querySelector('label[for="fps"]');
+    if (fpsLabel) {
+      fpsLabel.textContent = `Frame Rate (${params.fps.min}–${params.fps.max})`;
+    }
+  }
+  
+  if (params.frames && els.frames) {
+    els.frames.min = params.frames.min;
+    els.frames.max = params.frames.max;
+    els.frames.step = params.frames.step;
+    els.frames.placeholder = params.frames.default;
+    els.frames.value = '';
+    const framesLabel = document.querySelector('label[for="frames"]');
+    if (framesLabel) {
+      framesLabel.textContent = `Frames (${params.frames.min}–${params.frames.max})`;
+    }
+  }
+  
+  if (params.sample_shift && els.sampleShift) {
+    els.sampleShift.min = params.sample_shift.min;
+    els.sampleShift.max = params.sample_shift.max;
+    els.sampleShift.step = params.sample_shift.step;
+    els.sampleShift.placeholder = params.sample_shift.default || 'Auto';
+    els.sampleShift.value = '';
+  }
+  
+  // Update negative prompt
+  if (params.negative_prompt && params.negative_prompt.default) {
+    els.negPrompt.placeholder = params.negative_prompt.default;
+  }
+}
+
+/**
+ * Updates video mode UI based on current sub-mode selection
+ */
+export function updateVideoModeUI() {
+  if (currentMode !== 'video-generation') return;
+  
+  const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+  
+  // Show/hide source image section based on video mode
+  if (els.sourceImageSection) {
+    els.sourceImageSection.style.display = isImage2Video ? 'block' : 'none';
+  }
+  
+  // Update source image requirement text
+  if (els.sourceImageRequired) {
+    els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
+  }
+}
+
+/**
+ * Restores the model select dropdown to show all models
+ */
+export function restoreModelSelectForImages() {
+  const modelSelect = els.modelSelect;
+  if (!modelSelect) return;
+  
+  // Save current selection
+  const currentSelection = modelSelect.value;
+  
+  // Clear and repopulate with image models
+  modelSelect.innerHTML = `
+    <option value="hidream">Hidream</option>
+    <option value="qwen-image">Qwen Image</option>
+    <option value="flux-dev">FLUX.1 Dev</option>
+    <option value="juggernaut-xl">JuggernautXL</option>
+    <option value="chroma">Chroma</option>
+    <option value="ilust-mix">iLustMix</option>
+    <option value="neta-lumina">Neta Lumina</option>
+    <option value="wan2.1-14b">Wan2.1 14b</option>
+    <option value="nova-anime3d-xl">Nova Anime3d Xl</option>
+    <option value="illustrij">Illustrij</option>
+    <option value="orphic-lora">Orphic Lora</option>
+    <option value="animij">Animij</option>
+    <option value="hassaku-xl">HassakuXL</option>
+    <option value="nova-cartoon-xl">Nova Cartoon Xl</option>
+  `;
+  
+  // Try to restore previous selection if it's an image model, otherwise default to hidream
+  if (Object.keys(MODEL_CONFIGS).includes(currentSelection)) {
+    modelSelect.value = currentSelection;
+    currentModel = currentSelection;
+  } else {
+    modelSelect.value = 'hidream';
+    currentModel = 'hidream';
   }
 }
