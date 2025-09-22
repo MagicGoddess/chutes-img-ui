@@ -1065,6 +1065,20 @@ input[type="range"]:disabled::-moz-range-thumb {
   font-size: 12px;
 }
 
+/* History filter dropdown */
+.filter-select {
+  width: auto;
+  min-width: 100px;
+  padding: 8px 30px 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #374151;
+  border: 1px solid #4b5563;
+  color: var(--text);
+  border-radius: 8px;
+  margin-right: 8px;
+}
+
 /* Loading state improvements */
 .loading::before {
   content: "";

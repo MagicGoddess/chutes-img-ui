@@ -26,7 +26,7 @@ import { setBusy, generationComplete } from './generation.js';
 import { 
   saveGeneratedImage, toggleSelectionMode, selectAllImages, selectNoneImages,
   deleteSelectedImages, clearImageHistory, loadModalSettings, deleteModalImage,
-  toggleImageSelection
+  toggleImageSelection, setHistoryFilter
 } from './imageHistory.js';
 
 export function setupEventListeners() {
@@ -826,6 +826,11 @@ export function setupEventListeners() {
     if (confirm('Clear all image history? This cannot be undone.')) {
       clearImageHistory();
     }
+  });
+  
+  // History filter event listener
+  document.getElementById('historyFilter').addEventListener('change', (e) => {
+    setHistoryFilter(e.target.value);
   });
 
   // Modal event listeners

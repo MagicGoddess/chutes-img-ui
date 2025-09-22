@@ -22,12 +22,36 @@ import {
 // Track object URLs for grid images to prevent memory leaks
 let gridObjectUrls = new Set();
 
+// Track current filter state
+let currentFilter = 'all'; // 'all', 'images', 'videos'
+
 // Clean up grid object URLs
 function cleanupGridObjectUrls() {
   for (const url of gridObjectUrls) {
     URL.revokeObjectURL(url);
   }
   gridObjectUrls.clear();
+}
+
+// Filter management
+function setHistoryFilter(filter) {
+  currentFilter = filter;
+  refreshImageGrid();
+}
+
+function getHistoryFilter() {
+  return currentFilter;
+}
+
+function filterHistoryByType(history) {
+  if (currentFilter === 'all') return history;
+  
+  return history.filter(item => {
+    const isVideo = item.settings?.type === 'video';
+    if (currentFilter === 'videos') return isVideo;
+    if (currentFilter === 'images') return !isVideo;
+    return true;
+  });
 }
 async function migrateLocalStorageToIdb() {
   try {
@@ -319,10 +343,21 @@ function refreshImageGrid() {
       return;
     }
 
+    // Apply current filter
+    const filteredHistory = filterHistoryByType(history);
+    
+    if (filteredHistory.length === 0) {
+      const filterText = currentFilter === 'images' ? 'images' : 
+                        currentFilter === 'videos' ? 'videos' : 'content';
+      grid.innerHTML = `<div class="empty-state"><span class="muted">No ${filterText} found in history.</span></div>`;
+      document.getElementById('toggleSelectionBtn').style.display = 'none';
+      return;
+    }
+
     document.getElementById('toggleSelectionBtn').style.display = 'inline-block';
 
     // Render grid items with placeholders; if metadata includes imageKey, load blob async
-    grid.innerHTML = history.map(img => {
+    grid.innerHTML = filteredHistory.map(img => {
       const isVideo = img.settings?.type === 'video';
       const resolution = isVideo ? 
         img.settings.resolution || 'Unknown' : 
@@ -372,7 +407,7 @@ function refreshImageGrid() {
     });
 
     // After rendering, asynchronously replace images/videos that have imageKey
-    history.forEach(async (img) => {
+    filteredHistory.forEach(async (img) => {
       if (!img.imageKey) return; // already inlined or fallback
       try {
         const itemEl = document.querySelector(`.image-grid-item[data-image-id="${img.id}"]`);
@@ -570,5 +605,7 @@ export {
   loadModalSettings,
   deleteModalImage,
   cleanupGridObjectUrls,
-  initializeImageHistory
+  initializeImageHistory,
+  setHistoryFilter,
+  getHistoryFilter
 };
