@@ -1,6 +1,6 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
-Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images using AI models through the Chutes API. The application runs entirely client-side in the browser - only the API key and generated images are processed.
+Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos using AI models through the Chutes API. The application runs entirely client-side in the browser - only the API key and generated media are processed.
 
 **ALWAYS reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.**
 
@@ -42,6 +42,23 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 8. Test "Auto" resolution preset shows model default dimensions
 
 #### Image Edit Mode Testing:
+#### Video Generation Mode Testing:
+1. Switch to "Video Generation" mode
+2. Choose a video model: "Wan2.1 14b Video" or "Skyreels"
+3. Toggle sub-mode:
+  - Text to Video: enter a prompt
+  - Image to Video: upload a source image and enter a prompt
+4. Resolution presets:
+  - Defaults reflect model enums (Wan uses "W*H"; Skyreels uses "WxH")
+  - For Wan Image-to-Video specifically, resolution is not applicable and the control is hidden
+5. Set/leave FPS, Frames, Steps, CFG; empty fields use model placeholders/defaults
+6. Generate and verify:
+  - Result panel shows a playable video
+  - Download button saves .mp4; Copy copies URL
+  - "Send to Image Edit" is hidden for videos
+7. Generation History:
+  - New entries appear as videos with first-frame thumbnails
+  - Modal opens as "Video Preview" with a playable element and "Download Video"
 1. Switch to "Image Edit" mode  
 2. Upload a test image (any jpg/png)
 3. Verify the image appears in the thumbnail
@@ -79,7 +96,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ├── CACHE-BUSTING.md        # Cache management details
 ├── js/                     # Modular JavaScript files
 │   ├── main.js             # Entry point, coordinates all modules
-│   ├── models.js           # MODEL_CONFIGS and model definitions
+│   ├── models.js           # MODEL_CONFIGS and VIDEO_MODEL_CONFIGS definitions
 │   ├── api.js              # API communication (quota, generate, etc.)
 │   ├── storage.js          # localStorage/IndexedDB operations
 │   ├── ui.js               # UI state management and DOM manipulation
@@ -176,11 +193,15 @@ resolutions: [
 ## Technical Notes
 
 ### API Integration:
-- Uses Chutes API endpoints for image generation
+- Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Supports multiple models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b
-- Wan2.1 14b uses a dedicated endpoint and only supports a fixed set of resolutions (see model schema).
+- Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image)
+- Video models: Wan2.1 14b Video and Skyreels
+- Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
 - Image Edit mode uses Qwen Image Edit endpoint specifically
+ - Video mode specifics:
+   - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift` and `single_frame`.
+   - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.
 
 ### PWA Features:
 - Service worker for offline app shell caching
@@ -207,8 +228,31 @@ resolutions: [
 - **API key required**: Enter valid Chutes API key in the API Key section
 - **CORS errors**: Chutes API endpoints are properly configured for browser requests
 - **Image upload failures**: Verify file is a valid image format (jpg, png, etc.)
-- **Model parameters not updating**: Check MODEL_CONFIGS definition in `js/models.js` for the selected model
+- **Model parameters not updating**: Check MODEL_CONFIGS / VIDEO_MODEL_CONFIGS definition in `js/models.js` for the selected model
 - **Cache not updating**: Run `node update-cache-version.js` before deployment
+ - **Wan i2v resolution**: If resolution appears for Wan image-to-video, ensure the UI toggle hides the resolution preset and that payload omits `resolution`.
+
+## Video-specific Implementation Notes
+
+### UI
+- `index.html` contains a Video Generation mode and a sub-mode toggle (Text↔Image)
+- `js/ui.js`:
+  - `switchMode('video-generation')` filters models to VIDEO_MODEL_CONFIGS and disables manual width/height
+  - `updateParametersForVideoGeneration()` populates resolution presets from model enums
+  - `updateVideoModeUI()` hides resolution controls for Wan image-to-video specifically
+
+### Models
+- `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints and parameter limits for Wan and Skyreels
+
+### API
+- `js/api.js` has `generateVideo(endpoint, apiKey, body)` that posts flat JSON and returns an mp4 `Blob`
+- `js/eventListeners.js` builds video payloads:
+  - Wan text2video: include `resolution` ("W*H"); image2video: omit `resolution` and add `image_b64`
+  - Skyreels: include `resolution` ("WxH"); image2video: add `image_b64`
+
+### History & Modal
+- `js/imageHistory.js`: saves videos with type `video`; grid uses first-frame thumbnails; selection/bulk delete works for mixed media
+- `js/modal.js`: Detects `type==='video'`, switches to Video Preview, hides Send to Edit, and downloads as .mp4
 
 ### Development Tips:
 - Use browser DevTools Network tab to debug API calls

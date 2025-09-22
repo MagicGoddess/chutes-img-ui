@@ -857,6 +857,20 @@ export function updateVideoModeUI() {
   if (els.sourceImageRequired) {
     els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
   }
+
+  // Hide resolution UI for Wan image-to-video (no resolution in payload)
+  const isWanVideoModel = currentModel === 'wan2.1-14b-video';
+  const shouldHideResolution = isWanVideoModel && isImage2Video;
+  // Resolution preset container (first column)
+  const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;
+  if (rpContainer) {
+    rpContainer.style.display = shouldHideResolution ? 'none' : '';
+  }
+  // Width/Height containers (second and third columns)
+  const wContainer = els.width ? els.width.parentElement : null;
+  const hContainer = els.height ? els.height.parentElement : null;
+  if (wContainer) wContainer.style.display = shouldHideResolution ? 'none' : '';
+  if (hContainer) hContainer.style.display = shouldHideResolution ? 'none' : '';
 }
 
 /**

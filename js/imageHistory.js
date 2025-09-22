@@ -247,7 +247,7 @@ function selectNoneImages() {
 async function deleteSelectedImages() {
   if (selectedImages.size === 0) return;
   
-  if (!confirm(`Delete ${selectedImages.size} selected image(s)? This cannot be undone.`)) {
+  if (!confirm(`Delete ${selectedImages.size} selected generations(s)? This cannot be undone.`)) {
     return;
   }
   
@@ -328,10 +328,10 @@ function refreshImageGrid() {
         img.settings.resolution || 'Unknown' : 
         `${img.settings.width || '?'}×${img.settings.height || '?'}`;
       
-      // For videos, show a video icon overlay
+      // For videos, show a captured first-frame thumbnail (with hidden video for capture)
       const mediaContent = isVideo ? 
         `<div class="video-thumbnail" data-image-id-src="${img.imageKey || ''}">
-           <div class="video-icon">🎬</div>
+           <img class="video-thumb" alt="Video thumbnail" />
            <video style="display:none;" data-image-id-src="${img.imageKey || ''}" muted preload="metadata"></video>
          </div>` :
         `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`;
@@ -384,21 +384,41 @@ function refreshImageGrid() {
         
         const isVideo = img.settings?.type === 'video';
         if (isVideo) {
-          // Update video thumbnail
+          // Update video thumbnail: set video source and capture first frame to an image
           const videoEl = document.querySelector(`video[data-image-id-src="${img.imageKey}"]`);
           if (videoEl) {
             videoEl.src = objectUrl;
-            // Try to capture a frame for thumbnail
-            videoEl.addEventListener('loadedmetadata', () => {
-              videoEl.currentTime = 1; // Seek to 1 second for thumbnail
-            });
-            videoEl.addEventListener('loadeddata', () => {
-              // Video is ready, could capture frame here if needed
-              const thumbnailDiv = videoEl.parentElement;
-              if (thumbnailDiv) {
-                thumbnailDiv.style.background = 'linear-gradient(45deg, #666, #333)';
+            const thumbnailDiv = videoEl.parentElement;
+            const drawFrame = () => {
+              try {
+                if (!thumbnailDiv) return;
+                const canvas = document.createElement('canvas');
+                const vw = videoEl.videoWidth || 320;
+                const vh = videoEl.videoHeight || 240;
+                canvas.width = vw;
+                canvas.height = vh;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoEl, 0, 0, vw, vh);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                const imgNode = thumbnailDiv.querySelector('img.video-thumb');
+                if (imgNode) imgNode.src = dataUrl;
+              } catch (e) {
+                console.warn('Failed to capture video frame for thumbnail', e);
               }
-            });
+            };
+            videoEl.addEventListener('loadedmetadata', () => {
+              // Seek a tiny bit into the video to ensure a decodable frame
+              const t = videoEl.duration && isFinite(videoEl.duration) ? Math.min(0.1, Math.max(0, videoEl.duration - 0.01)) : 0.1;
+              try { videoEl.currentTime = t; } catch (_) {}
+            }, { once: true });
+            videoEl.addEventListener('seeked', () => {
+              drawFrame();
+            }, { once: true });
+            // Fallback in case seeked doesn't fire but data is ready
+            videoEl.addEventListener('loadeddata', () => {
+              const imgNode = thumbnailDiv?.querySelector('img.video-thumb');
+              if (imgNode && !imgNode.src) drawFrame();
+            }, { once: true });
           }
         } else {
           // Update image

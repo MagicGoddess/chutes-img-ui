@@ -74,6 +74,8 @@ export function setupEventListeners() {
     } else if (currentMode === 'video-generation') {
       updateVideoParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
+      // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
+      updateVideoModeUI();
     }
   });
 
@@ -248,15 +250,18 @@ export function setupEventListeners() {
           // Build body for Wan2.1 14b video model
           const payload = { prompt };
           
-          // Add resolution - Wan2.1 14b uses '*' format like '832*480'
-          let resolutionStr;
-          if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
-            // Convert 'x' format to '*' format for Wan2.1 14b
-            resolutionStr = els.resolutionPreset.value.replace('x', '*');
-          } else {
-            resolutionStr = videoConfig.params.resolution.default;
+          // Resolution applies only to text-to-video for Wan
+          const isI2V = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+          if (!isI2V) {
+            let resolutionStr;
+            if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
+              // Convert 'x' format to '*' format for Wan2.1 14b
+              resolutionStr = els.resolutionPreset.value.replace('x', '*');
+            } else {
+              resolutionStr = videoConfig.params.resolution.default;
+            }
+            payload.resolution = resolutionStr;
           }
-          payload.resolution = resolutionStr;
           
           // Add video-specific parameters with proper null handling
           if (els.fps.value) {
