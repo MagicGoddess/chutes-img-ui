@@ -884,22 +884,13 @@ export function restoreModelSelectForImages() {
   const currentSelection = modelSelect.value;
   
   // Clear and repopulate with image models
-  modelSelect.innerHTML = `
-    <option value="hidream">Hidream</option>
-    <option value="qwen-image">Qwen Image</option>
-    <option value="flux-dev">FLUX.1 Dev</option>
-    <option value="juggernaut-xl">JuggernautXL</option>
-    <option value="chroma">Chroma</option>
-    <option value="ilust-mix">iLustMix</option>
-    <option value="neta-lumina">Neta Lumina</option>
-    <option value="wan2.1-14b">Wan2.1 14b</option>
-    <option value="nova-anime3d-xl">Nova Anime3d Xl</option>
-    <option value="illustrij">Illustrij</option>
-    <option value="orphic-lora">Orphic Lora</option>
-    <option value="animij">Animij</option>
-    <option value="hassaku-xl">HassakuXL</option>
-    <option value="nova-cartoon-xl">Nova Cartoon Xl</option>
-  `;
+  modelSelect.innerHTML = Object.entries(MODEL_CONFIGS)
+    .map(([key, config]) => {
+      // Use config.displayName if available, otherwise fallback to key
+      const label = config.displayName || config.name || key;
+      return `<option value="${key}">${label}</option>`;
+    })
+    .join('');
   
   // Try to restore previous selection if it's an image model, otherwise default to hidream
   if (Object.keys(MODEL_CONFIGS).includes(currentSelection)) {
