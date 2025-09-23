@@ -8,8 +8,8 @@ import { dataURLToBlob, ts } from './helpers.js';
 import { log } from './activityLog.js';
 import { toast } from './serviceWorker.js';
 import { 
-  els, currentMode, currentModel, sourceB64, sourceMime,
-  setCurrentModel, setSourceImage, switchMode, updateParametersForModel,
+  els, currentMode, currentModel, sourceB64, sourceMime, sourceB64s, sourceMimes,
+  setCurrentModel, setSourceImage, setSourceImages, switchMode, updateParametersForModel,
   toggleDimInputs, applyPreset, sync, setImgThumbContent
 } from './ui.js';
 import { findPresetForDimensions } from './imageUtils.js';
@@ -101,7 +101,9 @@ async function migrateLocalStorageToIdb() {
 async function saveGeneratedImage(contentBlob, settings) {
   const id = Date.now() + Math.random().toString(36).substr(2, 9);
   const contentKey = `${id}:${settings.type || 'img'}`;
-  const sourceKey = sourceB64 ? `${id}:src` : null;
+  const hasMultipleSources = Array.isArray(sourceB64s) && sourceB64s.length > 1;
+  const sourceKey = (!hasMultipleSources && sourceB64) ? `${id}:src` : null;
+  const sourceKeys = hasMultipleSources ? sourceB64s.map((_, idx) => `${id}:src${idx}`) : null;
 
   // Save blobs to IDB first
   try {
@@ -111,6 +113,14 @@ async function saveGeneratedImage(contentBlob, settings) {
       const srcDataUrl = `data:${sourceMime};base64,${sourceB64}`;
       const srcBlob = dataURLToBlob(srcDataUrl);
       await idbPutBlob(sourceKey, srcBlob, srcBlob.type || 'image/jpeg');
+    } else if (sourceKeys && sourceB64s && sourceB64s.length) {
+      for (let i = 0; i < sourceB64s.length; i++) {
+        const b64 = sourceB64s[i];
+        const mime = sourceMimes[i] || 'image/jpeg';
+        const dataUrl = `data:${mime};base64,${b64}`;
+        const sblob = dataURLToBlob(dataUrl);
+        await idbPutBlob(sourceKeys[i], sblob, sblob.type || 'image/jpeg');
+      }
     }
   } catch (e) {
     console.warn('Failed to store content in IndexedDB, falling back to localStorage for data', e);
@@ -121,7 +131,8 @@ async function saveGeneratedImage(contentBlob, settings) {
       const contentData = {
         id,
         imageData: reader.result, // Keep as imageData for backwards compatibility
-        sourceImageData: sourceB64 ? `data:${sourceMime};base64,${sourceB64}` : null,
+        sourceImageData: (!hasMultipleSources && sourceB64) ? `data:${sourceMime};base64,${sourceB64}` : null,
+        sourceImageDatas: (hasMultipleSources && sourceB64s) ? sourceB64s.map((b64,i)=>`data:${sourceMimes[i]||'image/jpeg'};base64,${b64}`) : null,
         settings: {
           ...settings,
           mode: currentMode,
@@ -145,6 +156,7 @@ async function saveGeneratedImage(contentBlob, settings) {
     id,
     imageKey: contentKey, // Keep as imageKey for backwards compatibility
     sourceKey,
+    sourceKeys,
     settings: {
       ...settings,
       mode: currentMode,

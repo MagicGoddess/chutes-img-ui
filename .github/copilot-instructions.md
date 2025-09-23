@@ -2,8 +2,9 @@
 
 Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
 
-API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for both image and video models:
+API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, and video models:
   - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
+  - Image Edit models: defined in `EDIT_MODEL_CONFIGS`; use `parameterMapping` plus `imageInput` to indicate single vs multiple images (`image_b64` vs `image_b64s`).
   - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
   - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
 
@@ -49,6 +50,13 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 8. Test "Auto" resolution preset shows model default dimensions
 
 #### Image Edit Mode Testing:
+1. Switch to "Image Edit" mode
+2. Verify a Model dropdown is visible with options: "Qwen Image Edit" and "Qwen Image Edit 2509"
+3. Select Qwen Image Edit: upload one image; verify multi-upload hint is hidden; Auto resolution shows derive-from-source; Generate works
+4. Switch to Qwen Image Edit 2509: upload multiple images (2-3); verify the hint appears and thumbnails show all selected images; Auto uses first for dimensions; Generate works
+5. History: entries for multi-image edits should save all source images; in the modal, "Download Sources" triggers downloads for each source
+6. Switching back from 2509 to Qwen Image Edit should keep only the first source image
+7. Sending an image from history to Image Edit should still load it as the single source; switching models preserves the uploaded image(s) per capability
 #### Video Generation Mode Testing:
 1. Switch to "Video Generation" mode
 2. Choose a video model: "Wan2.1 14b Video" or "Skyreels"
@@ -122,7 +130,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 
 #### Modular Architecture:
 - `js/main.js`: Entry point that imports and coordinates all modules
-- `js/models.js`: Contains `MODEL_CONFIGS` with all AI model definitions
+- `js/models.js`: Contains `MODEL_CONFIGS`, `EDIT_MODEL_CONFIGS`, and `VIDEO_MODEL_CONFIGS` with model definitions
 - `js/api.js`: API communication functions for quota and image generation
 - `js/ui.js`: DOM element references, UI state management, event handlers
 - `js/storage.js`: localStorage and IndexedDB operations for persistence
@@ -133,7 +141,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 - `js/serviceWorker.js`: Service worker registration and update handling
 
 #### Model Configuration:
-Models are defined in `js/models.js` with:
+Image/text models are defined in `js/models.js` with:
 - `name`: Display name
 - `endpoint`: API endpoint URL  
 - `modelName`: API model parameter (for some models)
@@ -179,6 +187,15 @@ params: {
 4. Test with both default and edge-case parameter values
 5. Verify model switching updates UI controls correctly and payload uses correct parameter names
 
+#### Adding a New Image Edit Model:
+1. Add a new entry to `EDIT_MODEL_CONFIGS` with:
+  - `endpoint`
+  - `params` including `width`, `height`, `true_cfg_scale`/`guidance_scale`, `num_inference_steps`, `seed`, `negative_prompt`
+  - `parameterMapping` to map UI `cfgScale` and `steps`
+  - `imageInput`: `{ type: 'single'|'multiple', field: 'image_b64'|'image_b64s', maxItems }`
+2. The UI will automatically enable multiple file selection and show a hint when `type==='multiple'`.
+3. The request payload will include `image_b64` or `image_b64s` accordingly and apply model defaults.
+4. History will store one or many source images and allow downloading all sources from the modal.
 #### Adding a New Video Model:
 1. Add an entry to `VIDEO_MODEL_CONFIGS` with:
   - `endpoints` for `text2video` and `image2video`
@@ -221,9 +238,10 @@ params: {
 - Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
 - Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image)
+- Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
 - Video models: Wan2.1 14b Video and Skyreels
 - Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
-- Image Edit mode uses Qwen Image Edit endpoint specifically
+- Image Edit mode uses image-edit model endpoints from `EDIT_MODEL_CONFIGS`
  - Video mode specifics:
    - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift` and `single_frame`.
    - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.

@@ -258,6 +258,25 @@ button:disabled {
   object-fit: contain;
 }
 
+/* When multiple images are displayed in the source thumb, use a grid layout */
+#imgThumb.multi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  width: 100%;
+  align-items: start;
+  justify-items: center;
+}
+
+#imgThumb.multi-grid img {
+  width: 100%;
+  height: auto;
+  max-width: none; /* allow grid cell to control width */
+  max-height: 200px; /* keep rows compact */
+  object-fit: cover;
+  border-radius: 8px;
+}
+
 .muted {
   color: var(--muted);
   font-size: 13px

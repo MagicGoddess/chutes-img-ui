@@ -1,6 +1,6 @@
 // UI state management and DOM manipulation
 
-import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS } from './models.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS } from './models.js';
 import { PRESETS, findPresetForDimensions, computeAutoDims } from './imageUtils.js';
 import { clamp, snap, ts, fileToBase64 } from './helpers.js';
 import { log } from './activityLog.js';
@@ -58,9 +58,12 @@ export const els = {
 
 // Current application state
 export let currentMode = 'image-edit';
-export let currentModel = 'hidream';
+export let currentModel = 'qwen-image-edit-2509';
 export let sourceB64 = null; 
 export let sourceMime = null; 
+// Support multiple sources for edit models that accept arrays
+export let sourceB64s = [];
+export let sourceMimes = [];
 export let lastBlobUrl = null;
 export let autoDimsCache = null; // {w,h}
 let imgThumbObjectUrl = null; // Track object URL for imgThumb to prevent memory leaks
@@ -102,6 +105,21 @@ export function setCurrentModel(model) {
 export function setSourceImage(b64, mime) {
   sourceB64 = b64;
   sourceMime = mime;
+}
+
+/**
+ * Sets multiple source images (for edit models that accept multiple)
+ * @param {string[]} b64s
+ * @param {string[]} mimes
+ */
+export function setSourceImages(b64s, mimes) {
+  sourceB64s = Array.isArray(b64s) ? b64s : [];
+  sourceMimes = Array.isArray(mimes) ? mimes : [];
+  // Also set the primary single source to the first for compatibility
+  if (sourceB64s.length > 0) {
+    sourceB64 = sourceB64s[0];
+    sourceMime = sourceMimes[0] || 'image/jpeg';
+  }
 }
 
 /**
@@ -168,8 +186,10 @@ export async function loadSourceFromBlobOrUrl(input) {
       url = URL.createObjectURL(blob);
     }
 
-    // Update thumbnail and track object URL
-    setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+  // Update thumbnail and track object URL
+  setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+  // Single image -> ensure grid class is removed
+  els.imgThumb.classList.remove('multi-grid');
 
     // Prepare base64 for API
     const reader = new FileReader();
@@ -262,9 +282,11 @@ export function switchMode(mode) {
   currentMode = mode;
   const isTextToImage = mode === 'text-to-image';
   const isVideoGeneration = mode === 'video-generation';
+  const isImageEdit = mode === 'image-edit';
   
   // Update UI visibility
-  els.modelRow.style.display = (isTextToImage || isVideoGeneration) ? 'block' : 'none';
+  // Show model select for text-to-image, video-generation, and image-edit (edit models)
+  els.modelRow.style.display = (isTextToImage || isVideoGeneration || isImageEdit) ? 'block' : 'none';
   els.sourceImageSection.style.display = (isTextToImage) ? 'none' : 'block';
   
   // Show/hide video mode toggle
@@ -315,9 +337,14 @@ export function switchMode(mode) {
     // Hide autoDims element in text-to-image mode - auto dims are not applicable here
     if (els.autoDims) { els.autoDims.style.display = 'none'; els.autoDims.textContent = ''; }
   } else {
-    // Restore original image edit controls
-    restoreModelSelectForImages();
-    updateParametersForImageEdit();
+    // Image Edit: populate with edit models and update parameters
+    restoreModelSelectForImageEdit();
+    // Ensure currentModel is a valid edit model
+    if (!EDIT_MODEL_CONFIGS[currentModel]) {
+      currentModel = Object.keys(EDIT_MODEL_CONFIGS)[0];
+      els.modelSelect.value = currentModel;
+    }
+    updateParametersForEditModel(currentModel);
   }
   
   // Update source image visibility based on video sub-mode
@@ -371,6 +398,91 @@ export function updateParametersForImageEdit() {
   els.negPrompt.placeholder = 'Things to avoid (optional)';
   
   sync();
+}
+
+/**
+ * Updates parameters for a specific Image Edit model
+ * @param {string} modelKey - The edit model key to update parameters for
+ */
+export function updateParametersForEditModel(modelKey) {
+  const config = EDIT_MODEL_CONFIGS[modelKey];
+  if (!config) return;
+  currentModel = modelKey;
+  const params = config.params || {};
+
+  // Update CFG and Steps placeholders/ranges
+  const cfgParam = params.true_cfg_scale || params.guidance_scale || params.cfg;
+  if (cfgParam) {
+    els.cfg.min = cfgParam.min;
+    els.cfg.max = cfgParam.max;
+    els.cfg.step = cfgParam.step;
+    els.cfg.placeholder = cfgParam.default;
+    els.cfg.value = '';
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) cfgLabel.textContent = `CFG Scale (${cfgParam.min}–${cfgParam.max})`;
+  }
+  const stepsParam = params.num_inference_steps || params.steps;
+  if (stepsParam) {
+    els.steps.min = stepsParam.min;
+    els.steps.max = stepsParam.max;
+    els.steps.step = stepsParam.step;
+    els.steps.placeholder = stepsParam.default;
+    els.steps.value = '';
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) stepsLabel.textContent = `Inference Steps (${stepsParam.min}–${stepsParam.max})`;
+  }
+
+  // Width/Height constraints
+  if (params.width) {
+    els.width.min = params.width.min;
+    els.width.max = params.width.max;
+    els.width.step = params.width.step;
+  }
+  if (params.height) {
+    els.height.min = params.height.min;
+    els.height.max = params.height.max;
+    els.height.step = params.height.step;
+  }
+  // Set resolution preset options for image-edit
+  updateParametersForImageEdit();
+
+  // Negative prompt placeholder
+  const negPromptParam = params.negative_prompt;
+  if (negPromptParam && negPromptParam.default !== undefined) {
+    els.negPrompt.placeholder = `Things to avoid (optional)` + (negPromptParam.default ? `\nDefault: ${negPromptParam.default}` : '');
+  } else {
+    els.negPrompt.placeholder = 'Things to avoid (optional)';
+  }
+
+  // File input multi-selection based on model capability
+  const imgCap = config.imageInput || { type: 'single', maxItems: 1 };
+  if (els.imgInput) {
+    if (imgCap.type === 'multiple') {
+      els.imgInput.setAttribute('multiple', 'multiple');
+      const hint = document.getElementById('multiImageHint');
+      if (hint) hint.style.display = '';
+    } else {
+      els.imgInput.removeAttribute('multiple');
+      const hint = document.getElementById('multiImageHint');
+      if (hint) hint.style.display = 'none';
+      // If we currently have multiple images selected, trim to first
+      if (sourceB64s && sourceB64s.length > 1) {
+        setSourceImages([sourceB64s[0]], [sourceMimes[0] || 'image/jpeg']);
+        // Update thumbnail to show only first image
+        const url = lastSourceObjectUrl();
+        if (url) {
+          setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+          els.imgThumb.classList.remove('multi-grid');
+        } else if (sourceB64) {
+          setImgThumbContent(`<img src="data:${sourceMime};base64,${sourceB64}" alt="source"/>`);
+          els.imgThumb.classList.remove('multi-grid');
+        }
+      }
+    }
+  }
+
+  sync();
+  log(`[${ts()}] Updated parameters for ${config.name} (Image Edit)`);
 }
 
 /**
@@ -654,6 +766,8 @@ export async function handleImageFile(file) {
   if (!file) { 
     setImgThumbContent('<span class="muted">No image selected</span>'); 
     sourceB64 = null; 
+    // Clear grid state when nothing is selected
+    els.imgThumb.classList.remove('multi-grid');
     return; 
   }
   if (!(file.type || '').startsWith('image/')) { 
@@ -664,10 +778,14 @@ export async function handleImageFile(file) {
   
   const url = URL.createObjectURL(file);
   setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+  // Single image -> ensure grid class is removed
+  els.imgThumb.classList.remove('multi-grid');
   log(`[${ts()}] Reading file: ${file.name}`);
   const b64 = await fileToBase64(file);
   sourceB64 = (b64 || '').split(',')[1] || null;
   sourceMime = file.type || 'image/png';
+  // Keep multi-image state in sync as [single]
+  setSourceImages(sourceB64 ? [sourceB64] : [], sourceMime ? [sourceMime] : []);
   log(`[${ts()}] Image ready (Base64 in memory).`);
 
   // If the user has the resolution preset set to "auto", compute auto dims
@@ -694,6 +812,58 @@ export async function handleImageFile(file) {
   } catch (err) {
     // computeAndDisplayAutoDims already updates UI on failure; log for debugging
     console.warn('Failed to compute auto dimensions on drop:', err);
+  }
+}
+
+/**
+ * Handles multiple image file selection for edit models that support it
+ * @param {FileList|File[]} files
+ */
+export async function handleImageFiles(files) {
+  const arr = Array.from(files || []).filter(f => (f.type || '').startsWith('image/'));
+  if (!arr.length) {
+    setImgThumbContent('<span class="muted">No image selected</span>');
+    setSourceImages([], []);
+    // Clear grid state
+    els.imgThumb.classList.remove('multi-grid');
+    return;
+  }
+  // Determine allowed max
+  const cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { maxItems: 1 };
+  const maxItems = Math.max(1, cfg.maxItems || 1);
+  const sel = arr.slice(0, maxItems);
+
+  // Build previews and base64 arrays
+  const htmlParts = [];
+  const b64s = [];
+  const mimes = [];
+  for (const f of sel) {
+    const url = URL.createObjectURL(f);
+    // Track each URL? imgThumb only tracks a single objectUrl; instead we won't track here.
+    htmlParts.push(`<img src="${url}" alt="source"/>`);
+    const b64 = await fileToBase64(f);
+    const b64Data = (b64 || '').split(',')[1] || '';
+    b64s.push(b64Data);
+    mimes.push(f.type || 'image/jpeg');
+  }
+  // Set thumbnail with multiple images (no single object URL tracking)
+  setImgThumbContent(htmlParts.join(''));
+  // Toggle grid class when more than one image is selected
+  els.imgThumb.classList.toggle('multi-grid', sel.length > 1);
+  setSourceImages(b64s, mimes);
+
+  // Auto dims based on the first image
+  if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+    try {
+      const firstImg = els.imgThumb.querySelector('img');
+      if (firstImg) {
+        toggleDimInputs(false);
+        if (els.autoDims) { els.autoDims.style.display = 'block'; els.autoDims.textContent = 'Auto: (waiting for image)'; }
+        await computeAndDisplayAutoDims(firstImg.src);
+      }
+    } catch (err) {
+      console.warn('Failed to compute auto dims for multi-images', err);
+    }
   }
 }
 
@@ -900,5 +1070,29 @@ export function restoreModelSelectForImages() {
   } else {
     modelSelect.value = 'hidream';
     currentModel = 'hidream';
+  }
+}
+
+/**
+ * Populates model select with Image Edit models
+ */
+export function restoreModelSelectForImageEdit() {
+  const modelSelect = els.modelSelect;
+  if (!modelSelect) return;
+
+  const currentSelection = modelSelect.value;
+
+  modelSelect.innerHTML = Object.entries(EDIT_MODEL_CONFIGS)
+    .map(([key, config]) => `<option value="${key}">${config.name || key}</option>`)
+    .join('');
+
+  const keys = Object.keys(EDIT_MODEL_CONFIGS);
+  if (keys.includes(currentSelection)) {
+    modelSelect.value = currentSelection;
+    currentModel = currentSelection;
+  } else {
+    const def = keys[0] || 'qwen-image-edit';
+    modelSelect.value = def;
+    currentModel = def;
   }
 }

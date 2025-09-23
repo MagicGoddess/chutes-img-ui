@@ -1,6 +1,6 @@
 // Event listeners setup - centralizes all UI event bindings
 
-import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS } from './models.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS } from './models.js';
 import { generateImage, generateVideo } from './api.js';
 import { 
   getStoredApiKey, saveApiKey, removeApiKey 
@@ -14,12 +14,12 @@ import {
   downloadModalSourceImage, getCurrentModalImage 
 } from './modal.js';
 import {
-  els, currentMode, currentModel, sourceB64, lastBlobUrl, autoDimsCache,
+  els, currentMode, currentModel, sourceB64, sourceB64s, lastBlobUrl, autoDimsCache,
   setLastBlobUrl, createResultImg, hasResultImg, getResultImgElement, sync,
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
-  applyPreset, handleImageFile, setSourceImage, setImgThumbContent,
-  updateVideoModeUI, updateVideoParametersForModel
+  applyPreset, handleImageFile, handleImageFiles, setSourceImage, setSourceImages, setImgThumbContent,
+  updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -76,6 +76,9 @@ export function setupEventListeners() {
       setCurrentModel(els.modelSelect.value);
       // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
       updateVideoModeUI();
+    } else if (currentMode === 'image-edit') {
+      setCurrentModel(els.modelSelect.value);
+      updateParametersForEditModel(els.modelSelect.value);
     }
   });
 
@@ -107,28 +110,36 @@ export function setupEventListeners() {
     els.revealKeyBtn.setAttribute('aria-pressed', String(isPwd));
   });
 
-  // Image preview
+  // Image preview (single or multiple depending on model)
   els.imgInput.addEventListener('change', async (e)=>{
-    const f = e.target.files?.[0];
-    if (!f) { 
+    const files = e.target.files;
+    if (!files || files.length === 0) { 
       setImgThumbContent('<span class="muted">No image selected</span>'); 
-      setSourceImage(null, null); 
+      setSourceImage(null, null);
+      setSourceImages([], []); 
+      // Clear any multi-grid state
+      els.imgThumb.classList.remove('multi-grid');
       return; 
     }
-    
-    const mime = f.type || 'image/png';
-    const url = URL.createObjectURL(f);
-    setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
-    log(`[${ts()}] Reading file: ${f.name}`);
-    const b64 = await fileToBase64(f);
-    // Strip data URL header; API expects pure base64 string
-    const b64Data = b64.split(',')[1];
-    setSourceImage(b64Data, mime);
-    log(`[${ts()}] Image ready (Base64 in memory).`);
-    
-    // After image loads, if Auto preset selected compute dims
-    if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
-      await computeAndDisplayAutoDims(url);
+    if (currentMode === 'image-edit' && EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple') {
+      await handleImageFiles(files);
+    } else {
+      const f = files[0];
+      if (!f) return;
+      const mime = f.type || 'image/png';
+      const url = URL.createObjectURL(f);
+      setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
+      // Single image -> ensure grid class is removed
+      els.imgThumb.classList.remove('multi-grid');
+      log(`[${ts()}] Reading file: ${f.name}`);
+      const b64 = await fileToBase64(f);
+      const b64Data = b64.split(',')[1];
+      setSourceImage(b64Data, mime);
+      setSourceImages([b64Data], [mime]);
+      log(`[${ts()}] Image ready (Base64 in memory).`);
+      if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+        await computeAndDisplayAutoDims(url);
+      }
     }
   });
 
@@ -209,28 +220,43 @@ export function setupEventListeners() {
       let endpoint;
       
       if (currentMode === 'image-edit') {
-        // Image editing logic - use Qwen Image Edit defaults if inputs are empty
-        const qwenEditDefaults = { steps: 50, cfg: 4 }; // Default values for Qwen Image Edit
-        const steps = els.steps.value ? clamp(parseInt(els.steps.value,10), 5, 100) : qwenEditDefaults.steps;
-        const cfg = els.cfg.value ? clamp(parseFloat(els.cfg.value), 0, 10) : qwenEditDefaults.cfg;
-        const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
-        const prompt = els.prompt.value.trim(); 
+        // Image edit (config-driven)
+        const editCfg = EDIT_MODEL_CONFIGS[currentModel] || EDIT_MODEL_CONFIGS['qwen-image-edit'];
+        if (!editCfg) return toast('Invalid image edit model selected', true);
+        const pmap = editCfg.parameterMapping || { cfgScale: 'true_cfg_scale', steps: 'num_inference_steps' };
+
+        const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
         const negative_prompt = els.negPrompt.value.trim();
+        const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
+        // Resolve cfg/steps using placeholders when empty
+        const stepsMin = editCfg.params?.num_inference_steps?.min ?? 5;
+        const stepsMax = editCfg.params?.num_inference_steps?.max ?? 100;
+        const stepsDef = editCfg.params?.num_inference_steps?.default ?? 50;
+        const cfgMin = editCfg.params?.true_cfg_scale?.min ?? 0;
+        const cfgMax = editCfg.params?.true_cfg_scale?.max ?? 10;
+        const cfgDef = editCfg.params?.true_cfg_scale?.default ?? 4;
+        const steps = els.steps.value ? clamp(parseInt(els.steps.value,10), stepsMin, stepsMax) : stepsDef;
+        const cfg = els.cfg.value ? clamp(parseFloat(els.cfg.value), cfgMin, cfgMax) : cfgDef;
 
-        // Build FLAT body (endpoint expects top-level fields)
-        body = {
-          width,
-          height,
-          prompt,
-          image_b64: sourceB64,
-          true_cfg_scale: cfg,
-          num_inference_steps: steps
-        };
-        if (negative_prompt) body.negative_prompt = negative_prompt;
-        if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
-        
-        endpoint = 'https://chutes-qwen-image-edit.chutes.ai/generate';
+        const payload = { width, height, prompt };
+        payload[pmap.cfgScale || 'true_cfg_scale'] = cfg;
+        payload[pmap.steps || 'num_inference_steps'] = steps;
+        if (negative_prompt) payload.negative_prompt = negative_prompt;
+        if (seedVal !== null && !Number.isNaN(seedVal)) payload.seed = seedVal;
+
+        // Attach images based on model capability
+        const imgCap = editCfg.imageInput || { type: 'single', field: 'image_b64' };
+        if (imgCap.type === 'multiple') {
+          const maxItems = Math.max(1, imgCap.maxItems || 1);
+          const imgs = Array.isArray(sourceB64s) && sourceB64s.length ? sourceB64s.slice(0, maxItems) : (sourceB64 ? [sourceB64] : []);
+          payload[imgCap.field || 'image_b64s'] = imgs;
+        } else {
+          payload[imgCap.field || 'image_b64'] = sourceB64;
+        }
+
+        body = payload;
+        endpoint = editCfg.endpoint;
       } else if (currentMode === 'video-generation') {
         // Video generation logic (config-driven)
         const prompt = els.prompt.value.trim();
@@ -411,7 +437,7 @@ export function setupEventListeners() {
       // Determine what we're generating for logging
       let generationType;
       if (currentMode === 'image-edit') {
-        generationType = 'Qwen Image Edit';
+        generationType = `${EDIT_MODEL_CONFIGS[currentModel]?.name || currentModel}`;
       } else if (currentMode === 'video-generation') {
         const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
         generationType = `${VIDEO_MODEL_CONFIGS[currentModel]?.name || currentModel} (${videoMode})`;
@@ -420,7 +446,12 @@ export function setupEventListeners() {
       }
       
       log(`[${ts()}] Sending request to ${generationType}…`);
-      log(`[${ts()}] Request body: ${JSON.stringify(body, (key, value) => (key === 'image_b64' && typeof value === 'string') ? `${value.substring(0, 40)}...[truncated]` : value, 2)}`);
+      const redactor = (key, value) => {
+        if ((key === 'image_b64') && typeof value === 'string') return `${value.substring(0, 40)}...[truncated]`;
+        if (key === 'image_b64s' && Array.isArray(value)) return `[${value.length} images]`;
+        return value;
+      };
+      log(`[${ts()}] Request body: ${JSON.stringify(body, redactor, 2)}`);
       
       const t0 = performance.now();
       

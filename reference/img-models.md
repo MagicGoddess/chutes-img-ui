@@ -1,4 +1,123 @@
 # Chutes Image Models Schemas
+## Qwen Image Edit 2509 (qwen-image-edit-2509)
+
+### Example
+```sh
+curl -X POST \
+		https://chutes-qwen-image-edit-2509.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "seed": null,
+    "width": 1024,
+    "height": 1024,
+    "prompt": "example-string",
+    "image_b64s": [
+      "example-string"
+    ],
+    "true_cfg_scale": 4,
+    "negative_prompt": "",
+    "num_inference_steps": 40
+  }'
+```
+
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt",
+          "image_b64s"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 128
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "image_b64s": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "Image B64S",
+            "maxItems": 3,
+            "minItems": 1
+          },
+          "true_cfg_scale": {
+            "type": "number",
+            "title": "True Cfg Scale",
+            "default": 4,
+            "maximum": 10,
+            "minimum": 0
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 40,
+            "maximum": 100,
+            "minimum": 5
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/jpeg",
+  "minimal_input_schema": null
+}
+```
 ## Qwen Image Edit (qwen-image-edit)
 ### Example
 ```sh

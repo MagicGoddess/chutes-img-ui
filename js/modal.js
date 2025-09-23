@@ -52,6 +52,7 @@ export async function openImageModal(imageId) {
   const modalResolution = document.getElementById('modalResolution');
   const modalSeed = document.getElementById('modalSeed');
   const modalDate = document.getElementById('modalDate');
+  const modalSourceDownloads = document.getElementById('modalSourceDownloads');
   const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
   const modalTitle = document.getElementById('modalTitle');
   const modalDownloadBtn = document.getElementById('modalDownloadBtn');
@@ -113,10 +114,34 @@ export async function openImageModal(imageId) {
   const formattedTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   modalDate.textContent = `${formattedDate} ${formattedTime}`;
   
-  // Show/hide source download button (only relevant for image-edit and image-to-video)
-  if (image.sourceImageData || image.sourceKey) {
-    modalDownloadSourceBtn.style.display = 'inline-flex';
-  } else {
+  // Show/hide source download controls (only relevant for image-edit and image-to-video)
+  const hasAnySource = !!(image.sourceImageData || image.sourceKey || (Array.isArray(image.sourceKeys) && image.sourceKeys.length) || (Array.isArray(image.sourceImageDatas) && image.sourceImageDatas.length));
+  if (modalSourceDownloads) {
+    modalSourceDownloads.style.display = hasAnySource ? 'flex' : 'none';
+    // Clear previous per-source buttons
+    const existing = modalSourceDownloads.querySelectorAll('button[data-source-index]');
+    existing.forEach(btn => btn.remove());
+  }
+  if (hasAnySource) {
+    // Determine how many sources we have
+    const count = (image.sourceKeys && image.sourceKeys.length) ? image.sourceKeys.length : (image.sourceImageDatas && image.sourceImageDatas.length) ? image.sourceImageDatas.length : 1;
+    if (count > 1 && modalSourceDownloads) {
+      // Hide the generic single button and add per-source buttons
+      if (modalDownloadSourceBtn) modalDownloadSourceBtn.style.display = 'none';
+      for (let i = 0; i < count; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'secondary';
+        btn.setAttribute('data-source-index', String(i));
+        btn.innerHTML = `<span>📥</span> Source ${i+1}`;
+        btn.addEventListener('click', () => downloadModalSourceByIndex(i));
+        modalSourceDownloads.appendChild(btn);
+      }
+    } else if (modalDownloadSourceBtn) {
+      // Single source: show the generic button
+      modalDownloadSourceBtn.style.display = 'inline-flex';
+      modalDownloadSourceBtn.innerHTML = '<span>📥</span> Download Source';
+    }
+  } else if (modalDownloadSourceBtn) {
     modalDownloadSourceBtn.style.display = 'none';
   }
 
@@ -219,6 +244,31 @@ export function downloadModalSourceImage() {
       console.warn('Download modal source failed', e);
     }
   })();
+}
+
+// Download a specific source by index for multi-source history entries
+async function downloadModalSourceByIndex(index) {
+  if (!currentModalImage) return;
+  try {
+    if (Array.isArray(currentModalImage.sourceKeys) && currentModalImage.sourceKeys[index]) {
+      const blob = await idbGetBlob(currentModalImage.sourceKeys[index]);
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentModalImage.filename}-source-${index+1}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (Array.isArray(currentModalImage.sourceImageDatas) && currentModalImage.sourceImageDatas[index]) {
+      const href = currentModalImage.sourceImageDatas[index];
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `${currentModalImage.filename}-source-${index+1}.jpg`;
+      a.click();
+    }
+  } catch (e) {
+    console.warn('Download specific source failed', e);
+  }
 }
 
 /**

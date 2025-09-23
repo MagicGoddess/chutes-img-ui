@@ -318,3 +318,55 @@ export const VIDEO_MODEL_CONFIGS = {
     }
   }
 };
+
+// Image Edit model configurations (for Image Edit mode)
+// These define how to build payloads and what the UI should allow for source images
+export const EDIT_MODEL_CONFIGS = {
+  // Place 2509 first so it appears first in the dropdown and becomes default
+  'qwen-image-edit-2509': {
+    name: 'Qwen Image Edit 2509',
+    endpoint: 'https://chutes-qwen-image-edit-2509.chutes.ai/generate',
+    payloadFormat: 'flat',
+    parameterMapping: {
+      cfgScale: 'true_cfg_scale',
+      steps: 'num_inference_steps'
+    },
+    imageInput: {
+      type: 'multiple',
+      field: 'image_b64s',
+      maxItems: 3,
+      minItems: 1
+    },
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      true_cfg_scale: { min: 0, max: 10, default: 4, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 40, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  },
+  'qwen-image-edit': {
+    name: 'Qwen Image Edit',
+    endpoint: 'https://chutes-qwen-image-edit.chutes.ai/generate',
+    payloadFormat: 'flat',
+    // Maps UI concepts to model parameter names
+    parameterMapping: {
+      cfgScale: 'true_cfg_scale',
+      steps: 'num_inference_steps'
+    },
+    imageInput: {
+      type: 'single',
+      field: 'image_b64',
+      maxItems: 1
+    },
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      true_cfg_scale: { min: 0, max: 10, default: 4, step: 0.1 },
+      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      negative_prompt: { default: '' }
+    }
+  }
+};

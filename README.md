@@ -5,7 +5,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports three modes: Image Edit, Text-to-Image, and Video Generation (Text-to-Video / Image-to-Video)
-- Model selector for Text-to-Image and Video Generation (e.g., Hidream, JuggernautXL, Chroma, Wan2.1 14b; Wan2.1 14b Video, Skyreels)
+- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, JuggernautXL, Chroma, Wan2.1 14b; Qwen Image Edit / Qwen Image Edit 2509; Wan2.1 14b Video, Skyreels)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video) handled via dropdown
@@ -26,7 +26,9 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
 - Quota usage endpoint: `GET https://api.chutes.ai/users/me/quota_usage/me`
 - API endpoints:
-  - Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
+  - Image Edit:
+    - Qwen Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
+    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
   - Wan2.1 14b (Image): `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
   - Wan2.1 14b Video:
@@ -36,7 +38,9 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
     - Text-to-Video: `POST https://chutes-skyreels.chutes.ai/generate`
     - Image-to-Video: `POST https://chutes-skyreels.chutes.ai/animate`
 - Request body (flat):
-  - Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
+  - Image Edit:
+    - Qwen Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
+    - Qwen Image Edit 2509: `width`, `height`, `prompt`, `image_b64s` (array, 1–3), `true_cfg_scale`, `num_inference_steps` (default 40), optionally `negative_prompt`, `seed`.
   - **Send to Image Edit**: One-click button on result and in modal to use an image as the source for Image Edit
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
   - Wan2.1 14b (Image): `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `sample_shift`, `seed`, `negative_prompt`.

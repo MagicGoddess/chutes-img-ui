@@ -106,8 +106,9 @@
 
         <div class="row row-2" id="imageInputRow">
           <div id="sourceImageSection">
-            <label>Source Image <span id="sourceImageRequired">(required)</span></label>
+            <label>Source Image(s) <span id="sourceImageRequired">(required)</span></label>
             <input id="imgInput" type="file" accept="image/*" />
+            <div class="muted" id="multiImageHint" style="display:none;margin-top:4px">This model supports multiple source images. You can select up to the model's limit.</div>
             <div class="thumb" id="imgThumb"><span class="muted">No image selected</span></div>
           </div>
           <div class="preview">
@@ -291,9 +292,12 @@
           <button id="modalDownloadBtn" class="secondary">
             <span>📥</span> Download Image
           </button>
-          <button id="modalDownloadSourceBtn" class="secondary" style="display: none;">
-            <span>📥</span> Download Source
-          </button>
+          <div id="modalSourceDownloads" style="display: none; gap: 6px; flex-wrap: wrap; align-items: center;">
+            <button id="modalDownloadSourceBtn" class="secondary">
+              <span>📥</span> Download Source
+            </button>
+            <!-- Per-source buttons will be injected here for multi-source entries -->
+          </div>
           <button id="modalSendToEditBtn" class="secondary">
             <span>↪️</span> Send to Image Edit
           </button>
