@@ -302,7 +302,7 @@ export function switchMode(mode) {
   // Update resolution presets and parameters based on mode
   if (isVideoGeneration) {
     // Set default video model and update parameters
-    currentModel = 'wan2.1-14b-video';
+    currentModel = Object.keys(VIDEO_MODEL_CONFIGS)[0];
     els.modelSelect.value = currentModel;
     updateParametersForVideoGeneration();
     // Hide autoDims in video generation mode
