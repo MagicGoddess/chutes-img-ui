@@ -132,20 +132,22 @@ Models are defined in `js/models.js` with:
 - `modelName`: API model parameter (for some models)
 - `params`: Parameter definitions with min/max/default values
 
-**Resolution Enums for Specific Models:**
-Some models, like Wan2.1 14b, use predefined resolution options instead of free-form width and height inputs. These are defined in the model's `params` object with a `resolutions` array containing objects with `label`, `width`, and `height` properties.
+**Resolution enums for specific models:**
+Some models (e.g., Wan2.1 14b image/video, Skyreels video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`; Skyreels: `WxH`).
 
-Example for Wan2.1 14b:
+Example for Wan2.1 14b image:
 ```javascript
-resolutions: [
-  { label: "1024x1024", width: 1024, height: 1024 },
-  { label: "1280x720", width: 1280, height: 720 },
-  // ... more options
-]
+params: {
+  resolution: {
+    options: ["1280*720", "720*1280", "832*480", "480*832", "1024*1024"],
+    default: "832*480"
+  },
+  // ... other params
+}
 ```
 
-- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has a `resolutions` array. If so, populate the dropdown with the `label` values instead of generating width/height options.
-- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter (e.g., "1024x1024") in the API request instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` for the exact payload structure.
+- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`).
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`, Skyreels uses `WxH`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 - **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
 
 #### Cache Management:
@@ -161,6 +163,14 @@ resolutions: [
 3. Test with both default and edge-case parameter values
 4. For models like Wan2.1 14b, ensure the UI uses the model's supported resolution enum and sends the correct payload shape (see schema).
 5. Verify model switching updates UI controls correctly
+
+#### Adding a New Video Model:
+1. Add an entry to `VIDEO_MODEL_CONFIGS` with:
+  - `endpoints` for `text2video` and `image2video`
+  - `params` including any of: `resolution`, `guidance_scale`, `steps`, `fps`, `frames`, `seed`, `sample_shift`, `single_frame`, `negative_prompt`
+  - Metadata: `payloadFormat` (currently `flat`), `resolutionFormat` (`'star'` or `'x'`), and `includeResolutionIn` (e.g., `['text2video']` for Wan)
+2. The UI will automatically populate resolution presets from `params.resolution.options` and hide resolution controls in modes not listed in `includeResolutionIn`.
+3. The request payload will be built automatically in `js/eventListeners.js` using the metadata and defaults.
 
 #### UI Changes:
 1. Modify HTML structure in `index.html` (add new model to model select)
@@ -239,16 +249,20 @@ resolutions: [
 - `js/ui.js`:
   - `switchMode('video-generation')` filters models to VIDEO_MODEL_CONFIGS and disables manual width/height
   - `updateParametersForVideoGeneration()` populates resolution presets from model enums
-  - `updateVideoModeUI()` hides resolution controls for Wan image-to-video specifically
+  - `updateVideoModeUI()` hides resolution controls based on model metadata (`includeResolutionIn`) so resolution is omitted where not applicable (e.g., Wan image-to-video)
 
 ### Models
-- `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints and parameter limits for Wan and Skyreels
+- `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints, parameter limits, and behavior metadata for video models
+  - `payloadFormat`: request body shape (currently `flat` top-level JSON)
+  - `resolutionFormat`: `'star'` for `W*H` (Wan), `'x'` for `WxH` (Skyreels)
+  - `includeResolutionIn`: which sub-modes include a `resolution` field (e.g., `['text2video']` for Wan)
 
 ### API
-- `js/api.js` has `generateVideo(endpoint, apiKey, body)` that posts flat JSON and returns an mp4 `Blob`
-- `js/eventListeners.js` builds video payloads:
-  - Wan text2video: include `resolution` ("W*H"); image2video: omit `resolution` and add `image_b64`
-  - Skyreels: include `resolution` ("WxH"); image2video: add `image_b64`
+- `js/api.js` has `generateVideo(endpoint, apiKey, body)` that posts flat JSON and returns an mp4 `Blob`.
+- `js/eventListeners.js` builds video payloads using model metadata (no hard-coded model checks):
+  - Includes or omits `resolution` based on `includeResolutionIn`
+  - Formats the resolution string according to `resolutionFormat`
+  - Applies model defaults when UI inputs are empty; includes `image_b64` for image-to-video
 
 ### History & Modal
 - `js/imageHistory.js`: saves videos with type `video`; grid uses first-frame thumbnails; selection/bulk delete works for mixed media

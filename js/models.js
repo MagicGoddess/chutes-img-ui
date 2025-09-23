@@ -189,6 +189,10 @@ export const MODEL_CONFIGS = {
 export const VIDEO_MODEL_CONFIGS = {
   'wan2.1-14b-video': {
     name: 'Wan2.1 14b Video',
+    // Metadata to inform payload construction and UI behavior
+    payloadFormat: 'flat', // flat JSON at top level
+    resolutionFormat: 'star', // resolution expressed as "W*H"
+    includeResolutionIn: ['text2video'], // Wan i2v omits resolution
     endpoints: {
       text2video: 'https://chutes-wan2-1-14b.chutes.ai/text2video',
       image2video: 'https://chutes-wan2-1-14b.chutes.ai/image2video'
@@ -210,6 +214,10 @@ export const VIDEO_MODEL_CONFIGS = {
   },
   'skyreels-video': {
     name: 'Skyreels',
+    // Metadata to inform payload construction and UI behavior
+    payloadFormat: 'flat', // flat JSON at top level
+    resolutionFormat: 'x', // resolution expressed as "WxH"
+    includeResolutionIn: ['text2video', 'image2video'],
     endpoints: {
       text2video: 'https://chutes-skyreels.chutes.ai/generate',
       image2video: 'https://chutes-skyreels.chutes.ai/animate'

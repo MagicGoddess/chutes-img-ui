@@ -858,9 +858,10 @@ export function updateVideoModeUI() {
     els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
   }
 
-  // Hide resolution UI for Wan image-to-video (no resolution in payload)
-  const isWanVideoModel = currentModel === 'wan2.1-14b-video';
-  const shouldHideResolution = isWanVideoModel && isImage2Video;
+  // Hide resolution UI when the selected model omits resolution for image-to-video
+  const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+  const includeRes = Array.isArray(vcfg?.includeResolutionIn) ? vcfg.includeResolutionIn : ['text2video', 'image2video'];
+  const shouldHideResolution = isImage2Video && !includeRes.includes('image2video');
   // Resolution preset container (first column)
   const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;
   if (rpContainer) {

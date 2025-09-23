@@ -232,138 +232,89 @@ export function setupEventListeners() {
         
         endpoint = 'https://chutes-qwen-image-edit.chutes.ai/generate';
       } else if (currentMode === 'video-generation') {
-        // Video generation logic
+        // Video generation logic (config-driven)
         const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
-        
+
         const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
         const videoConfig = VIDEO_MODEL_CONFIGS[currentModel];
         if (!videoConfig) return toast('Invalid video model selected', true);
-        
-        // Get the appropriate endpoint based on video mode
-        endpoint = videoMode === 'image-to-video' ? 
-          videoConfig.endpoints.image2video : 
-          videoConfig.endpoints.text2video;
-        
-        // Build video request body based on model type
-        if (currentModel === 'wan2.1-14b-video') {
-          // Build body for Wan2.1 14b video model
-          const payload = { prompt };
-          
-          // Resolution applies only to text-to-video for Wan
-          const isI2V = els.videoModeImage2Video && els.videoModeImage2Video.checked;
-          if (!isI2V) {
-            let resolutionStr;
-            if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
-              // Convert 'x' format to '*' format for Wan2.1 14b
-              resolutionStr = els.resolutionPreset.value.replace('x', '*');
-            } else {
-              resolutionStr = videoConfig.params.resolution.default;
-            }
-            payload.resolution = resolutionStr;
-          }
-          
-          // Add video-specific parameters with proper null handling
-          if (els.fps.value) {
-            payload.fps = parseInt(els.fps.value);
+
+        // Select endpoint based on sub-mode
+        endpoint = videoMode === 'image-to-video' ? videoConfig.endpoints.image2video : videoConfig.endpoints.text2video;
+
+        // Build payload generically from model config
+        const payload = { prompt };
+
+        // Resolution handling per model metadata
+        const includeRes = Array.isArray(videoConfig.includeResolutionIn) ? videoConfig.includeResolutionIn : ['text2video', 'image2video'];
+        const modeKey = videoMode === 'image-to-video' ? 'image2video' : 'text2video';
+        if (includeRes.includes(modeKey) && videoConfig.params.resolution) {
+          let resStr;
+          const sel = els.resolutionPreset?.value;
+          if (sel && sel !== 'auto' && sel !== 'custom') {
+            resStr = sel; // values in UI match model format
           } else {
-            payload.fps = videoConfig.params.fps.default;
+            resStr = videoConfig.params.resolution.default;
           }
-          
-          if (els.steps.value) {
-            payload.steps = parseInt(els.steps.value);
-          } else {
-            payload.steps = videoConfig.params.steps.default;
+          // Normalize potential display variants just in case
+          if (videoConfig.resolutionFormat === 'star') {
+            resStr = String(resStr).replace('x', '*');
+          } else if (videoConfig.resolutionFormat === 'x') {
+            resStr = String(resStr).replace('*', 'x');
           }
-          
-          if (els.frames.value) {
-            payload.frames = parseInt(els.frames.value);
-          } else {
-            payload.frames = videoConfig.params.frames.default;
-          }
-          
-          if (els.cfg.value) {
-            payload.guidance_scale = parseFloat(els.cfg.value);
-          } else {
-            payload.guidance_scale = videoConfig.params.guidance_scale.default;
-          }
-          
-          if (els.seed.value) {
-            payload.seed = parseInt(els.seed.value);
-          } else {
-            payload.seed = videoConfig.params.seed.default;
-          }
-          
-          // Add optional parameters only if they have values
-          if (els.sampleShift && els.sampleShift.value) {
-            payload.sample_shift = parseFloat(els.sampleShift.value);
-          } else {
-            payload.sample_shift = videoConfig.params.sample_shift.default; // null
-          }
-          
-          if (els.singleFrame && els.singleFrame.value) {
-            payload.single_frame = els.singleFrame.value === 'true';
-          } else {
-            payload.single_frame = videoConfig.params.single_frame.default;
-          }
-          
-          // Add negative prompt
-          const negativePrompt = els.negPrompt.value.trim();
-          if (negativePrompt) {
-            payload.negative_prompt = negativePrompt;
-          } else {
-            payload.negative_prompt = videoConfig.params.negative_prompt.default;
-          }
-          
-          // For image-to-video, add image data
-          if (videoMode === 'image-to-video') {
-            payload.image_b64 = sourceB64;
-          }
-          
-          // Public endpoint expects FLAT JSON (no args wrapper)
-          body = payload;
-        } else if (currentModel === 'skyreels-video') {
-          // Build body for Skyreels video model
-          const payload = { prompt };
-          
-          // Add resolution - Skyreels uses 'x' format like '544x960'
-          let resolutionStr;
-          if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
-            resolutionStr = els.resolutionPreset.value;
-          } else {
-            resolutionStr = videoConfig.params.resolution.default;
-          }
-          payload.resolution = resolutionStr;
-          
-          // Add Skyreels-specific parameters
-          if (els.cfg.value) {
-            payload.guidance_scale = parseFloat(els.cfg.value);
-          } else {
-            payload.guidance_scale = videoConfig.params.guidance_scale.default;
-          }
-          
-          if (els.seed.value) {
-            payload.seed = parseInt(els.seed.value);
-          } else {
-            payload.seed = videoConfig.params.seed.default;
-          }
-          
-          // Add negative prompt
-          const negativePrompt = els.negPrompt.value.trim();
-          if (negativePrompt) {
-            payload.negative_prompt = negativePrompt;
-          } else {
-            payload.negative_prompt = videoConfig.params.negative_prompt.default;
-          }
-          
-          // For image-to-video, add image data
-          if (videoMode === 'image-to-video') {
-            payload.image_b64 = sourceB64;
-          }
-          
-          // Public endpoint expects FLAT JSON (no input_args wrapper)
-          body = payload;
+          payload.resolution = resStr;
         }
+
+        // Parameter mapping from config param names to UI elements
+        const paramToElId = {
+          guidance_scale: 'cfg',
+          steps: 'steps',
+          fps: 'fps',
+          frames: 'frames',
+          seed: 'seed',
+          sample_shift: 'sampleShift',
+          single_frame: 'singleFrame',
+          negative_prompt: 'negPrompt'
+        };
+
+        for (const [paramName, schema] of Object.entries(videoConfig.params)) {
+          if (paramName === 'resolution') continue; // handled above
+          const elId = paramToElId[paramName];
+          let val = null;
+          if (elId && els[elId] != null && typeof els[elId].value !== 'undefined') {
+            const raw = (els[elId].value || '').toString().trim();
+            if (raw !== '') {
+              if (paramName === 'negative_prompt') {
+                val = raw;
+              } else if (paramName === 'single_frame') {
+                val = raw === 'true';
+              } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
+                // floating number
+                val = parseFloat(raw);
+              } else {
+                // integer or generic number
+                const n = Number(raw);
+                val = Number.isNaN(n) ? raw : (Number.isInteger(n) ? parseInt(raw, 10) : n);
+              }
+            }
+          }
+          if (val === null || typeof val === 'undefined' || val === '') {
+            // Fallback to model default (can be null)
+            val = schema?.default;
+          }
+          // Only set if not undefined to avoid sending extraneous fields
+          if (typeof val !== 'undefined') {
+            payload[paramName] = val;
+          }
+        }
+
+        // For image-to-video, include image
+        if (videoMode === 'image-to-video') {
+          payload.image_b64 = sourceB64;
+        }
+
+        body = payload; // flat JSON
       } else {
         // Text-to-image generation
         const prompt = els.prompt.value.trim(); 
