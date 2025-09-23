@@ -740,6 +740,16 @@ export function applyPreset() {
         els.width.value = config.params.width.default;
         els.height.value = config.params.height.default;
       }
+    } else if (currentMode === 'video-generation') {
+      const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+      const def = vcfg?.params?.resolution?.default || (vcfg?.params?.resolution?.options || [])[0];
+      if (def) {
+        const parts = String(def).includes('*') ? String(def).split('*') : String(def).split('x');
+        if (parts.length === 2) {
+          els.width.value = parseInt(parts[0], 10) || '';
+          els.height.value = parseInt(parts[1], 10) || '';
+        }
+      }
     }
     log(`[${ts()}] Preset: auto`);
     return;
@@ -753,6 +763,26 @@ export function applyPreset() {
     if (els.autoDims) els.autoDims.style.display = 'none';
     log(`[${ts()}] Preset selected: ${val}`);
     return;
+  }
+
+  // If preset is a raw resolution string (e.g., "832*480" or "832x480"), parse and apply
+  if (val && val !== 'auto' && val !== 'custom') {
+    let w = null, h = null;
+    if (val.includes('x')) {
+      const [ww, hh] = val.split('x').map(Number);
+      w = ww; h = hh;
+    } else if (val.includes('*')) {
+      const [ww, hh] = val.split('*').map(Number);
+      w = ww; h = hh;
+    }
+    if (w && h) {
+      toggleDimInputs(false);
+      els.width.value = w;
+      els.height.value = h;
+      if (els.autoDims) els.autoDims.style.display = 'none';
+      log(`[${ts()}] Preset selected: ${val}`);
+      return;
+    }
   }
 }
 
@@ -874,32 +904,10 @@ export function updateParametersForVideoGeneration() {
   
   // Update video-specific parameters based on current model
   updateVideoParametersForModel(currentModel);
-  
-  // Update resolution presets for video generation
-  const config = VIDEO_MODEL_CONFIGS[currentModel];
-  if (config && config.params.resolution && Array.isArray(config.params.resolution.options)) {
-    const preset = els.resolutionPreset;
-    let optsHtml = '<option value="auto">Auto (model default)</option>';
-    config.params.resolution.options.forEach(opt => {
-      const display = String(opt).replace(/[*x]/, ' × ');
-      optsHtml += `<option value="${opt}">${display}</option>`;
-    });
-    preset.innerHTML = optsHtml;
-    preset.value = 'auto';
-  }
+  // Update resolution presets and reflect defaults for the current video model
+  updateVideoResolutionPresets();
   
   sync();
-
-  // Reflect model default resolution in width/height boxes
-  const def = String(config.params.resolution.default || '1024*1024');
-  const parts = def.includes('*') ? def.split('*') : def.split('x');
-  if (els.width && els.height && parts.length === 2) {
-    els.width.value = parseInt(parts[0], 10) || 1024;
-    els.height.value = parseInt(parts[1], 10) || 1024;
-  }
-  // Ensure manual editing is disabled and auto dims hidden
-  toggleDimInputs(false);
-  if (els.autoDims) { els.autoDims.style.display = 'none'; }
 }
 
 /**
@@ -1006,6 +1014,45 @@ export function updateVideoParametersForModel(modelKey) {
   if (params.negative_prompt && params.negative_prompt.default) {
     els.negPrompt.placeholder = params.negative_prompt.default;
   }
+}
+
+/**
+ * Rebuilds the resolution presets for the current video model and updates width/height boxes.
+ * Works for models using either the "WxH" or "W*H" string formats.
+ */
+export function updateVideoResolutionPresets() {
+  const config = VIDEO_MODEL_CONFIGS[currentModel];
+  if (!config) return;
+
+  // Populate resolution presets based on model enum options
+  const res = config.params?.resolution;
+  if (res && Array.isArray(res.options)) {
+    const preset = els.resolutionPreset;
+    const defStr = res.default || res.options[0];
+    const defParts = String(defStr).split(/[*x]/);
+    const autoLabel = defParts.length === 2 ? `Auto (${defParts[0]} × ${defParts[1]})` : 'Auto (model default)';
+
+    let optsHtml = `<option value="auto">${autoLabel}</option>`;
+    res.options.forEach(opt => {
+      const display = String(opt).replace(/[*x]/, ' × ');
+      // Keep value as-is (UI stores in model's format; payload builder normalizes)
+      optsHtml += `<option value="${opt}">${display}</option>`;
+    });
+    // Video models use enums; no Custom option exposed
+    preset.innerHTML = optsHtml;
+    preset.value = 'auto';
+
+    // Reflect default resolution into width/height boxes
+    const parts = String(defStr).includes('*') ? String(defStr).split('*') : String(defStr).split('x');
+    if (els.width && els.height && parts.length === 2) {
+      els.width.value = parseInt(parts[0], 10) || '';
+      els.height.value = parseInt(parts[1], 10) || '';
+    }
+  }
+
+  // In video mode, width/height are display-only
+  toggleDimInputs(false);
+  if (els.autoDims) { els.autoDims.style.display = 'none'; }
 }
 
 /**

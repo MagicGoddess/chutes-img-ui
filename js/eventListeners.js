@@ -19,7 +19,7 @@ import {
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
   applyPreset, handleImageFile, handleImageFiles, setSourceImage, setSourceImages, setImgThumbContent,
-  updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel
+  updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel, updateVideoResolutionPresets
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -74,6 +74,8 @@ export function setupEventListeners() {
     } else if (currentMode === 'video-generation') {
       updateVideoParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
+      // Refresh resolution presets and width/height to match selected video model
+      updateVideoResolutionPresets();
       // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
       updateVideoModeUI();
     } else if (currentMode === 'image-edit') {
