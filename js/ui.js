@@ -630,6 +630,17 @@ export function applyPreset() {
         els.width.value = config.params.width.default;
         els.height.value = config.params.height.default;
       }
+    } else if (currentMode === 'video-generation') {
+      // Reflect model default resolution in width/height boxes
+      const vconfig = VIDEO_MODEL_CONFIGS[currentModel];
+      if (vconfig && vconfig.params && vconfig.params.resolution) {
+        const def = String(vconfig.params.resolution.default || '1024*1024');
+        const parts = def.includes('*') ? def.split('*') : def.split('x');
+        if (els.width && els.height && parts.length === 2) {
+          els.width.value = parseInt(parts[0], 10) || 1024;
+          els.height.value = parseInt(parts[1], 10) || 1024;
+        }
+      }
     }
     log(`[${ts()}] Preset: auto`);
     return;
@@ -643,6 +654,19 @@ export function applyPreset() {
     if (els.autoDims) els.autoDims.style.display = 'none';
     log(`[${ts()}] Preset selected: ${val}`);
     return;
+  }
+
+  // Handle model enum-style resolutions like '832*480' used by Wan variants in video mode
+  if (typeof val === 'string' && val.includes('*')) {
+    const [w, h] = val.split('*').map(n => parseInt(n, 10));
+    if (!Number.isNaN(w) && !Number.isNaN(h)) {
+      toggleDimInputs(false);
+      els.width.value = w;
+      els.height.value = h;
+      if (els.autoDims) els.autoDims.style.display = 'none';
+      log(`[${ts()}] Preset selected: ${val.replace('*', 'x')}`);
+      return;
+    }
   }
 }
 
@@ -858,9 +882,9 @@ export function updateVideoModeUI() {
     els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
   }
 
-  // Hide resolution UI for Wan image-to-video (no resolution in payload)
-  const isWanVideoModel = currentModel === 'wan2.1-14b-video';
-  const shouldHideResolution = isWanVideoModel && isImage2Video;
+  // Hide resolution UI for Wan base image-to-video only (no resolution in payload for that model)
+  const isWanBaseVideoModel = currentModel === 'wan2.1-14b-video';
+  const shouldHideResolution = isWanBaseVideoModel && isImage2Video;
   // Resolution preset container (first column)
   const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;
   if (rpContainer) {

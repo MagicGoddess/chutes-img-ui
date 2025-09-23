@@ -322,6 +322,44 @@ export function setupEventListeners() {
           
           // Public endpoint expects FLAT JSON (no args wrapper)
           body = payload;
+        } else if (currentModel === 'wan2.1-14b-720p-video') {
+          // Build body for Wan2.1 14b 720p video model
+          const payload = { prompt };
+
+          const isI2V = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+          // 720p variant expects resolution for both t2v and i2v
+          let resolutionStr;
+          if (els.resolutionPreset && els.resolutionPreset.value !== 'auto' && els.resolutionPreset.value !== 'custom') {
+            resolutionStr = els.resolutionPreset.value; // options already in W*H form
+          } else {
+            resolutionStr = videoConfig.params.resolution.default;
+          }
+          payload.resolution = resolutionStr;
+
+          // Parameters
+          payload.fps = els.fps.value ? parseInt(els.fps.value) : videoConfig.params.fps.default;
+          payload.steps = els.steps.value ? parseInt(els.steps.value) : videoConfig.params.steps.default;
+          payload.frames = els.frames.value ? parseInt(els.frames.value) : videoConfig.params.frames.default;
+          payload.guidance_scale = els.cfg.value ? parseFloat(els.cfg.value) : videoConfig.params.guidance_scale.default;
+          payload.seed = els.seed.value ? parseInt(els.seed.value) : videoConfig.params.seed.default;
+
+          // Optional params
+          payload.sample_shift = (els.sampleShift && els.sampleShift.value) ? parseFloat(els.sampleShift.value) : videoConfig.params.sample_shift.default;
+          payload.single_frame = (els.singleFrame && els.singleFrame.value) ? (els.singleFrame.value === 'true') : videoConfig.params.single_frame.default;
+
+          // Negative prompt
+          {
+            const negativePrompt = els.negPrompt.value.trim();
+            payload.negative_prompt = negativePrompt || videoConfig.params.negative_prompt.default;
+          }
+
+          // For image-to-video, this variant expects first_image_b64 (and optional last_image_b64)
+          if (isI2V) {
+            payload.first_image_b64 = sourceB64;
+          }
+
+          // Flat JSON
+          body = payload;
         } else if (currentModel === 'skyreels-video') {
           // Build body for Skyreels video model
           const payload = { prompt };

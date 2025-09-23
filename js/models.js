@@ -208,6 +208,30 @@ export const VIDEO_MODEL_CONFIGS = {
       negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
     }
   },
+  'wan2.1-14b-720p-video': {
+    name: 'Wan2.1 14b 720p',
+    endpoints: {
+      text2video: 'https://kikakkz-wan2-1-14b-720p.chutes.ai/text2video',
+      image2video: 'https://kikakkz-wan2-1-14b-720p.chutes.ai/image2video'
+    },
+    params: {
+      // Both modes support resolution for the 720p variant
+      resolution: {
+        options: ['1280*720', '720*1280', '832*480', '480*832', '1024*1024'],
+        // Schemas show different defaults per sub-mode; use a safe general default
+        default: '832*480'
+      },
+      fps: { min: 16, max: 60, default: 16, step: 1 },
+      // Steps range differs t2v (10–30) vs i2v (20–50); expose the superset
+      steps: { min: 10, max: 50, default: 25, step: 1 },
+      frames: { min: 81, max: 241, default: 81, step: 1 },
+      sample_shift: { min: 1, max: 7, default: null, step: 0.1 },
+      single_frame: { default: false },
+      guidance_scale: { min: 1, max: 7.5, default: 5, step: 0.1 },
+      seed: { min: 0, max: null, default: 42 },
+      negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
+    }
+  },
   'skyreels-video': {
     name: 'Skyreels',
     endpoints: {
