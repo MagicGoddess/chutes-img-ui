@@ -1,6 +1,6 @@
 # Chutes Image UI
 
-A minimalist, vibecoded Progressive Web App for generating and editing images with Chutes. Runs fully client-side in your browser; only your selected source image or prompt is sent to Chutes, and your API key is stored in localStorage.
+A minimalist, vibecoded Progressive Web App for generating and editing images and videos with Chutes. Runs fully client-side in your browser; only your selected source media or prompt is sent to Chutes, and your API key is stored in localStorage.
 
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
@@ -29,6 +29,8 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
   - Image Edit:
     - Qwen Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
     - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`
+  - Image Edit:
+    - Hidream Edit: `POST https://chutes-hidream-edit.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
   - Wan2.1 14b (Image): `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
   - Wan2.1 14b Video:
@@ -68,9 +70,7 @@ Notes:
 
 ## Generation History System
 
-The app automatically saves every generated image and video with complete metadata to your browser (IndexedDB + localStorage snapshot):
-8. From the Result panel, click "Send to Image Edit" and verify the generated image appears as the source thumbnail and Auto resolution computes from it
-9. From Image History, open an image modal and click "Send to Image Edit"; verify the same behavior
+The app automatically saves every generated image and video with complete metadata to your browser (IndexedDB + localStorage snapshot).
 
 ### Features
 - **Automatic Saving**: Every generated image/video is saved with settings, timestamp, and source image (for edits/i2v)

@@ -1,7 +1,7 @@
 {
   "name": "chutes-qwen-image-edit",
   "version": "1.0.0",
-  "description": "A minimalist PWA for editing images with Qwen Image Edit on Chutes",
+  "description": "A minimalist PWA for generating and editing images and videos on Chutes",
   "scripts": {
     "serve": "serve -l 5173",
     "serve-global": "serve -l 5173 -s .",
