@@ -38,11 +38,24 @@ export async function openImageModal(imageId) {
   
   const modal = document.getElementById('imageModal');
   const modalImage = document.getElementById('modalImage');
+  // Create/find a video element for video previews
+  let modalVideo = document.getElementById('modalVideo');
+  if (!modalVideo) {
+    modalVideo = document.createElement('video');
+    modalVideo.id = 'modalVideo';
+    modalVideo.style.display = 'none';
+    modalVideo.controls = true;
+    const bodyEl = document.querySelector('#imageModal .modal-body');
+    if (bodyEl) bodyEl.insertBefore(modalVideo, bodyEl.firstChild);
+  }
   const modalModel = document.getElementById('modalModel');
   const modalResolution = document.getElementById('modalResolution');
   const modalSeed = document.getElementById('modalSeed');
   const modalDate = document.getElementById('modalDate');
   const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+  const modalSendToEditBtn = document.getElementById('modalSendToEditBtn');
   
   // Clean up previous modal object URL
   if (modalObjectUrl) {
@@ -50,24 +63,47 @@ export async function openImageModal(imageId) {
     modalObjectUrl = null;
   }
   
-  // If the image is stored in IDB, load it async; otherwise use inlined data URL
-  modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+  const isVideo = image.settings?.type === 'video';
+  // Switch UI based on type
+  if (isVideo) {
+    modalTitle.textContent = 'Video Preview';
+    modalImage.style.display = 'none';
+    modalVideo.style.display = 'block';
+  } else {
+    modalTitle.textContent = 'Image Preview';
+    modalImage.style.display = 'block';
+    modalVideo.style.display = 'none';
+  }
+
+  // If the content is stored in IDB, load it async; otherwise use inlined data URL
+  if (!isVideo) {
+    modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+  }
   if (image.imageKey) {
     idbGetBlob(image.imageKey).then(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       modalObjectUrl = url; // Track for cleanup
-      modalImage.src = url;
+      if (isVideo) {
+        modalVideo.src = url;
+      } else {
+        modalImage.src = url;
+      }
     }).catch(e => {
-      console.warn('Failed to load modal image blob', e);
-      if (image.imageData) modalImage.src = image.imageData;
+      console.warn('Failed to load modal content blob', e);
+      if (!isVideo && image.imageData) modalImage.src = image.imageData;
     });
-  } else if (image.imageData) {
+  } else if (!isVideo && image.imageData) {
     modalImage.src = image.imageData;
   }
   
   modalModel.textContent = image.settings.model;
-  modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
+  // Resolution for video entries uses resolution string; images use width/height
+  if (isVideo) {
+    modalResolution.textContent = image.settings.resolution || '-';
+  } else {
+    modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
+  }
   modalSeed.textContent = image.settings.seed || 'Random';
   
   // Format date as YYYY-MM-DD and time as 24h HH:MM
@@ -77,11 +113,21 @@ export async function openImageModal(imageId) {
   const formattedTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   modalDate.textContent = `${formattedDate} ${formattedTime}`;
   
-  // Show/hide source download button
+  // Show/hide source download button (only relevant for image-edit and image-to-video)
   if (image.sourceImageData || image.sourceKey) {
     modalDownloadSourceBtn.style.display = 'inline-flex';
   } else {
     modalDownloadSourceBtn.style.display = 'none';
+  }
+
+  // Adjust actions based on type
+  if (isVideo) {
+    // Change download label and hide Send to Edit
+    if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Video';
+    if (modalSendToEditBtn) modalSendToEditBtn.style.display = 'none';
+  } else {
+    if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Image';
+    if (modalSendToEditBtn) modalSendToEditBtn.style.display = '';
   }
   
   // Show modal (remove any closing class)
@@ -130,7 +176,8 @@ export function downloadModalImage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a'); 
         a.href = url; 
-        a.download = `${currentModalImage.filename}.jpg`; 
+        const isVideo = currentModalImage.settings?.type === 'video';
+        a.download = `${currentModalImage.filename}.${isVideo ? 'mp4' : 'jpg'}`; 
         a.click();
         URL.revokeObjectURL(url);
       } else if (currentModalImage.imageData) {

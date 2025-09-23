@@ -1,6 +1,13 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
-Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images using AI models through the Chutes API. The application runs entirely client-side in the browser - only the API key and generated images are processed.
+Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
+
+API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for both image and video models:
+  - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
+  - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
+  - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
+
+The application runs entirely client-side in the browser — only the API key and generated media are processed.
 
 **ALWAYS reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.**
 
@@ -42,6 +49,23 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 8. Test "Auto" resolution preset shows model default dimensions
 
 #### Image Edit Mode Testing:
+#### Video Generation Mode Testing:
+1. Switch to "Video Generation" mode
+2. Choose a video model: "Wan2.1 14b Video" or "Skyreels"
+3. Toggle sub-mode:
+  - Text to Video: enter a prompt
+  - Image to Video: upload a source image and enter a prompt
+4. Resolution presets:
+  - Defaults reflect model enums (Wan uses "W*H"; Skyreels uses "WxH")
+  - For Wan Image-to-Video specifically, resolution is not applicable and the control is hidden
+5. Set/leave FPS, Frames, Steps, CFG; empty fields use model placeholders/defaults
+6. Generate and verify:
+  - Result panel shows a playable video
+  - Download button saves .mp4; Copy copies URL
+  - "Send to Image Edit" is hidden for videos
+7. Generation History:
+  - New entries appear as videos with first-frame thumbnails
+  - Modal opens as "Video Preview" with a playable element and "Download Video"
 1. Switch to "Image Edit" mode  
 2. Upload a test image (any jpg/png)
 3. Verify the image appears in the thumbnail
@@ -79,7 +103,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ├── CACHE-BUSTING.md        # Cache management details
 ├── js/                     # Modular JavaScript files
 │   ├── main.js             # Entry point, coordinates all modules
-│   ├── models.js           # MODEL_CONFIGS and model definitions
+│   ├── models.js           # MODEL_CONFIGS and VIDEO_MODEL_CONFIGS definitions
 │   ├── api.js              # API communication (quota, generate, etc.)
 │   ├── storage.js          # localStorage/IndexedDB operations
 │   ├── ui.js               # UI state management and DOM manipulation
@@ -114,21 +138,28 @@ Models are defined in `js/models.js` with:
 - `endpoint`: API endpoint URL  
 - `modelName`: API model parameter (for some models)
 - `params`: Parameter definitions with min/max/default values
+- **Metadata for payload construction:**
+  - `payloadFormat`: Request body shape (currently `flat` for all models)
+  - `parameterMapping`: Maps UI concepts to model-specific parameter names (e.g., `cfgScale: 'guidance_scale'`)
+  - `resolutionFormat`: For models with resolution enums, format string (`'star'` for W*H, `'x'` for WxH)
+  - `includeResolutionIn`: For video models, which sub-modes include resolution
 
-**Resolution Enums for Specific Models:**
-Some models, like Wan2.1 14b, use predefined resolution options instead of free-form width and height inputs. These are defined in the model's `params` object with a `resolutions` array containing objects with `label`, `width`, and `height` properties.
+**Resolution enums for specific models:**
+Some models (e.g., Wan2.1 14b image/video, Skyreels video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`; Skyreels: `WxH`).
 
-Example for Wan2.1 14b:
+Example for Wan2.1 14b image:
 ```javascript
-resolutions: [
-  { label: "1024x1024", width: 1024, height: 1024 },
-  { label: "1280x720", width: 1280, height: 720 },
-  // ... more options
-]
+params: {
+  resolution: {
+    options: ["1280*720", "720*1280", "832*480", "480*832", "1024*1024"],
+    default: "832*480"
+  },
+  // ... other params
+}
 ```
 
-- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has a `resolutions` array. If so, populate the dropdown with the `label` values instead of generating width/height options.
-- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter (e.g., "1024x1024") in the API request instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` for the exact payload structure.
+- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`).
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`, Skyreels uses `WxH`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 - **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
 
 #### Cache Management:
@@ -140,10 +171,21 @@ resolutions: [
 
 #### Adding a New Model:
 1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
-2. Reference the API schema from `reference/img-models.md`
-3. Test with both default and edge-case parameter values
-4. For models like Wan2.1 14b, ensure the UI uses the model's supported resolution enum and sends the correct payload shape (see schema).
-5. Verify model switching updates UI controls correctly
+2. Include metadata for payload construction:
+   - `payloadFormat`: currently `'flat'` for all models
+   - `parameterMapping`: map UI concepts to model param names (e.g., `cfgScale: 'guidance_scale'`, `steps: 'num_inference_steps'`)
+   - `resolutionFormat`: if model uses resolution enums, specify `'star'` or `'x'`
+3. Reference the API schema from `reference/img-models.md`
+4. Test with both default and edge-case parameter values
+5. Verify model switching updates UI controls correctly and payload uses correct parameter names
+
+#### Adding a New Video Model:
+1. Add an entry to `VIDEO_MODEL_CONFIGS` with:
+  - `endpoints` for `text2video` and `image2video`
+  - `params` including any of: `resolution`, `guidance_scale`, `steps`, `fps`, `frames`, `seed`, `sample_shift`, `single_frame`, `negative_prompt`
+  - Metadata: `payloadFormat` (currently `flat`), `resolutionFormat` (`'star'` or `'x'`), and `includeResolutionIn` (e.g., `['text2video']` for Wan)
+2. The UI will automatically populate resolution presets from `params.resolution.options` and hide resolution controls in modes not listed in `includeResolutionIn`.
+3. The request payload will be built automatically in `js/eventListeners.js` using the metadata and defaults.
 
 #### UI Changes:
 1. Modify HTML structure in `index.html` (add new model to model select)
@@ -176,11 +218,15 @@ resolutions: [
 ## Technical Notes
 
 ### API Integration:
-- Uses Chutes API endpoints for image generation
+- Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Supports multiple models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b
-- Wan2.1 14b uses a dedicated endpoint and only supports a fixed set of resolutions (see model schema).
+- Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image)
+- Video models: Wan2.1 14b Video and Skyreels
+- Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
 - Image Edit mode uses Qwen Image Edit endpoint specifically
+ - Video mode specifics:
+   - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift` and `single_frame`.
+   - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.
 
 ### PWA Features:
 - Service worker for offline app shell caching
@@ -207,8 +253,35 @@ resolutions: [
 - **API key required**: Enter valid Chutes API key in the API Key section
 - **CORS errors**: Chutes API endpoints are properly configured for browser requests
 - **Image upload failures**: Verify file is a valid image format (jpg, png, etc.)
-- **Model parameters not updating**: Check MODEL_CONFIGS definition in `js/models.js` for the selected model
+- **Model parameters not updating**: Check MODEL_CONFIGS / VIDEO_MODEL_CONFIGS definition in `js/models.js` for the selected model
 - **Cache not updating**: Run `node update-cache-version.js` before deployment
+ - **Wan i2v resolution**: If resolution appears for Wan image-to-video, ensure the UI toggle hides the resolution preset and that payload omits `resolution`.
+
+## Video-specific Implementation Notes
+
+### UI
+- `index.html` contains a Video Generation mode and a sub-mode toggle (Text↔Image)
+- `js/ui.js`:
+  - `switchMode('video-generation')` filters models to VIDEO_MODEL_CONFIGS and disables manual width/height
+  - `updateParametersForVideoGeneration()` populates resolution presets from model enums
+  - `updateVideoModeUI()` hides resolution controls based on model metadata (`includeResolutionIn`) so resolution is omitted where not applicable (e.g., Wan image-to-video)
+
+### Models
+- `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints, parameter limits, and behavior metadata for video models
+  - `payloadFormat`: request body shape (currently `flat` top-level JSON)
+  - `resolutionFormat`: `'star'` for `W*H` (Wan), `'x'` for `WxH` (Skyreels)
+  - `includeResolutionIn`: which sub-modes include a `resolution` field (e.g., `['text2video']` for Wan)
+
+### API
+- `js/api.js` has `generateVideo(endpoint, apiKey, body)` that posts flat JSON and returns an mp4 `Blob`.
+- `js/eventListeners.js` builds video payloads using model metadata (no hard-coded model checks):
+  - Includes or omits `resolution` based on `includeResolutionIn`
+  - Formats the resolution string according to `resolutionFormat`
+  - Applies model defaults when UI inputs are empty; includes `image_b64` for image-to-video
+
+### History & Modal
+- `js/imageHistory.js`: saves videos with type `video`; grid uses first-frame thumbnails; selection/bulk delete works for mixed media
+- `js/modal.js`: Detects `type==='video'`, switches to Video Preview, hides Send to Edit, and downloads as .mp4
 
 ### Development Tips:
 - Use browser DevTools Network tab to debug API calls

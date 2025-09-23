@@ -22,12 +22,36 @@ import {
 // Track object URLs for grid images to prevent memory leaks
 let gridObjectUrls = new Set();
 
+// Track current filter state
+let currentFilter = 'all'; // 'all', 'images', 'videos'
+
 // Clean up grid object URLs
 function cleanupGridObjectUrls() {
   for (const url of gridObjectUrls) {
     URL.revokeObjectURL(url);
   }
   gridObjectUrls.clear();
+}
+
+// Filter management
+function setHistoryFilter(filter) {
+  currentFilter = filter;
+  refreshImageGrid();
+}
+
+function getHistoryFilter() {
+  return currentFilter;
+}
+
+function filterHistoryByType(history) {
+  if (currentFilter === 'all') return history;
+  
+  return history.filter(item => {
+    const isVideo = item.settings?.type === 'video';
+    if (currentFilter === 'videos') return isVideo;
+    if (currentFilter === 'images') return !isVideo;
+    return true;
+  });
 }
 async function migrateLocalStorageToIdb() {
   try {
@@ -74,14 +98,14 @@ async function migrateLocalStorageToIdb() {
   }
 }
 
-async function saveGeneratedImage(imageBlob, settings) {
+async function saveGeneratedImage(contentBlob, settings) {
   const id = Date.now() + Math.random().toString(36).substr(2, 9);
-  const imageKey = `${id}:img`;
+  const contentKey = `${id}:${settings.type || 'img'}`;
   const sourceKey = sourceB64 ? `${id}:src` : null;
 
   // Save blobs to IDB first
   try {
-    await idbPutBlob(imageKey, imageBlob, imageBlob.type || 'image/jpeg');
+    await idbPutBlob(contentKey, contentBlob, contentBlob.type || (settings.type === 'video' ? 'video/mp4' : 'image/jpeg'));
     if (sourceKey) {
       // convert sourceB64 data to blob
       const srcDataUrl = `data:${sourceMime};base64,${sourceB64}`;
@@ -89,57 +113,45 @@ async function saveGeneratedImage(imageBlob, settings) {
       await idbPutBlob(sourceKey, srcBlob, srcBlob.type || 'image/jpeg');
     }
   } catch (e) {
-    console.warn('Failed to store images in IndexedDB, falling back to localStorage for image data', e);
+    console.warn('Failed to store content in IndexedDB, falling back to localStorage for data', e);
     // On failure, fall back to inlining base64 in metadata (older behavior)
     const reader = new FileReader();
     reader.onload = function() {
       const history = getImageHistory();
-      const imageData = {
+      const contentData = {
         id,
-        imageData: reader.result,
+        imageData: reader.result, // Keep as imageData for backwards compatibility
         sourceImageData: sourceB64 ? `data:${sourceMime};base64,${sourceB64}` : null,
         settings: {
+          ...settings,
           mode: currentMode,
-          model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
-          prompt: settings.prompt,
-          negativePrompt: settings.negativePrompt || '',
-          width: settings.width,
-          height: settings.height,
-          cfgScale: settings.cfgScale,
-          steps: settings.steps,
-          seed: settings.seed
+          model: settings.model || (currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit')
         },
         timestamp: Date.now(),
-        filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
+        filename: `${settings.type === 'video' ? `${currentModel}-video` : (currentMode === 'image-edit' ? 'qwen-edit' : currentModel)}-${Date.now()}`
       };
-      history.unshift(imageData);
+      history.unshift(contentData);
       if (history.length > 50) history.splice(50);
       saveImageHistory(history);
       refreshImageGrid();
-      log(`[${ts()}] Image saved to history (fallback localStorage)`);
+      log(`[${ts()}] ${settings.type === 'video' ? 'Video' : 'Image'} saved to history (fallback localStorage)`);
     };
-    reader.readAsDataURL(imageBlob);
+    reader.readAsDataURL(contentBlob);
     return;
   }
 
   // Prepare metadata entry
   const meta = {
     id,
-    imageKey,
+    imageKey: contentKey, // Keep as imageKey for backwards compatibility
     sourceKey,
     settings: {
+      ...settings,
       mode: currentMode,
-      model: currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit',
-      prompt: settings.prompt,
-      negativePrompt: settings.negativePrompt || '',
-      width: settings.width,
-      height: settings.height,
-      cfgScale: settings.cfgScale,
-      steps: settings.steps,
-      seed: settings.seed
+      model: settings.model || (currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit')
     },
     timestamp: Date.now(),
-    filename: `${currentMode === 'image-edit' ? 'qwen-edit' : currentModel}-${Date.now()}`
+    filename: `${settings.type === 'video' ? `${currentModel}-video` : (currentMode === 'image-edit' ? 'qwen-edit' : currentModel)}-${Date.now()}`
   };
 
   const history = getImageHistory();
@@ -158,7 +170,7 @@ async function saveGeneratedImage(imageBlob, settings) {
     saveImageHistory(history);
   }
   refreshImageGrid();
-  log(`[${ts()}] Image saved to history (IndexedDB)`);
+  log(`[${ts()}] ${settings.type === 'video' ? 'Video' : 'Content'} saved to history (IndexedDB)`);
 }
 
 async function deleteImageFromHistory(imageId) {
@@ -259,7 +271,7 @@ function selectNoneImages() {
 async function deleteSelectedImages() {
   if (selectedImages.size === 0) return;
   
-  if (!confirm(`Delete ${selectedImages.size} selected image(s)? This cannot be undone.`)) {
+  if (!confirm(`Delete ${selectedImages.size} selected generations(s)? This cannot be undone.`)) {
     return;
   }
   
@@ -326,7 +338,18 @@ function refreshImageGrid() {
     }
 
     if (!history || history.length === 0) {
-      grid.innerHTML = '<div class="empty-state"><span class="muted">No images generated yet. Create your first image to see it here!</span></div>';
+      grid.innerHTML = '<div class="empty-state"><span class="muted">No content generated yet. Create your first image or video to see it here!</span></div>';
+      document.getElementById('toggleSelectionBtn').style.display = 'none';
+      return;
+    }
+
+    // Apply current filter
+    const filteredHistory = filterHistoryByType(history);
+    
+    if (filteredHistory.length === 0) {
+      const filterText = currentFilter === 'images' ? 'images' : 
+                        currentFilter === 'videos' ? 'videos' : 'content';
+      grid.innerHTML = `<div class="empty-state"><span class="muted">No ${filterText} found in history.</span></div>`;
       document.getElementById('toggleSelectionBtn').style.display = 'none';
       return;
     }
@@ -334,17 +357,32 @@ function refreshImageGrid() {
     document.getElementById('toggleSelectionBtn').style.display = 'inline-block';
 
     // Render grid items with placeholders; if metadata includes imageKey, load blob async
-    grid.innerHTML = history.map(img => `
-      <div class="image-grid-item" data-image-id="${img.id}">
-        <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
-        <img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated image" loading="lazy" />
-        <div class="overlay">
-          <div style="font-weight: 600;">${img.settings.model}</div>
-          <div style="opacity: 0.8;">${img.settings.width}×${img.settings.height}</div>
-          <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+    grid.innerHTML = filteredHistory.map(img => {
+      const isVideo = img.settings?.type === 'video';
+      const resolution = isVideo ? 
+        img.settings.resolution || 'Unknown' : 
+        `${img.settings.width || '?'}×${img.settings.height || '?'}`;
+      
+      // For videos, show a captured first-frame thumbnail (with hidden video for capture)
+      const mediaContent = isVideo ? 
+        `<div class="video-thumbnail" data-image-id-src="${img.imageKey || ''}">
+           <img class="video-thumb" alt="Video thumbnail" />
+           <video style="display:none;" data-image-id-src="${img.imageKey || ''}" muted preload="metadata"></video>
+         </div>` :
+        `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`;
+      
+      return `
+        <div class="image-grid-item" data-image-id="${img.id}">
+          <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
+          ${mediaContent}
+          <div class="overlay">
+            <div style="font-weight: 600;">${img.settings.model} ${isVideo ? '🎥' : ''}</div>
+            <div style="opacity: 0.8;">${resolution}</div>
+            <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     // Attach click handlers to each grid item so clicks behave differently
     // depending on whether selectionMode is active. Also restore selected
@@ -368,8 +406,8 @@ function refreshImageGrid() {
       }
     });
 
-    // After rendering, asynchronously replace images that have imageKey
-    history.forEach(async (img) => {
+    // After rendering, asynchronously replace images/videos that have imageKey
+    filteredHistory.forEach(async (img) => {
       if (!img.imageKey) return; // already inlined or fallback
       try {
         const itemEl = document.querySelector(`.image-grid-item[data-image-id="${img.id}"]`);
@@ -378,11 +416,53 @@ function refreshImageGrid() {
         if (!blob) { if (itemEl) itemEl.classList.remove('loading-thumb'); return; }
         const objectUrl = URL.createObjectURL(blob);
         gridObjectUrls.add(objectUrl); // Track for cleanup
-        const imgEl = document.querySelector(`img[data-image-id-src="${img.imageKey}"]`);
-        if (imgEl) imgEl.src = objectUrl;
+        
+        const isVideo = img.settings?.type === 'video';
+        if (isVideo) {
+          // Update video thumbnail: set video source and capture first frame to an image
+          const videoEl = document.querySelector(`video[data-image-id-src="${img.imageKey}"]`);
+          if (videoEl) {
+            videoEl.src = objectUrl;
+            const thumbnailDiv = videoEl.parentElement;
+            const drawFrame = () => {
+              try {
+                if (!thumbnailDiv) return;
+                const canvas = document.createElement('canvas');
+                const vw = videoEl.videoWidth || 320;
+                const vh = videoEl.videoHeight || 240;
+                canvas.width = vw;
+                canvas.height = vh;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoEl, 0, 0, vw, vh);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                const imgNode = thumbnailDiv.querySelector('img.video-thumb');
+                if (imgNode) imgNode.src = dataUrl;
+              } catch (e) {
+                console.warn('Failed to capture video frame for thumbnail', e);
+              }
+            };
+            videoEl.addEventListener('loadedmetadata', () => {
+              // Seek a tiny bit into the video to ensure a decodable frame
+              const t = videoEl.duration && isFinite(videoEl.duration) ? Math.min(0.1, Math.max(0, videoEl.duration - 0.01)) : 0.1;
+              try { videoEl.currentTime = t; } catch (_) {}
+            }, { once: true });
+            videoEl.addEventListener('seeked', () => {
+              drawFrame();
+            }, { once: true });
+            // Fallback in case seeked doesn't fire but data is ready
+            videoEl.addEventListener('loadeddata', () => {
+              const imgNode = thumbnailDiv?.querySelector('img.video-thumb');
+              if (imgNode && !imgNode.src) drawFrame();
+            }, { once: true });
+          }
+        } else {
+          // Update image
+          const imgEl = document.querySelector(`img[data-image-id-src="${img.imageKey}"]`);
+          if (imgEl) imgEl.src = objectUrl;
+        }
         if (itemEl) itemEl.classList.remove('loading-thumb');
       } catch (e) {
-        console.warn('Failed to load image blob for', img.id, e);
+        console.warn('Failed to load content blob for', img.id, e);
         const itemEl = document.querySelector(`.image-grid-item[data-image-id="${img.id}"]`);
         if (itemEl) itemEl.classList.remove('loading-thumb');
       }
@@ -525,5 +605,7 @@ export {
   loadModalSettings,
   deleteModalImage,
   cleanupGridObjectUrls,
-  initializeImageHistory
+  initializeImageHistory,
+  setHistoryFilter,
+  getHistoryFilter
 };

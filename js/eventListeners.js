@@ -1,7 +1,7 @@
 // Event listeners setup - centralizes all UI event bindings
 
-import { MODEL_CONFIGS } from './models.js';
-import { generateImage } from './api.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS } from './models.js';
+import { generateImage, generateVideo } from './api.js';
 import { 
   getStoredApiKey, saveApiKey, removeApiKey 
 } from './storage.js';
@@ -18,14 +18,15 @@ import {
   setLastBlobUrl, createResultImg, hasResultImg, getResultImgElement, sync,
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
-  applyPreset, handleImageFile, setSourceImage, setImgThumbContent
+  applyPreset, handleImageFile, setSourceImage, setImgThumbContent,
+  updateVideoModeUI, updateVideoParametersForModel
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
 import { 
   saveGeneratedImage, toggleSelectionMode, selectAllImages, selectNoneImages,
   deleteSelectedImages, clearImageHistory, loadModalSettings, deleteModalImage,
-  toggleImageSelection
+  toggleImageSelection, setHistoryFilter
 } from './imageHistory.js';
 
 export function setupEventListeners() {
@@ -39,12 +40,42 @@ export function setupEventListeners() {
   els.modeTextToImage.addEventListener('change', () => {
     if (els.modeTextToImage.checked) switchMode('text-to-image');
   });
+  
+  // Video generation mode listener
+  if (els.modeVideoGeneration) {
+    els.modeVideoGeneration.addEventListener('change', () => {
+      if (els.modeVideoGeneration.checked) switchMode('video-generation');
+    });
+  }
+  
+  // Video sub-mode listeners
+  if (els.videoModeText2Video) {
+    els.videoModeText2Video.addEventListener('change', () => {
+      if (els.videoModeText2Video.checked) {
+        // Switch to text-to-video mode
+        updateVideoModeUI();
+      }
+    });
+  }
+  if (els.videoModeImage2Video) {
+    els.videoModeImage2Video.addEventListener('change', () => {
+      if (els.videoModeImage2Video.checked) {
+        // Switch to image-to-video mode
+        updateVideoModeUI();
+      }
+    });
+  }
 
   // Event listener for model selection
   els.modelSelect.addEventListener('change', () => {
     if (currentMode === 'text-to-image') {
       updateParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
+    } else if (currentMode === 'video-generation') {
+      updateVideoParametersForModel(els.modelSelect.value);
+      setCurrentModel(els.modelSelect.value);
+      // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
+      updateVideoModeUI();
     }
   });
 
@@ -123,6 +154,14 @@ export function setupEventListeners() {
         return toast('Select a source image for image editing', true);
       }
       
+      // Check video generation requirements
+      if (currentMode === 'video-generation') {
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        if (videoMode === 'image-to-video' && !sourceB64) {
+          return toast('Select a source image for image-to-video generation', true);
+        }
+      }
+      
       // Resolve width/height depending on preset and model
       let width, height;
       const config = currentMode === 'text-to-image' ? MODEL_CONFIGS[currentModel] : null;
@@ -192,117 +231,285 @@ export function setupEventListeners() {
         if (seedVal !== null && !Number.isNaN(seedVal)) body.seed = seedVal;
         
         endpoint = 'https://chutes-qwen-image-edit.chutes.ai/generate';
-      } else {
-        // Text-to-image generation
-        const prompt = els.prompt.value.trim(); 
+      } else if (currentMode === 'video-generation') {
+        // Video generation logic (config-driven)
+        const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
-        const negative_prompt = els.negPrompt.value.trim();
+
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        const videoConfig = VIDEO_MODEL_CONFIGS[currentModel];
+        if (!videoConfig) return toast('Invalid video model selected', true);
+
+        // Select endpoint based on sub-mode
+        endpoint = videoMode === 'image-to-video' ? videoConfig.endpoints.image2video : videoConfig.endpoints.text2video;
+
+        // Build payload generically from model config
+        const payload = { prompt };
+
+        // Resolution handling per model metadata
+        const includeRes = Array.isArray(videoConfig.includeResolutionIn) ? videoConfig.includeResolutionIn : ['text2video', 'image2video'];
+        const modeKey = videoMode === 'image-to-video' ? 'image2video' : 'text2video';
+        if (includeRes.includes(modeKey) && videoConfig.params.resolution) {
+          let resStr;
+          const sel = els.resolutionPreset?.value;
+          if (sel && sel !== 'auto' && sel !== 'custom') {
+            resStr = sel; // values in UI match model format
+          } else {
+            resStr = videoConfig.params.resolution.default;
+          }
+          // Normalize potential display variants just in case
+          if (videoConfig.resolutionFormat === 'star') {
+            resStr = String(resStr).replace('x', '*');
+          } else if (videoConfig.resolutionFormat === 'x') {
+            resStr = String(resStr).replace('*', 'x');
+          }
+          payload.resolution = resStr;
+        }
+
+        // Parameter mapping from config param names to UI elements
+        const paramToElId = {
+          guidance_scale: 'cfg',
+          steps: 'steps',
+          fps: 'fps',
+          frames: 'frames',
+          seed: 'seed',
+          sample_shift: 'sampleShift',
+          single_frame: 'singleFrame',
+          negative_prompt: 'negPrompt'
+        };
+
+        for (const [paramName, schema] of Object.entries(videoConfig.params)) {
+          if (paramName === 'resolution') continue; // handled above
+          const elId = paramToElId[paramName];
+          let val = null;
+          if (elId && els[elId] != null && typeof els[elId].value !== 'undefined') {
+            const raw = (els[elId].value || '').toString().trim();
+            if (raw !== '') {
+              if (paramName === 'negative_prompt') {
+                val = raw;
+              } else if (paramName === 'single_frame') {
+                val = raw === 'true';
+              } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
+                // floating number
+                val = parseFloat(raw);
+              } else {
+                // integer or generic number
+                const n = Number(raw);
+                val = Number.isNaN(n) ? raw : (Number.isInteger(n) ? parseInt(raw, 10) : n);
+              }
+            }
+          }
+          if (val === null || typeof val === 'undefined' || val === '') {
+            // Fallback to model default (can be null)
+            val = schema?.default;
+          }
+          // Only set if not undefined to avoid sending extraneous fields
+          if (typeof val !== 'undefined') {
+            payload[paramName] = val;
+          }
+        }
+
+        // For image-to-video, include image
+        if (videoMode === 'image-to-video') {
+          payload.image_b64 = sourceB64;
+        }
+
+        body = payload; // flat JSON
+      } else {
+        // Text-to-image generation (config-driven)
+        const prompt = els.prompt.value.trim();
+        if (!prompt) return toast('Prompt cannot be empty', true);
         
         if (!config) return toast('Invalid model selected', true);
         
-        // Build body with model-specific parameter names
-        // Some models (like wan2.1-14b) expect a `resolution` enum instead of width/height.
+        // Build payload generically from model config
+        const payload = { prompt };
+        
+        // Handle resolution (enum vs width/height)
         if (config.params.resolution && Array.isArray(config.params.resolution.options)) {
-          // Build resolution string like '832*480'
-          let resolutionStr;
+          // Model uses resolution enum
+          let resStr;
           const presetVal = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
           if (presetVal === 'auto') {
-            // Prefer model default resolution when auto is selected
-            resolutionStr = config.params.resolution.default || `${width}*${height}`;
+            resStr = config.params.resolution.default;
           } else if (presetVal === 'custom') {
-            resolutionStr = `${width}*${height}`;
+            // Convert width/height to model's format
+            if (config.resolutionFormat === 'star') {
+              resStr = `${width}*${height}`;
+            } else {
+              resStr = `${width}x${height}`;
+            }
           } else {
-            // Preset values are in the form '1024x1024' or matching PRESETS keys
-            resolutionStr = `${width}*${height}`;
+            // Use preset value, converting format if needed
+            resStr = presetVal;
+            if (config.resolutionFormat === 'star') {
+              resStr = resStr.replace('x', '*');
+            }
           }
-          body = { prompt, resolution: resolutionStr };
+          payload.resolution = resStr;
         } else {
-          body = { prompt, width, height };
+          // Model uses separate width/height
+          payload.width = width;
+          payload.height = height;
         }
         
-        // Add model-specific parameters with correct names
-        // Use model defaults if input fields are empty
-        const cfgParam = config.params.guidance_scale || config.params.true_cfg_scale || config.params.cfg;
-        const stepsParam = config.params.num_inference_steps || config.params.steps;
+        // Parameter mapping from UI elements to model param names
+        const uiToModelParam = {
+          cfg: config.parameterMapping?.cfgScale || 'guidance_scale',
+          steps: config.parameterMapping?.steps || 'num_inference_steps',
+          seed: 'seed',
+          negative_prompt: 'negative_prompt'
+        };
         
-        const cfgValue = els.cfg.value ? parseFloat(els.cfg.value) : (cfgParam ? cfgParam.default : null);
-        const stepsValue = els.steps.value ? parseInt(els.steps.value) : (stepsParam ? stepsParam.default : null);
-        
-        if (config.params.cfg && cfgValue !== null) {
-          body.cfg = cfgValue;
-        } else if ((config.params.guidance_scale || config.params.true_cfg_scale) && cfgValue !== null) {
-          body.guidance_scale = cfgValue;
-        }
-        
-        if (config.params.steps && stepsValue !== null) {
-          body.steps = stepsValue;
-        } else if (config.params.num_inference_steps && stepsValue !== null) {
-          body.num_inference_steps = stepsValue;
-        }
-        
-        // Add model parameter for unified API (except for models with separate endpoints)
-        if (config.modelName) {
-          body.model = config.modelName;
-        }
-        
-        // Add negative prompt if provided
-        if (negative_prompt) {
-          body.negative_prompt = negative_prompt;
-        }
-        
-        // Add seed: use user-provided seed if present, otherwise use model default if available
-        if (els.seed.value && els.seed.value !== '') {
-          const seedVal = parseInt(els.seed.value);
-          if (!Number.isNaN(seedVal)) {
-            body.seed = seedVal;
+        // Map UI inputs to model parameters
+        for (const [uiParam, modelParam] of Object.entries(uiToModelParam)) {
+          let val = null;
+          
+          if (uiParam === 'cfg') {
+            val = els.cfg.value ? parseFloat(els.cfg.value) : null;
+          } else if (uiParam === 'steps') {
+            val = els.steps.value ? parseInt(els.steps.value) : null;
+          } else if (uiParam === 'seed') {
+            val = els.seed.value ? parseInt(els.seed.value) : null;
+          } else if (uiParam === 'negative_prompt') {
+            val = els.negPrompt.value.trim() || null;
           }
-        } else if (config.params.seed && typeof config.params.seed.default !== 'undefined') {
-          body.seed = config.params.seed.default;
+          
+          // Use model default if UI value is empty
+          if (val === null || val === '') {
+            const paramSchema = config.params[modelParam] || config.params[uiParam];
+            val = paramSchema?.default;
+          }
+          
+          // Only include if not null/undefined/empty
+          if (val !== null && val !== undefined && val !== '') {
+            payload[modelParam] = val;
+          }
         }
         
-        // Add additional parameters if they exist in the model config
-        if (config.params.sampler && config.params.sampler.default) {
-          body.sampler = config.params.sampler.default;
+        // Add model parameter for unified endpoints
+        if (config.modelName) {
+          payload.model = config.modelName;
         }
         
-        if (config.params.scheduler && config.params.scheduler.default) {
-          body.scheduler = config.params.scheduler.default;
+        // Add any additional model-specific parameters with defaults
+        for (const [paramName, paramSchema] of Object.entries(config.params)) {
+          if (['width', 'height', 'resolution', 'guidance_scale', 'true_cfg_scale', 'cfg', 'num_inference_steps', 'steps', 'seed', 'negative_prompt'].includes(paramName)) {
+            continue; // already handled above
+          }
+          if (paramSchema.default !== undefined) {
+            payload[paramName] = paramSchema.default;
+          }
         }
         
+        body = payload;
         endpoint = config.endpoint;
       }
 
       setBusy(true, 'Generating…');
-      log(`[${ts()}] Sending request to ${currentMode === 'image-edit' ? 'Qwen Image Edit' : config.name}…`);
+      
+      // Determine what we're generating for logging
+      let generationType;
+      if (currentMode === 'image-edit') {
+        generationType = 'Qwen Image Edit';
+      } else if (currentMode === 'video-generation') {
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        generationType = `${VIDEO_MODEL_CONFIGS[currentModel]?.name || currentModel} (${videoMode})`;
+      } else {
+        generationType = config?.name || currentModel;
+      }
+      
+      log(`[${ts()}] Sending request to ${generationType}…`);
       log(`[${ts()}] Request body: ${JSON.stringify(body, (key, value) => (key === 'image_b64' && typeof value === 'string') ? `${value.substring(0, 40)}...[truncated]` : value, 2)}`);
       
       const t0 = performance.now();
-      const blob = await generateImage(endpoint, key, body);
+      
+      // Use appropriate API function based on mode
+      let blob;
+      if (currentMode === 'video-generation') {
+        blob = await generateVideo(endpoint, key, body);
+      } else {
+        blob = await generateImage(endpoint, key, body);
+      }
 
-      // Display
+      // Display result
       if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
       const newBlobUrl = URL.createObjectURL(blob);
       setLastBlobUrl(newBlobUrl);
-      createResultImg(newBlobUrl);
+      
+      // Show appropriate result element based on content type
+      if (currentMode === 'video-generation') {
+        // Show video player
+        els.resultImg.style.display = 'none';
+        els.resultVideo.style.display = 'block';
+        els.resultVideo.src = newBlobUrl;
+        els.resultVideo.load(); // Force reload of video element
+      } else {
+        // Show image
+        els.resultVideo.style.display = 'none';
+        els.resultImg.style.display = 'block';
+        createResultImg(newBlobUrl);
+      }
+      
       els.downloadBtn.disabled = false; 
       els.copyBtn.disabled = false;
-  if (els.sendToEditBtn) els.sendToEditBtn.disabled = false;
+      
+      // Only show/enable "Send to Image Edit" for image results
+      if (els.sendToEditBtn) {
+        if (currentMode === 'video-generation') {
+          els.sendToEditBtn.disabled = true;
+          els.sendToEditBtn.style.display = 'none';
+        } else {
+          els.sendToEditBtn.disabled = false;
+          els.sendToEditBtn.style.display = '';
+        }
+      }
       const dt = ((performance.now()-t0)/1000).toFixed(1);
-      els.outMeta.textContent = `Output ${blob.type || 'image/jpeg'} • ${(blob.size/1024).toFixed(0)} KB • ${dt}s`;
+      
+      // Update metadata display based on content type
+      const contentType = currentMode === 'video-generation' ? 'video/mp4' : (blob.type || 'image/jpeg');
+      const sizeDisplay = blob.size > 1024*1024 ? 
+        `${(blob.size/(1024*1024)).toFixed(1)} MB` : 
+        `${(blob.size/1024).toFixed(0)} KB`;
+      els.outMeta.textContent = `Output ${contentType} • ${sizeDisplay} • ${dt}s`;
       toast('Done ✓');
       log(`[${ts()}] Done ✓`);
       
-      // Save to image history
-      const imageSettings = {
-        prompt: body.prompt,
-        negativePrompt: body.negative_prompt || '',
-        width: body.width,
-        height: body.height,
-        cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
-        steps: body.steps || body.num_inference_steps,
-        seed: body.seed
-      };
-      await saveGeneratedImage(blob, imageSettings);
+      // Save to generation history
+      let generationSettings;
+      if (currentMode === 'video-generation') {
+        // Video generation settings from flat payload
+        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        generationSettings = {
+          prompt: body.prompt,
+          negativePrompt: body.negative_prompt || '',
+          resolution: body.resolution,
+          cfgScale: body.guidance_scale,
+          steps: body.steps,
+          frames: body.frames,
+          fps: body.fps,
+          seed: body.seed,
+          model: currentModel,
+          mode: 'video-generation',
+          videoMode: videoMode,
+          type: 'video'
+        };
+      } else {
+        // Image generation settings
+        generationSettings = {
+          prompt: body.prompt,
+          negativePrompt: body.negative_prompt || '',
+          width: body.width,
+          height: body.height,
+          cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
+          steps: body.steps || body.num_inference_steps,
+          seed: body.seed,
+          model: currentModel,
+          mode: currentMode,
+          type: 'image'
+        };
+      }
+      await saveGeneratedImage(blob, generationSettings);
       
       // Refresh quota usage after successful generation
       await refreshQuotaUsage();
@@ -331,16 +538,52 @@ export function setupEventListeners() {
 
   // Download and copy functionality
   els.downloadBtn.addEventListener('click', ()=>{
-    if (!hasResultImg()) return;
-    const img = getResultImgElement();
-    const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
-    const a = document.createElement('a'); 
-    a.href = img.src; 
-    a.download = `${prefix}-${Date.now()}.jpg`; 
-    a.click();
+    if (currentMode === 'video-generation') {
+      // Download video
+      if (!els.resultVideo.src) return;
+      const prefix = `${currentModel}-video`;
+      const a = document.createElement('a'); 
+      a.href = els.resultVideo.src; 
+      a.download = `${prefix}-${Date.now()}.mp4`; 
+      a.click();
+    } else {
+      // Download image
+      if (!hasResultImg()) return;
+      const img = getResultImgElement();
+      const prefix = currentMode === 'image-edit' ? 'qwen-edit' : `${currentModel}-gen`;
+      const a = document.createElement('a'); 
+      a.href = img.src; 
+      a.download = `${prefix}-${Date.now()}.jpg`; 
+      a.click();
+    }
   });
 
   els.copyBtn.addEventListener('click', async ()=>{
+    if (currentMode === 'video-generation') {
+      // For videos, copy the URL (browsers don't support video clipboard)
+      if (!els.resultVideo.src) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(els.resultVideo.src);
+          toast('Video URL copied to clipboard');
+        } else {
+          // Fallback for older browsers
+          const textArea = document.createElement('textarea');
+          textArea.value = els.resultVideo.src;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          toast('Video URL copied to clipboard');
+        }
+        return;
+      } catch (e) {
+        toast('Copy failed - ' + e.message, true);
+        return;
+      }
+    }
+    
+    // Handle image copying (existing code)
     if (!hasResultImg()) return;
     const img = getResultImgElement();
     const res = await fetch(img.src); 
@@ -530,6 +773,11 @@ export function setupEventListeners() {
   // Setup slider event listeners and initial sync
   els.cfg.addEventListener('input', sync); 
   els.steps.addEventListener('input', sync); 
+  
+  // Video parameter sync listeners
+  if (els.fps) els.fps.addEventListener('input', sync);
+  if (els.frames) els.frames.addEventListener('input', sync);
+  if (els.sampleShift) els.sampleShift.addEventListener('input', sync); 
 
   // Event Listeners for image history
   document.getElementById('toggleSelectionBtn').addEventListener('click', toggleSelectionMode);
@@ -540,6 +788,11 @@ export function setupEventListeners() {
     if (confirm('Clear all image history? This cannot be undone.')) {
       clearImageHistory();
     }
+  });
+  
+  // History filter event listener
+  document.getElementById('historyFilter').addEventListener('change', (e) => {
+    setHistoryFilter(e.target.value);
   });
 
   // Modal event listeners
