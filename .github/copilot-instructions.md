@@ -239,7 +239,7 @@ params: {
 ### API Integration:
 - Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image)
+- Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
 - Video models: Wan2.1 14b Video and Skyreels
 - Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).

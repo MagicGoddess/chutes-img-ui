@@ -19,18 +19,19 @@ export const MODEL_CONFIGS = {
   },
   'qwen-image': {
     name: 'Qwen Image',
-    endpoint: 'https://chutes-qwen-image.chutes.ai/generate',
+    endpoint: 'https://image.chutes.ai/generate',
+    modelName: 'qwen-image',
     // Metadata for payload construction
     payloadFormat: 'flat',
     parameterMapping: {
-      cfgScale: 'true_cfg_scale',
+      cfgScale: 'guidance_scale',
       steps: 'num_inference_steps'
     },
     params: {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },
-      true_cfg_scale: { min: 0, max: 10, default: 4, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
+      guidance_scale: { min: 1, max: 20, default: 7.5, step: 0.1 },
+      num_inference_steps: { min: 1, max: 50, default: 50, step: 1 },
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
@@ -372,7 +373,10 @@ export const EDIT_MODEL_CONFIGS = {
   "hidream-edit": {
     name: "Hidream Edit",
     endpoint: "https://chutes-hidream-edit.chutes.ai/generate",
+    payloadFormat: 'flat',
     params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
       guidance_scale: {
         default: 5,
         min: 0,

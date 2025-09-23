@@ -5,7 +5,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports three modes: Image Edit, Text-to-Image, and Video Generation (Text-to-Video / Image-to-Video)
-- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, JuggernautXL, Chroma, Wan2.1 14b; Qwen Image Edit / Qwen Image Edit 2509; Wan2.1 14b Video, Skyreels)
+- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit / Qwen Image Edit 2509 / Hidream Edit; Wan2.1 14b Video, Skyreels)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video) handled via dropdown
@@ -26,11 +26,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
 - Quota usage endpoint: `GET https://api.chutes.ai/users/me/quota_usage/me`
 - API endpoints:
-  - Image Edit:
-    - Qwen Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`
-    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`
-  - Image Edit:
-    - Hidream Edit: `POST https://chutes-hidream-edit.chutes.ai/generate`
+    - Image Edit:\n    - Qwen Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`\n    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`\n    - Hidream Edit: `POST https://chutes-hidream-edit.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
   - Wan2.1 14b (Image): `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
   - Wan2.1 14b Video:
