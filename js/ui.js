@@ -1026,6 +1026,48 @@ export function updateVideoModeUI() {
     els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
   }
 
+  // Video image-to-video only supports a single source image.
+  // Ensure the file input does not allow multi-select and hide the multi-image hint.
+  if (els.imgInput) {
+    // Always enforce single selection for video modes
+    els.imgInput.removeAttribute('multiple');
+  }
+  const multiHint = document.getElementById('multiImageHint');
+  if (multiHint) {
+    multiHint.style.display = 'none';
+  }
+  // Update the label text to drop the plural when in video i2v, preserving the existing required span
+  const srcLabel = els.sourceImageSection ? els.sourceImageSection.querySelector('label') : null;
+  if (srcLabel) {
+    const reqSpan = els.sourceImageRequired || srcLabel.querySelector('#sourceImageRequired');
+    const leadingText = isImage2Video ? 'Source Image ' : 'Source Image(s) ';
+    if (srcLabel.firstChild && srcLabel.firstChild.nodeType === Node.TEXT_NODE) {
+      srcLabel.firstChild.nodeValue = leadingText;
+    } else {
+      srcLabel.insertBefore(document.createTextNode(leadingText), srcLabel.firstChild || null);
+    }
+    if (reqSpan) {
+      reqSpan.textContent = isImage2Video ? '(required)' : '';
+    }
+  }
+
+  // If we previously had multiple images (from Image Edit multi-image model),
+  // trim to the first image for video i2v and update the thumbnail view.
+  if (isImage2Video && Array.isArray(sourceB64s) && sourceB64s.length > 1) {
+    const firstB64 = sourceB64s[0];
+    const firstMime = (sourceMimes && sourceMimes[0]) || 'image/jpeg';
+    setSourceImages([firstB64], [firstMime]);
+    // Prefer using the currently displayed first <img> if available
+    let url = lastSourceObjectUrl();
+    if (!url && firstB64) {
+      url = `data:${firstMime};base64,${firstB64}`;
+    }
+    if (url) {
+      setImgThumbContent(`<img src="${url}" alt="source"/>`);
+      els.imgThumb.classList.remove('multi-grid');
+    }
+  }
+
   // Hide resolution UI when the selected model omits resolution for image-to-video
   const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
   const includeRes = Array.isArray(vcfg?.includeResolutionIn) ? vcfg.includeResolutionIn : ['text2video', 'image2video'];
