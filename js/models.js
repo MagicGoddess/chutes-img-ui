@@ -368,5 +368,43 @@ export const EDIT_MODEL_CONFIGS = {
       seed: { min: 0, max: 4294967295, default: null },
       negative_prompt: { default: '' }
     }
+  },
+  "hidream-edit": {
+    name: "Hidream Edit",
+    endpoint: "https://chutes-hidream-edit.chutes.ai/generate",
+    params: {
+      guidance_scale: {
+        default: 5,
+        min: 0,
+        max: 10
+      },
+      num_inference_steps: {
+        default: 28,
+        min: 5,
+        max: 75
+      },
+      seed: {
+        default: null,
+        min: 0,
+        max: 100000000
+      },
+      negative_prompt: {
+        default: "low resolution, blur"
+      },
+      image_guidance_scale: {
+        default: 4,
+        min: 0,
+        max: 10
+      }
+    },
+    parameterMapping: {
+      cfgScale: 'guidance_scale',
+      steps: 'num_inference_steps'
+    },
+    imageInput: {
+      type: 'single',
+      field: 'image_b64',
+      maxItems: 1
+    }
   }
 };

@@ -467,6 +467,138 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+## Hidream Edit (hidream-edit)
+
+### Example
+```sh
+curl -X POST \
+		https://chutes-hidream-edit.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "seed": null,
+    "prompt": "example-string",
+    "image_b64": "example-string",
+    "guidance_scale": 5,
+    "negative_prompt": "low resolution, blur",
+    "num_inference_steps": 28,
+    "image_guidance_scale": 4
+  }'
+```
+
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt",
+          "image_b64"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000000,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "image_b64": {
+            "type": "string",
+            "title": "Image B64"
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 5
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "low resolution, blur"
+          },
+          "num_inference_steps": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 75,
+                "minimum": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Inference Steps",
+            "default": 28
+          },
+          "image_guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Guidance Scale",
+            "default": 4
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": null,
+  "minimal_input_schema": null
+}
+```
 ## Neta Lumina (neta-lumina)
 ### Example
 ```sh
