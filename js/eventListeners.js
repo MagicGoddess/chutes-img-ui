@@ -316,82 +316,93 @@ export function setupEventListeners() {
 
         body = payload; // flat JSON
       } else {
-        // Text-to-image generation
-        const prompt = els.prompt.value.trim(); 
+        // Text-to-image generation (config-driven)
+        const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
-        const negative_prompt = els.negPrompt.value.trim();
         
         if (!config) return toast('Invalid model selected', true);
         
-        // Build body with model-specific parameter names
-        // Some models (like wan2.1-14b) expect a `resolution` enum instead of width/height.
+        // Build payload generically from model config
+        const payload = { prompt };
+        
+        // Handle resolution (enum vs width/height)
         if (config.params.resolution && Array.isArray(config.params.resolution.options)) {
-          // Build resolution string like '832*480'
-          let resolutionStr;
+          // Model uses resolution enum
+          let resStr;
           const presetVal = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
           if (presetVal === 'auto') {
-            // Prefer model default resolution when auto is selected
-            resolutionStr = config.params.resolution.default || `${width}*${height}`;
+            resStr = config.params.resolution.default;
           } else if (presetVal === 'custom') {
-            resolutionStr = `${width}*${height}`;
+            // Convert width/height to model's format
+            if (config.resolutionFormat === 'star') {
+              resStr = `${width}*${height}`;
+            } else {
+              resStr = `${width}x${height}`;
+            }
           } else {
-            // Preset values are in the form '1024x1024' or matching PRESETS keys
-            resolutionStr = `${width}*${height}`;
+            // Use preset value, converting format if needed
+            resStr = presetVal;
+            if (config.resolutionFormat === 'star') {
+              resStr = resStr.replace('x', '*');
+            }
           }
-          body = { prompt, resolution: resolutionStr };
+          payload.resolution = resStr;
         } else {
-          body = { prompt, width, height };
+          // Model uses separate width/height
+          payload.width = width;
+          payload.height = height;
         }
         
-        // Add model-specific parameters with correct names
-        // Use model defaults if input fields are empty
-        const cfgParam = config.params.guidance_scale || config.params.true_cfg_scale || config.params.cfg;
-        const stepsParam = config.params.num_inference_steps || config.params.steps;
+        // Parameter mapping from UI elements to model param names
+        const uiToModelParam = {
+          cfg: config.parameterMapping?.cfgScale || 'guidance_scale',
+          steps: config.parameterMapping?.steps || 'num_inference_steps',
+          seed: 'seed',
+          negative_prompt: 'negative_prompt'
+        };
         
-        const cfgValue = els.cfg.value ? parseFloat(els.cfg.value) : (cfgParam ? cfgParam.default : null);
-        const stepsValue = els.steps.value ? parseInt(els.steps.value) : (stepsParam ? stepsParam.default : null);
-        
-        if (config.params.cfg && cfgValue !== null) {
-          body.cfg = cfgValue;
-        } else if ((config.params.guidance_scale || config.params.true_cfg_scale) && cfgValue !== null) {
-          body.guidance_scale = cfgValue;
-        }
-        
-        if (config.params.steps && stepsValue !== null) {
-          body.steps = stepsValue;
-        } else if (config.params.num_inference_steps && stepsValue !== null) {
-          body.num_inference_steps = stepsValue;
-        }
-        
-        // Add model parameter for unified API (except for models with separate endpoints)
-        if (config.modelName) {
-          body.model = config.modelName;
-        }
-        
-        // Add negative prompt if provided
-        if (negative_prompt) {
-          body.negative_prompt = negative_prompt;
-        }
-        
-        // Add seed: use user-provided seed if present, otherwise use model default if available
-        if (els.seed.value && els.seed.value !== '') {
-          const seedVal = parseInt(els.seed.value);
-          if (!Number.isNaN(seedVal)) {
-            body.seed = seedVal;
+        // Map UI inputs to model parameters
+        for (const [uiParam, modelParam] of Object.entries(uiToModelParam)) {
+          let val = null;
+          
+          if (uiParam === 'cfg') {
+            val = els.cfg.value ? parseFloat(els.cfg.value) : null;
+          } else if (uiParam === 'steps') {
+            val = els.steps.value ? parseInt(els.steps.value) : null;
+          } else if (uiParam === 'seed') {
+            val = els.seed.value ? parseInt(els.seed.value) : null;
+          } else if (uiParam === 'negative_prompt') {
+            val = els.negPrompt.value.trim() || null;
           }
-        } else if (config.params.seed && typeof config.params.seed.default !== 'undefined') {
-          body.seed = config.params.seed.default;
+          
+          // Use model default if UI value is empty
+          if (val === null || val === '') {
+            const paramSchema = config.params[modelParam] || config.params[uiParam];
+            val = paramSchema?.default;
+          }
+          
+          // Only include if not null/undefined/empty
+          if (val !== null && val !== undefined && val !== '') {
+            payload[modelParam] = val;
+          }
         }
         
-        // Add additional parameters if they exist in the model config
-        if (config.params.sampler && config.params.sampler.default) {
-          body.sampler = config.params.sampler.default;
+        // Add model parameter for unified endpoints
+        if (config.modelName) {
+          payload.model = config.modelName;
         }
         
-        if (config.params.scheduler && config.params.scheduler.default) {
-          body.scheduler = config.params.scheduler.default;
+        // Add any additional model-specific parameters with defaults
+        for (const [paramName, paramSchema] of Object.entries(config.params)) {
+          if (['width', 'height', 'resolution', 'guidance_scale', 'true_cfg_scale', 'cfg', 'num_inference_steps', 'steps', 'seed', 'negative_prompt'].includes(paramName)) {
+            continue; // already handled above
+          }
+          if (paramSchema.default !== undefined) {
+            payload[paramName] = paramSchema.default;
+          }
         }
         
+        body = payload;
         endpoint = config.endpoint;
       }
 

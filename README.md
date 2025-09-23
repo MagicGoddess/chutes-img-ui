@@ -46,8 +46,9 @@ A minimalist, vibecoded Progressive Web App for generating and editing images wi
     - Skyreels – Text-to-Video: `prompt`, `resolution` (e.g. "544x960"), `guidance_scale`, `seed`, optional `negative_prompt`.
     - Skyreels – Image-to-Video: same as above plus `image_b64`.
 
-  Notes:
-  - Resolution strings are model-specific: Wan uses `W*H`, Skyreels uses `WxH`. The app formats and includes/omits `resolution` automatically based on each model’s metadata.
+Notes:
+- Resolution strings are model-specific: Wan uses `W*H`, Skyreels uses `WxH`. The app formats and includes/omits `resolution` automatically based on each model's metadata.
+- Parameter names vary by model: some use `guidance_scale`, others use `true_cfg_scale`. The app maps UI inputs to correct parameter names using each model's `parameterMapping` metadata.
 
 ## Usage
 - Use online: https://magicgoddess.github.io/chutes-img-ui

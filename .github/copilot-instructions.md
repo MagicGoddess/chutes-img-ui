@@ -1,6 +1,13 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
-Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos using AI models through the Chutes API. The application runs entirely client-side in the browser - only the API key and generated media are processed.
+Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
+
+API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for both image and video models:
+  - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
+  - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
+  - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
+
+The application runs entirely client-side in the browser — only the API key and generated media are processed.
 
 **ALWAYS reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.**
 
@@ -131,6 +138,11 @@ Models are defined in `js/models.js` with:
 - `endpoint`: API endpoint URL  
 - `modelName`: API model parameter (for some models)
 - `params`: Parameter definitions with min/max/default values
+- **Metadata for payload construction:**
+  - `payloadFormat`: Request body shape (currently `flat` for all models)
+  - `parameterMapping`: Maps UI concepts to model-specific parameter names (e.g., `cfgScale: 'guidance_scale'`)
+  - `resolutionFormat`: For models with resolution enums, format string (`'star'` for W*H, `'x'` for WxH)
+  - `includeResolutionIn`: For video models, which sub-modes include resolution
 
 **Resolution enums for specific models:**
 Some models (e.g., Wan2.1 14b image/video, Skyreels video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`; Skyreels: `WxH`).
@@ -159,10 +171,13 @@ params: {
 
 #### Adding a New Model:
 1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
-2. Reference the API schema from `reference/img-models.md`
-3. Test with both default and edge-case parameter values
-4. For models like Wan2.1 14b, ensure the UI uses the model's supported resolution enum and sends the correct payload shape (see schema).
-5. Verify model switching updates UI controls correctly
+2. Include metadata for payload construction:
+   - `payloadFormat`: currently `'flat'` for all models
+   - `parameterMapping`: map UI concepts to model param names (e.g., `cfgScale: 'guidance_scale'`, `steps: 'num_inference_steps'`)
+   - `resolutionFormat`: if model uses resolution enums, specify `'star'` or `'x'`
+3. Reference the API schema from `reference/img-models.md`
+4. Test with both default and edge-case parameter values
+5. Verify model switching updates UI controls correctly and payload uses correct parameter names
 
 #### Adding a New Video Model:
 1. Add an entry to `VIDEO_MODEL_CONFIGS` with:
