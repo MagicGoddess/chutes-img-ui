@@ -383,15 +383,25 @@ function refreshImageGrid() {
          </div>` :
         `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`;
       
+      // Media type badge (video or image)
+      const typeBadge = isVideo
+        ? `<div class="type-badge badge-video" title="Video">
+             <span class="emoji">🎥</span>
+           </div>`
+        : `<div class="type-badge badge-image" title="Image">
+             <span class="emoji">🖼️</span>
+           </div>`;
+      
       return `
         <div class="image-grid-item" data-image-id="${img.id}">
           <div class="checkbox" onclick="event.stopPropagation(); toggleImageSelection('${img.id}')"></div>
           ${mediaContent}
           <div class="overlay">
-            <div style="font-weight: 600;">${img.settings.model} ${isVideo ? '🎥' : ''}</div>
+            <div style="font-weight: 600;">${img.settings.model}</div>
             <div style="opacity: 0.8;">${resolution}</div>
             <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
           </div>
+          ${typeBadge}
         </div>
       `;
     }).join('');
