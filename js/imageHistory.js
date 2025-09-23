@@ -383,13 +383,15 @@ function refreshImageGrid() {
          </div>` :
         `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`;
       
-      // Media type badge (video or image)
+      // Media type badge (video or image). If the generation was produced by
+      // the Image Edit mode, show a small edit badge (wrench) next to the image emoji.
+      const isImageEdit = img.settings?.mode === 'image-edit';
       const typeBadge = isVideo
         ? `<div class="type-badge badge-video" title="Video">
              <span class="emoji">🎥</span>
            </div>`
         : `<div class="type-badge badge-image" title="Image">
-             <span class="emoji">🖼️</span>
+             <span class="emoji">🖼️</span>${isImageEdit ? '<span class="badge-edit">🔧</span>' : ''}
            </div>`;
       
       return `
