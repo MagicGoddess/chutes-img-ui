@@ -2,6 +2,8 @@
 
 Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
 
+**Code Principles:** The code should be generic, extendable, and reusable. Avoid hardcoding model names or specific behaviors; use metadata-driven approaches for all model-specific logic.
+
 API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, and video models:
   - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
   - Image Edit models: defined in `EDIT_MODEL_CONFIGS`; use `parameterMapping` plus `imageInput` to indicate single vs multiple images (`image_b64` vs `image_b64s`).
