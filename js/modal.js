@@ -1,6 +1,6 @@
 // Modal dialog functionality for image history
 
-import { idbGetBlob, idbGetAllMeta, getImageHistory } from './storage.js';
+import { idbGetBlob, idbGetAllMeta, getImageHistory, formatBytes } from './storage.js';
 import { findPresetForDimensions } from './imageUtils.js';
 import { toast } from './serviceWorker.js';
 import { ts } from './helpers.js';
@@ -52,6 +52,7 @@ export async function openImageModal(imageId) {
   const modalResolution = document.getElementById('modalResolution');
   const modalSeed = document.getElementById('modalSeed');
   const modalDate = document.getElementById('modalDate');
+  const modalFileSize = document.getElementById('modalFileSize');
   const modalSourceDownloads = document.getElementById('modalSourceDownloads');
   const modalDownloadSourceBtn = document.getElementById('modalDownloadSourceBtn');
   const modalTitle = document.getElementById('modalTitle');
@@ -113,6 +114,11 @@ export async function openImageModal(imageId) {
   const formattedDate = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const formattedTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   modalDate.textContent = `${formattedDate} ${formattedTime}`;
+  
+  // Display file size if available
+  if (modalFileSize) {
+    modalFileSize.textContent = image.fileSize ? formatBytes(image.fileSize) : '-';
+  }
   
   // Show/hide source download controls (only relevant for image-edit and image-to-video)
   const hasAnySource = !!(image.sourceImageData || image.sourceKey || (Array.isArray(image.sourceKeys) && image.sourceKeys.length) || (Array.isArray(image.sourceImageDatas) && image.sourceImageDatas.length));

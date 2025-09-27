@@ -60,6 +60,43 @@ async function updateStorageUsage() {
   }
 }
 
+// Update file sizes for entries that don't have them (migration helper)
+async function updateMissingFileSizes(filteredHistory) {
+  const itemsToUpdate = [];
+  
+  for (const img of filteredHistory) {
+    if (!img.fileSize && img.imageKey) {
+      try {
+        const blob = await idbGetBlob(img.imageKey);
+        if (blob && blob.size) {
+          img.fileSize = blob.size;
+          itemsToUpdate.push(img);
+        }
+      } catch (e) {
+        console.warn('Failed to get blob size for', img.id, e);
+      }
+    }
+  }
+  
+  // Update metadata store with file sizes
+  if (itemsToUpdate.length > 0) {
+    try {
+      for (const item of itemsToUpdate) {
+        await idbPutMeta(item);
+      }
+      // Also update localStorage snapshot
+      const history = getImageHistory();
+      const updated = history.map(h => {
+        const update = itemsToUpdate.find(u => u.id === h.id);
+        return update ? { ...h, fileSize: update.fileSize } : h;
+      });
+      saveImageHistory(updated);
+    } catch (e) {
+      console.warn('Failed to update file sizes in storage', e);
+    }
+  }
+}
+
 // Filter management
 function setHistoryFilter(filter) {
   currentFilter = filter;
@@ -160,6 +197,7 @@ async function saveGeneratedImage(contentBlob, settings) {
         imageData: reader.result, // Keep as imageData for backwards compatibility
         sourceImageData: (!hasMultipleSources && sourceB64) ? `data:${sourceMime};base64,${sourceB64}` : null,
         sourceImageDatas: (hasMultipleSources && sourceB64s) ? sourceB64s.map((b64,i)=>`data:${sourceMimes[i]||'image/jpeg'};base64,${b64}`) : null,
+        fileSize: contentBlob.size, // Store file size in bytes
         settings: {
           ...settings,
           mode: currentMode,
@@ -185,6 +223,7 @@ async function saveGeneratedImage(contentBlob, settings) {
     imageKey: contentKey, // Keep as imageKey for backwards compatibility
     sourceKey,
     sourceKeys,
+    fileSize: contentBlob.size, // Store file size in bytes
     settings: {
       ...settings,
       mode: currentMode,
@@ -390,6 +429,9 @@ function refreshImageGrid() {
     // Apply current filter
     const filteredHistory = filterHistoryByType(history);
     
+    // Update missing file sizes for existing entries (migration)
+    updateMissingFileSizes(filteredHistory);
+    
     if (filteredHistory.length === 0) {
       const filterText = currentFilter === 'images' ? 'images' : 
                         currentFilter === 'videos' ? 'videos' : 'content';
@@ -406,6 +448,9 @@ function refreshImageGrid() {
       const resolution = isVideo ? 
         img.settings.resolution || 'Unknown' : 
         `${img.settings.width || '?'}×${img.settings.height || '?'}`;
+      
+      // Format file size if available
+      const fileSize = img.fileSize ? formatBytes(img.fileSize) : 'Unknown';
       
       // For videos, show a captured first-frame thumbnail (with hidden video for capture)
       const mediaContent = isVideo ? 
@@ -433,7 +478,7 @@ function refreshImageGrid() {
           <div class="overlay">
             <div style="font-weight: 600;">${img.settings.model}</div>
             <div style="opacity: 0.8;">${resolution}</div>
-            <div style="opacity: 0.8; font-size: 11px;">${new Date(img.timestamp).toLocaleDateString()}</div>
+            <div style="opacity: 0.8; font-size: 11px;">${fileSize} • ${new Date(img.timestamp).toLocaleDateString()}</div>
           </div>
           ${typeBadge}
         </div>
