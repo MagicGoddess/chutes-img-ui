@@ -709,6 +709,46 @@ input[type="range"]:disabled::-moz-range-thumb {
 
 /* Single quota class can be styled via .quota-counter or .quota if needed */
 
+/* History Header Styles */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.history-title-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Storage Usage Styles */
+.storage-usage {
+  font-size: 12px;
+  color: #666;
+}
+
+.storage-usage .storage-breakdown {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+/* Desktop layout - inline storage usage */
+@media (min-width: 768px) {
+  .history-title-container {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+  
+  .storage-usage {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
 /* Image Grid Styles */
 .image-grid {
   display: grid;

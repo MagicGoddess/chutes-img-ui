@@ -2,7 +2,8 @@
 
 import { 
   idbPutBlob, idbGetBlob, idbPutMeta, idbGetAllMeta, idbDeleteMeta, 
-  idbClearMeta, idbDelete, getImageHistory, saveImageHistory
+  idbClearMeta, idbDelete, getImageHistory, saveImageHistory,
+  calculateStorageUsage, formatBytes
 } from './storage.js';
 import { dataURLToBlob, ts } from './helpers.js';
 import { log } from './activityLog.js';
@@ -33,6 +34,30 @@ function cleanupGridObjectUrls() {
     URL.revokeObjectURL(url);
   }
   gridObjectUrls.clear();
+}
+
+// Update storage usage display
+async function updateStorageUsage() {
+  const storageElement = document.getElementById('storageUsage');
+  if (!storageElement) return;
+  
+  try {
+    const usage = await calculateStorageUsage();
+    const totalFormatted = formatBytes(usage.total);
+    const idbFormatted = formatBytes(usage.idb);
+    const localFormatted = formatBytes(usage.localStorage);
+    
+    // Compact format for desktop, detailed for mobile
+    storageElement.innerHTML = `
+      Storage: <strong>${totalFormatted}</strong>
+      <div class="storage-breakdown">
+        Media: ${idbFormatted} • Settings: ${localFormatted}
+      </div>
+    `;
+  } catch (e) {
+    console.warn('Failed to calculate storage usage:', e);
+    storageElement.innerHTML = 'Storage unavailable';
+  }
 }
 
 // Filter management
@@ -147,6 +172,7 @@ async function saveGeneratedImage(contentBlob, settings) {
       if (history.length > 50) history.splice(50);
       saveImageHistory(history);
       refreshImageGrid();
+      updateStorageUsage();
       log(`[${ts()}] ${settings.type === 'video' ? 'Video' : 'Image'} saved to history (fallback localStorage)`);
     };
     reader.readAsDataURL(contentBlob);
@@ -184,6 +210,7 @@ async function saveGeneratedImage(contentBlob, settings) {
     saveImageHistory(history);
   }
   refreshImageGrid();
+  updateStorageUsage();
   log(`[${ts()}] ${settings.type === 'video' ? 'Video' : 'Content'} saved to history (IndexedDB)`);
 }
 
@@ -204,6 +231,7 @@ async function deleteImageFromHistory(imageId) {
     saveImageHistory(newHistory);
   }
   refreshImageGrid();
+  updateStorageUsage();
 }
 
 async function clearImageHistory() {
@@ -217,6 +245,7 @@ async function clearImageHistory() {
   try { await idbClearMeta(); } catch(e){}
   localStorage.removeItem('chutes_image_history');
   refreshImageGrid();
+  updateStorageUsage();
   toast('Image history cleared');
 }
 
@@ -322,6 +351,7 @@ async function deleteSelectedImages() {
 
   selectedImages.clear();
   refreshImageGrid();
+  updateStorageUsage();
   toast(`Deleted ${deletedCount} image(s)`);
 
   if (selectionMode) {
@@ -493,6 +523,9 @@ function refreshImageGrid() {
         if (itemEl) itemEl.classList.remove('loading-thumb');
       }
     });
+    
+    // Update storage usage display
+    updateStorageUsage();
   })();
 }
 
@@ -704,6 +737,7 @@ export {
   loadModalSettings,
   deleteModalImage,
   cleanupGridObjectUrls,
+  updateStorageUsage,
   initializeImageHistory,
   setHistoryFilter,
   getHistoryFilter

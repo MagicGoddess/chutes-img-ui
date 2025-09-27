@@ -258,3 +258,90 @@ export function getLogCollapsedState() {
 export function setLogCollapsedState(collapsed) {
   localStorage.setItem('chutes_log_collapsed', collapsed.toString());
 }
+
+/**
+ * Calculates the total storage usage from IndexedDB and localStorage
+ * @returns {Promise<{idb: number, localStorage: number, total: number}>} Storage usage in bytes
+ */
+export async function calculateStorageUsage() {
+  let idbSize = 0;
+  let localStorageSize = 0;
+
+  try {
+    // Calculate IndexedDB usage
+    const db = await openIdb();
+    
+    // Count blob data in the images store
+    const blobTransaction = db.transaction(IDB_STORE, 'readonly');
+    const blobStore = blobTransaction.objectStore(IDB_STORE);
+    const blobRequest = blobStore.getAll();
+    
+    await new Promise((resolve, reject) => {
+      blobRequest.onsuccess = () => {
+        const blobs = blobRequest.result || [];
+        idbSize = blobs.reduce((total, item) => {
+          return total + (item.blob?.size || 0);
+        }, 0);
+        resolve();
+      };
+      blobRequest.onerror = () => reject(blobRequest.error);
+      blobTransaction.onerror = () => reject(blobTransaction.error);
+    });
+    
+    // Count metadata in the meta store
+    const metaTransaction = db.transaction(IDB_META_STORE, 'readonly');
+    const metaStore = metaTransaction.objectStore(IDB_META_STORE);
+    const metaRequest = metaStore.getAll();
+    
+    await new Promise((resolve, reject) => {
+      metaRequest.onsuccess = () => {
+        const metaItems = metaRequest.result || [];
+        // Estimate metadata size (JSON serialization)
+        const metaSize = metaItems.reduce((total, item) => {
+          return total + JSON.stringify(item).length * 2; // UTF-16 encoding
+        }, 0);
+        idbSize += metaSize;
+        resolve();
+      };
+      metaRequest.onerror = () => reject(metaRequest.error);
+      metaTransaction.onerror = () => reject(metaTransaction.error);
+    });
+    
+    db.close();
+  } catch (e) {
+    console.warn('Failed to calculate IndexedDB usage:', e);
+  }
+
+  try {
+    // Calculate localStorage usage
+    for (let key in localStorage) {
+      if (localStorage.hasOwnProperty(key) && key.startsWith('chutes_')) {
+        const value = localStorage.getItem(key) || '';
+        localStorageSize += key.length * 2 + value.length * 2; // UTF-16 encoding
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to calculate localStorage usage:', e);
+  }
+
+  return {
+    idb: idbSize,
+    localStorage: localStorageSize,
+    total: idbSize + localStorageSize
+  };
+}
+
+/**
+ * Formats bytes into human readable format
+ * @param {number} bytes - Number of bytes
+ * @returns {string} Formatted string (e.g., "1.2 MB")
+ */
+export function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}

@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1759009156632" />
+  <link rel="stylesheet" href="./app.css?v=1759011550840" />
 </head>
 <body>
   <header>
@@ -245,8 +245,13 @@
 
     <div class="spacer"></div>
     <div class="card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2>Generation History</h2>
+      <div class="history-header">
+        <div class="history-title-container">
+          <h2>Generation History</h2>
+          <div id="storageUsage" class="storage-usage">
+            Calculating storage usage...
+          </div>
+        </div>
         <div class="toolbar">
           <select id="historyFilter" class="filter-select">
             <option value="all">All</option>
@@ -325,7 +330,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1759009156632"></script>
+  <script type="module" src="./js/main.js?v=1759011550840"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
