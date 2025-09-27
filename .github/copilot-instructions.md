@@ -54,8 +54,14 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 #### Image Edit Mode Testing:
 1. Switch to "Image Edit" mode
 2. Verify a Model dropdown is visible with options: "Qwen Image Edit" and "Qwen Image Edit 2509"
-3. Select Qwen Image Edit: upload one image; verify multi-upload hint is hidden; Auto resolution shows derive-from-source; Generate works
-4. Switch to Qwen Image Edit 2509: upload multiple images (2-3); verify the hint appears and thumbnails show all selected images; Auto uses first for dimensions; Generate works
+3. Select Qwen Image Edit: upload one image via the custom "Upload image(s)" button; verify multi-upload hint is hidden; Auto resolution shows derive-from-source; Generate works
+4. Switch to Qwen Image Edit 2509:
+  - Upload multiple images (2–3) or drag-and-drop several at once; verify thumbnails show all images with order badges (1..N)
+  - Add more images again; confirm they append instead of replacing (up to model max)
+  - Reorder via ☰ drag handle (desktop) or long-press on touch; or use ▲/▼ buttons; Auto uses the first for dimensions and updates on reorder
+  - Delete a specific image with ✕ and verify numbering/Auto dims update
+  - Clear all with the Clear button
+  - Generate works and preserves the current order in `image_b64s`
 5. History: entries for multi-image edits should save all source images; in the modal, "Download Sources" triggers downloads for each source
 6. Switching back from 2509 to Qwen Image Edit should keep only the first source image
 7. Sending an image from history to Image Edit should still load it as the single source; switching models preserves the uploaded image(s) per capability

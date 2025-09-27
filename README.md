@@ -22,6 +22,18 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Download/copy output (video download, image copy to clipboard)
 - Pure static files (no server code)
 
+### Enhanced multi-image selection (Qwen Image Edit 2509)
+- Custom upload toolbar (no native "X files selected" text)
+- Clear button to remove all sources
+- Numbered thumbnails showing order (1..N) — order is preserved and sent to the API
+- Reordering support:
+  - Desktop: drag via the ☰ handle, or use ▲/▼ on each thumbnail
+  - Touch: long-press the handle to start drag with a floating ghost
+- Per-image delete (✕ on each thumbnail)
+- Additive uploads: selecting or dropping more files appends to the list (respects model max)
+- Multi-file drag-and-drop supported
+- Auto resolution derives from the first image and updates when you reorder
+
 ## Configure
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
 - Quota usage endpoint: `GET https://api.chutes.ai/users/me/quota_usage/me`
@@ -58,6 +70,10 @@ Notes:
   - `npm run dev`
   - Open `http://localhost:5173`
 - Paste your API key, select a mode, write a prompt, and Generate.
+- Image Edit tips (Qwen Image Edit 2509):
+  - Use "Upload image(s)" to add sources; use "Clear" to remove all
+  - Drag the ☰ handle (or long-press on touch) to reorder; use ✕ to remove
+  - Auto resolution uses the first image; reorder to change the base dims
 - For Video Generation:
   - Pick a video model (Wan 2.1 14b Video or Skyreels)
   - Choose sub-mode: Text-to-Video or Image-to-Video (upload a source image for i2v)

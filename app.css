@@ -165,12 +165,7 @@ textarea {
     overflow: hidden; /* prevent content from bleeding out */
   }
   #sourceImageSection .thumb{ width:100%; }
-  #sourceImageSection input[type="file"]{ 
-    width: 100%; 
-    max-width: 100%;
-    overflow: hidden;
-    white-space: nowrap;
-  }
+  #sourceImageSection input[type="file"]{ display:none; }
 }
 
 button {
@@ -268,13 +263,98 @@ button:disabled {
   justify-items: center;
 }
 
-#imgThumb.multi-grid img {
+/* Multi-image item wrapper */
+#imgThumb .thumb-item {
+  position: relative;
   width: 100%;
-  height: auto;
-  max-width: none; /* allow grid cell to control width */
-  max-height: 200px; /* keep rows compact */
-  object-fit: cover;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
   border-radius: 8px;
+}
+
+#imgThumb.multi-grid img,
+#imgThumb .thumb-item img {
+  width: 100%;
+  height: 100%;
+  max-width: none; /* allow grid cell to control width */
+  max-height: none;
+  object-fit: cover;
+  display: block;
+}
+
+/* Index badge */
+#imgThumb .thumb-index {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 12px;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+
+/* Per-item controls */
+#imgThumb .thumb-controls {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  display: flex;
+  gap: 4px;
+  z-index: 3;
+}
+
+#imgThumb .thumb-controls button {
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
+#imgThumb .thumb-controls button:hover {
+  background: rgba(124, 58, 237, 0.7);
+}
+
+/* Drag handle (touch-friendly) */
+#imgThumb .drag-handle {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 6px;
+  cursor: grab;
+  user-select: none;
+}
+
+#imgThumb .drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging/over states */
+#imgThumb .thumb-item.dragging {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  opacity: 0.8;
+}
+
+#imgThumb .thumb-item.drag-over {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Floating ghost for touch drag */
+.drag-ghost {
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.55);
 }
 
 .muted {

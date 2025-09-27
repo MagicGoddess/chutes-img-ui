@@ -19,7 +19,8 @@ import {
   switchMode, updateParametersForModel, setCurrentModel,
   lastSourceObjectUrl, computeAndDisplayAutoDims,
   applyPreset, handleImageFile, handleImageFiles, setSourceImage, setSourceImages, setImgThumbContent,
-  updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel, updateVideoResolutionPresets
+  updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel, updateVideoResolutionPresets,
+  renderSourceThumbs, appendImageFiles
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -112,6 +113,26 @@ export function setupEventListeners() {
     els.revealKeyBtn.setAttribute('aria-pressed', String(isPwd));
   });
 
+  // Custom upload button opens the hidden file input
+  const uploadBtn = document.getElementById('imgUploadBtn');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
+      els.imgInput?.click();
+    });
+  }
+
+  // Clear all sources button
+  const clearBtn = document.getElementById('clearSourcesBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      setImgThumbContent('<span class="muted">No image selected</span>');
+      els.imgThumb.classList.remove('multi-grid');
+      setSourceImage(null, null);
+      setSourceImages([], []);
+      els.imgInput.value = '';
+    });
+  }
+
   // Image preview (single or multiple depending on model)
   els.imgInput.addEventListener('change', async (e)=>{
     const files = e.target.files;
@@ -124,7 +145,9 @@ export function setupEventListeners() {
       return; 
     }
     if (currentMode === 'image-edit' && EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple') {
-      await handleImageFiles(files);
+      // Append to existing rather than replace
+      await appendImageFiles(files);
+      renderSourceThumbs();
     } else {
       const f = files[0];
       if (!f) return;
@@ -788,8 +811,16 @@ export function setupEventListeners() {
     });
   });
   els.imgThumb.addEventListener('drop', async (e)=>{
-    const f = e.dataTransfer?.files?.[0];
-    await handleImageFile(f);
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    const multi = currentMode === 'image-edit' && EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple';
+    if (multi) {
+      await appendImageFiles(files);
+      renderSourceThumbs();
+    } else {
+      const f = files[0];
+      await handleImageFile(f);
+    }
   });
 
   // Clear API key error hint upon typing/saving

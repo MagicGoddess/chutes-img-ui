@@ -107,7 +107,13 @@
         <div class="row row-2" id="imageInputRow">
           <div id="sourceImageSection">
             <label>Source Image(s) <span id="sourceImageRequired">(required)</span></label>
-            <input id="imgInput" type="file" accept="image/*" />
+            <!-- Custom upload toolbar -->
+            <div class="toolbar">
+              <button id="imgUploadBtn" class="secondary" type="button">📤 Upload image(s)</button>
+              <button id="clearSourcesBtn" class="secondary" type="button">🧹 Clear</button>
+            </div>
+            <!-- Hidden native input (multi enabled by model config) -->
+            <input id="imgInput" type="file" accept="image/*" style="display:none" />
             <div class="muted" id="multiImageHint" style="display:none;margin-top:4px">This model supports multiple source images. You can select up to the model's limit.</div>
             <div class="thumb" id="imgThumb"><span class="muted">No image selected</span></div>
           </div>

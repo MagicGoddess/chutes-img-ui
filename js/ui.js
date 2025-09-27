@@ -161,6 +161,156 @@ export function setImgThumbContent(html, objectUrl = null) {
 }
 
 /**
+ * Renders the current sourceB64s/sourceMimes into the #imgThumb area with
+ * numbering, delete, and reorder controls. Adds touch-friendly drag handles.
+ */
+export function renderSourceThumbs() {
+  const imgs = Array.isArray(sourceB64s) ? sourceB64s : [];
+  if (!imgs.length) {
+    setImgThumbContent('<span class="muted">No image selected</span>');
+    els.imgThumb.classList.remove('multi-grid');
+    return;
+  }
+  // Single image simplified view
+  if (imgs.length === 1) {
+    const url = `data:${sourceMimes[0] || 'image/jpeg'};base64,${imgs[0]}`;
+    setImgThumbContent(`<img src="${url}" alt="source"/>`);
+    els.imgThumb.classList.remove('multi-grid');
+    return;
+  }
+
+  // Multi image grid with controls
+  const parts = imgs.map((b64, idx) => {
+    const mime = sourceMimes[idx] || 'image/jpeg';
+    const url = `data:${mime};base64,${b64}`;
+    return `
+      <div class="thumb-item" data-index="${idx}">
+        <img src="${url}" alt="source ${idx+1}" />
+        <div class="thumb-index">${idx + 1}</div>
+        <div class="thumb-controls">
+          <button type="button" class="btn-up" title="Move up" aria-label="Move up">▲</button>
+          <button type="button" class="btn-down" title="Move down" aria-label="Move down">▼</button>
+          <button type="button" class="btn-del" title="Remove" aria-label="Remove">✕</button>
+        </div>
+        <div class="drag-handle" title="Drag to reorder">☰ Drag</div>
+      </div>`;
+  }).join('');
+
+  setImgThumbContent(parts);
+  els.imgThumb.classList.add('multi-grid');
+
+  // Wire per-item controls
+  els.imgThumb.querySelectorAll('.thumb-item').forEach(item => {
+    const idx = parseInt(item.getAttribute('data-index'), 10);
+    const btnUp = item.querySelector('.btn-up');
+    const btnDown = item.querySelector('.btn-down');
+    const btnDel = item.querySelector('.btn-del');
+    if (btnUp) btnUp.addEventListener('click', () => moveImage(idx, Math.max(0, idx - 1)));
+    if (btnDown) btnDown.addEventListener('click', () => moveImage(idx, Math.min(sourceB64s.length - 1, idx + 1)));
+    if (btnDel) btnDel.addEventListener('click', () => removeImage(idx));
+
+    // Desktop drag & drop using HTML5 drag API on handle
+    const handle = item.querySelector('.drag-handle');
+    if (handle) handle.setAttribute('draggable', 'true');
+  });
+
+  wireDesktopDnD();
+  wireTouchLongPressDnD();
+}
+
+function currentIndexFromElement(el) {
+  const i = parseInt(el.getAttribute('data-index'), 10);
+  return Number.isNaN(i) ? null : i;
+}
+
+function moveImage(from, to) {
+  if (from === to) return;
+  if (from < 0 || to < 0) return;
+  if (from >= sourceB64s.length || to >= sourceB64s.length) return;
+  const b = sourceB64s.splice(from, 1)[0];
+  const m = sourceMimes.splice(from, 1)[0];
+  sourceB64s.splice(to, 0, b);
+  sourceMimes.splice(to, 0, m);
+  // Re-render to update numbering and data-index
+  renderSourceThumbs();
+  // Update primary fields
+  if (sourceB64s.length > 0) {
+    sourceB64 = sourceB64s[0];
+    sourceMime = sourceMimes[0] || 'image/jpeg';
+  }
+  // If auto preset, recompute dims from first image
+  if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+    const firstDataUrl = `data:${sourceMimes[0] || 'image/jpeg'};base64,${sourceB64s[0]}`;
+    computeAndDisplayAutoDims(firstDataUrl).catch(()=>{});
+  }
+}
+
+function removeImage(index) {
+  if (index < 0 || index >= sourceB64s.length) return;
+  sourceB64s.splice(index, 1);
+  sourceMimes.splice(index, 1);
+  // Also update single-source fields
+  if (sourceB64s.length > 0) {
+    sourceB64 = sourceB64s[0];
+    sourceMime = sourceMimes[0] || 'image/jpeg';
+  } else {
+    sourceB64 = null;
+    sourceMime = null;
+  }
+  renderSourceThumbs();
+  if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto' && sourceB64s.length) {
+    const firstDataUrl = `data:${sourceMimes[0] || 'image/jpeg'};base64,${sourceB64s[0]}`;
+    computeAndDisplayAutoDims(firstDataUrl).catch(()=>{});
+  }
+}
+
+/**
+ * Append new files to the current multi-image selection honoring maxItems.
+ * Does nothing if current model doesn't support multiple images.
+ */
+export async function appendImageFiles(files) {
+  const cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { type: 'single', maxItems: 1 };
+  if (cfg.type !== 'multiple') {
+    // Fallback to single-file handler
+    const f = files && files[0];
+    if (f) await handleImageFile(f);
+    return;
+  }
+
+  const maxItems = Math.max(1, cfg.maxItems || 1);
+  const arr = Array.from(files || []).filter(f => (f.type || '').startsWith('image/'));
+  if (!arr.length) return;
+
+  // If we already have images, append while enforcing maxItems
+  for (const f of arr) {
+    if (sourceB64s.length >= maxItems) break;
+    const b64 = await fileToBase64(f);
+    const data = (b64 || '').split(',')[1] || '';
+    if (!data) continue;
+    sourceB64s.push(data);
+    sourceMimes.push(f.type || 'image/jpeg');
+  }
+
+  // Keep single-source fields in sync
+  if (sourceB64s.length > 0) {
+    sourceB64 = sourceB64s[0];
+    sourceMime = sourceMimes[0] || 'image/jpeg';
+  }
+
+  // Auto dims from first image when preset set to auto
+  if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+    try {
+      toggleDimInputs(false);
+      if (els.autoDims) { els.autoDims.style.display = 'block'; els.autoDims.textContent = 'Auto: (waiting for image)'; }
+      const firstDataUrl = `data:${sourceMimes[0] || 'image/jpeg'};base64,${sourceB64s[0]}`;
+      await computeAndDisplayAutoDims(firstDataUrl);
+    } catch (e) {
+      console.warn('Auto dims failed after append', e);
+    }
+  }
+}
+
+/**
  * Loads an image blob or URL into the Source Image area and prepares base64 for API.
  * Also computes Auto dimensions if that preset is selected.
  * @param {Blob|string} input - Image blob or object/data URL
@@ -460,6 +610,10 @@ export function updateParametersForEditModel(modelKey) {
       els.imgInput.setAttribute('multiple', 'multiple');
       const hint = document.getElementById('multiImageHint');
       if (hint) hint.style.display = '';
+      // If we already have images, render with controls
+      if (sourceB64s && sourceB64s.length > 0) {
+        renderSourceThumbs();
+      }
     } else {
       els.imgInput.removeAttribute('multiple');
       const hint = document.getElementById('multiImageHint');
@@ -861,38 +1015,187 @@ export async function handleImageFiles(files) {
   const maxItems = Math.max(1, cfg.maxItems || 1);
   const sel = arr.slice(0, maxItems);
 
-  // Build previews and base64 arrays
-  const htmlParts = [];
+  // Build base64 arrays
   const b64s = [];
   const mimes = [];
   for (const f of sel) {
-    const url = URL.createObjectURL(f);
-    // Track each URL? imgThumb only tracks a single objectUrl; instead we won't track here.
-    htmlParts.push(`<img src="${url}" alt="source"/>`);
     const b64 = await fileToBase64(f);
     const b64Data = (b64 || '').split(',')[1] || '';
     b64s.push(b64Data);
     mimes.push(f.type || 'image/jpeg');
   }
-  // Set thumbnail with multiple images (no single object URL tracking)
-  setImgThumbContent(htmlParts.join(''));
-  // Toggle grid class when more than one image is selected
-  els.imgThumb.classList.toggle('multi-grid', sel.length > 1);
   setSourceImages(b64s, mimes);
+  renderSourceThumbs();
 
   // Auto dims based on the first image
   if (currentMode === 'image-edit' && els.resolutionPreset && els.resolutionPreset.value === 'auto') {
     try {
-      const firstImg = els.imgThumb.querySelector('img');
-      if (firstImg) {
+      if (sourceB64s.length > 0) {
         toggleDimInputs(false);
         if (els.autoDims) { els.autoDims.style.display = 'block'; els.autoDims.textContent = 'Auto: (waiting for image)'; }
-        await computeAndDisplayAutoDims(firstImg.src);
+        const firstDataUrl = `data:${sourceMimes[0] || 'image/jpeg'};base64,${sourceB64s[0]}`;
+        await computeAndDisplayAutoDims(firstDataUrl);
       }
     } catch (err) {
       console.warn('Failed to compute auto dims for multi-images', err);
     }
   }
+}
+
+// ---- Drag & Drop (desktop) ----
+let dragSrcIndex = null;
+let lastOverEl = null;
+
+function wireDesktopDnD() {
+  els.imgThumb.querySelectorAll('.thumb-item .drag-handle').forEach(handle => {
+    const item = handle.closest('.thumb-item');
+    handle.addEventListener('dragstart', (e) => {
+      const idx = currentIndexFromElement(item);
+      dragSrcIndex = idx;
+      item.classList.add('dragging');
+      try {
+        e.dataTransfer.effectAllowed = 'move';
+        // Some browsers require data to be set for drag to start
+        e.dataTransfer.setData('text/plain', String(idx));
+        // Create a sized ghost so the drag avatar matches the preview size
+        const rect = item.getBoundingClientRect();
+        const ghost = item.cloneNode(true);
+        ghost.style.position = 'absolute';
+        ghost.style.left = '-10000px';
+        ghost.style.top = '-10000px';
+        ghost.style.width = rect.width + 'px';
+        ghost.style.height = rect.height + 'px';
+        ghost.style.pointerEvents = 'none';
+        ghost.style.opacity = '1';
+        ghost.style.border = '2px solid var(--accent)';
+        ghost.style.borderRadius = '8px';
+        ghost.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, rect.width/2, rect.height/2);
+        // Remove after a tick (Firefox requires it to remain in DOM until dragstart returns)
+        setTimeout(() => { try { ghost.remove(); } catch(_) {} }, 0);
+      } catch(_) {}
+    });
+    handle.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      dragSrcIndex = null;
+    });
+  });
+
+  els.imgThumb.querySelectorAll('.thumb-item').forEach(item => {
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault(); // allow drop
+      if (lastOverEl && lastOverEl !== item) lastOverEl.classList.remove('drag-over');
+      item.classList.add('drag-over');
+      lastOverEl = item;
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+      if (lastOverEl === item) lastOverEl = null;
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      const to = currentIndexFromElement(item);
+      const from = dragSrcIndex;
+      dragSrcIndex = null;
+      els.imgThumb.querySelectorAll('.thumb-item.dragging').forEach(el => el.classList.remove('dragging'));
+      if (typeof from === 'number' && typeof to === 'number' && from !== to) {
+        moveImage(from, to);
+      }
+    });
+  });
+}
+
+// ---- Touch long-press drag ----
+let touchDrag = {
+  active: false,
+  srcIndex: null,
+  ghostEl: null,
+  currentOverIndex: null
+};
+
+function wireTouchLongPressDnD() {
+  els.imgThumb.querySelectorAll('.thumb-item .drag-handle').forEach(handle => {
+    const item = handle.closest('.thumb-item');
+    let pressTimer = null;
+
+    const cancelPress = () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+    };
+
+    handle.addEventListener('pointerdown', (e) => {
+      // Only initiate for touch or primary button
+      if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+      e.preventDefault();
+      const idx = currentIndexFromElement(item);
+      pressTimer = setTimeout(() => {
+        startTouchDrag(e, item, idx);
+      }, 200);
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(type => {
+      handle.addEventListener(type, () => cancelPress());
+    });
+  });
+}
+
+function startTouchDrag(e, item, idx) {
+  touchDrag.active = true;
+  touchDrag.srcIndex = idx;
+  item.classList.add('dragging');
+  // Create ghost element
+  const rect = item.getBoundingClientRect();
+  const ghost = item.cloneNode(true);
+  ghost.style.position = 'fixed';
+  ghost.style.left = rect.left + 'px';
+  ghost.style.top = rect.top + 'px';
+  ghost.style.width = rect.width + 'px';
+  ghost.style.height = rect.height + 'px';
+  ghost.style.pointerEvents = 'none';
+  ghost.style.opacity = '0.95';
+  ghost.style.transform = 'none';
+  ghost.style.zIndex = '1000';
+  ghost.classList.add('drag-ghost');
+  document.body.appendChild(ghost);
+  touchDrag.ghostEl = ghost;
+
+  const move = (ev) => {
+    if (!touchDrag.active) return;
+    ghost.style.left = (ev.clientX - rect.width/2) + 'px';
+    ghost.style.top = (ev.clientY - rect.height/2) + 'px';
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const targetItem = el?.closest?.('.thumb-item');
+    els.imgThumb.querySelectorAll('.thumb-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+    if (targetItem) {
+      targetItem.classList.add('drag-over');
+      const tIdx = currentIndexFromElement(targetItem);
+      touchDrag.currentOverIndex = tIdx;
+    } else {
+      touchDrag.currentOverIndex = null;
+    }
+  };
+  const end = (ev) => {
+    if (!touchDrag.active) return;
+    touchDrag.active = false;
+    document.removeEventListener('pointermove', move, true);
+    document.removeEventListener('pointerup', end, true);
+    document.removeEventListener('pointercancel', end, true);
+    if (touchDrag.ghostEl) {
+      touchDrag.ghostEl.remove();
+      touchDrag.ghostEl = null;
+    }
+    els.imgThumb.querySelectorAll('.thumb-item.drag-over').forEach(n => n.classList.remove('drag-over'));
+    els.imgThumb.querySelectorAll('.thumb-item.dragging').forEach(n => n.classList.remove('dragging'));
+    const from = idx;
+    const to = touchDrag.currentOverIndex;
+    touchDrag.currentOverIndex = null;
+    if (typeof from === 'number' && typeof to === 'number' && from !== to) {
+      moveImage(from, to);
+    }
+  };
+  document.addEventListener('pointermove', move, true);
+  document.addEventListener('pointerup', end, true);
+  document.addEventListener('pointercancel', end, true);
 }
 
 /**
