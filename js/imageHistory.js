@@ -10,8 +10,10 @@ import { toast } from './serviceWorker.js';
 import { 
   els, currentMode, currentModel, sourceB64, sourceMime, sourceB64s, sourceMimes,
   setCurrentModel, setSourceImage, setSourceImages, switchMode, updateParametersForModel,
-  toggleDimInputs, applyPreset, sync, setImgThumbContent
+  toggleDimInputs, applyPreset, sync, setImgThumbContent, updateParametersForEditModel,
+  renderSourceThumbs, computeAndDisplayAutoDims
 } from './ui.js';
+import { EDIT_MODEL_CONFIGS } from './models.js';
 import { findPresetForDimensions } from './imageUtils.js';
 import { 
   openImageModal, closeImageModal, downloadModalImage, 
@@ -514,7 +516,7 @@ function toggleImageSelection(imageId) {
 }
 
 // Modal functionality integration
-function loadModalSettings() {
+async function loadModalSettings() {
   const currentModalImage = getCurrentModalImage();
   if (!currentModalImage) return;
   
@@ -525,6 +527,15 @@ function loadModalSettings() {
     els.modeImageEdit.checked = true;
     els.modeTextToImage.checked = false;
     switchMode('image-edit');
+    // Ensure the correct Image Edit model is selected and UI updated
+    const targetModel = (settings.model && EDIT_MODEL_CONFIGS[settings.model]) 
+      ? settings.model 
+      : Object.keys(EDIT_MODEL_CONFIGS)[0];
+    if (targetModel) {
+      els.modelSelect.value = targetModel;
+      setCurrentModel(targetModel);
+      updateParametersForEditModel(targetModel);
+    }
   } else {
     els.modeImageEdit.checked = false;
     els.modeTextToImage.checked = true;
@@ -563,22 +574,86 @@ function loadModalSettings() {
   
   // Load source image if available
   if (settings.mode === 'image-edit') {
-    if (currentModalImage.sourceImageData) {
+    const hasMultiInline = Array.isArray(currentModalImage.sourceImageDatas) && currentModalImage.sourceImageDatas.length > 0;
+    const hasMultiKeys = Array.isArray(currentModalImage.sourceKeys) && currentModalImage.sourceKeys.length > 0;
+
+    if (hasMultiInline) {
+      // Multiple inline data URLs stored in history
+      const b64s = [];
+      const mimes = [];
+      for (const dataUrl of currentModalImage.sourceImageDatas) {
+        if (typeof dataUrl !== 'string') continue;
+        const parts = dataUrl.split(',');
+        if (parts.length === 2) {
+          b64s.push(parts[1]);
+          const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/);
+          mimes.push(mimeMatch ? mimeMatch[1] : 'image/jpeg');
+        }
+      }
+      setSourceImages(b64s, mimes);
+      renderSourceThumbs();
+    } else if (hasMultiKeys) {
+      // Multiple source blobs referenced by keys
+      (async () => {
+        try {
+          const blobs = await Promise.all(currentModalImage.sourceKeys.map(k => idbGetBlob(k).catch(()=>null)));
+          const b64s = [];
+          const mimes = [];
+          for (const blob of blobs) {
+            if (!blob) continue;
+            const r = new FileReader();
+            const b64 = await new Promise((resolve, reject) => {
+              r.onload = () => resolve(String(r.result || ''));
+              r.onerror = reject;
+              r.readAsDataURL(blob);
+            });
+            const parts = b64.split(',');
+            if (parts.length === 2) {
+              b64s.push(parts[1]);
+              mimes.push(blob.type || 'image/jpeg');
+            }
+          }
+          setSourceImages(b64s, mimes);
+          renderSourceThumbs();
+        } catch (e) {
+          console.warn('Failed to load multi-source blobs for modal load', e);
+        }
+      })();
+    } else if (currentModalImage.sourceImageData) {
+      // Single inline data URL
       setImgThumbContent(`<img src="${currentModalImage.sourceImageData}" alt="source"/>`);
       setSourceImage(currentModalImage.sourceImageData.split(',')[1], 'image/jpeg');
+      // Keep arrays in sync for single-image case
+      setSourceImages([currentModalImage.sourceImageData.split(',')[1]], ['image/jpeg']);
     } else if (currentModalImage.sourceKey) {
-      // fetch blob from IDB and create object URL
+      // Single blob key
       idbGetBlob(currentModalImage.sourceKey).then(blob => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         setImgThumbContent(`<img src="${url}" alt="source"/>`, url);
-        // Also prepare base64 for API by reading blob (async)
         const r = new FileReader(); 
         r.onload = () => { 
-          setSourceImage((r.result || '').split(',')[1], blob.type || 'image/jpeg'); 
+          const data = (r.result || '').split(',')[1];
+          const mime = blob.type || 'image/jpeg';
+          setSourceImage(data, mime);
+          setSourceImages([data], [mime]);
         }; 
         r.readAsDataURL(blob);
       }).catch(e => console.warn('Failed to load source blob for modal load', e));
+    }
+
+    // If preset is Auto, recompute dimensions from first source image
+    try {
+      if (els.resolutionPreset && els.resolutionPreset.value === 'auto') {
+        const firstB64 = (Array.isArray(sourceB64s) && sourceB64s.length) ? sourceB64s[0] : sourceB64;
+        const firstMime = (Array.isArray(sourceMimes) && sourceMimes.length) ? (sourceMimes[0] || 'image/jpeg') : (sourceMime || 'image/jpeg');
+        if (firstB64) {
+          const dataUrl = `data:${firstMime};base64,${firstB64}`;
+          await computeAndDisplayAutoDims(dataUrl);
+        }
+      }
+    } catch (e) {
+      console.warn('Auto dims compute failed during Load Settings', e);
     }
   }
   
