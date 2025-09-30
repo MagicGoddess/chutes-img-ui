@@ -59,8 +59,9 @@ export function registerServiceWorker() {
     
     // Listen for messages from service worker
     navigator.serviceWorker.addEventListener('message', event => {
-      if (event.data.type === 'CACHE_UPDATED') {
-        console.log('Cache updated to version:', event.data.version);
+      const data = event && event.data ? event.data : {};
+      if (data.type === 'CACHE_UPDATED') {
+        console.log('Cache updated to version:', data.version);
         toast('✅ App cache updated!');
       }
     });

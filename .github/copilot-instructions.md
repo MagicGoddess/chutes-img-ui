@@ -1,14 +1,16 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
 Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
+It now also supports Text-to-Speech (TTS) generation.
 
 **Code Principles:** The code should be generic, extendable, and reusable. Avoid hardcoding model names or specific behaviors; use metadata-driven approaches for all model-specific logic.
 
-API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, and video models:
+API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, video, and TTS models:
   - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
   - Image Edit models: defined in `EDIT_MODEL_CONFIGS`; use `parameterMapping` plus `imageInput` to indicate single vs multiple images (`image_b64` vs `image_b64s`).
   - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
   - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
+  - TTS models: `TTS_MODEL_CONFIGS` defines `params` (with enums/ranges) and optional `audioInput` metadata to request reference audio; the TTS UI renders inputs dynamically and builds the payload accordingly. Returns audio/wav Blobs.
 
 The application runs entirely client-side in the browser — only the API key and generated media are processed.
 
@@ -82,6 +84,15 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 7. Generation History:
   - New entries appear as videos with first-frame thumbnails
   - Modal opens as "Video Preview" with a playable element and "Download Video"
+#### TTS Mode Testing:
+1. Switch to "Text to Speech" mode
+2. Verify a Model dropdown is visible with options: Kokoro, Spark TTS, Cosy Voice TTS 16g, CSM 1B
+3. Enter sample text: "Hello from Chutes TTS"
+4. For Kokoro: pick a voice from the enum and adjust speed; Generate and play audio
+5. For Spark TTS: leave params empty (defaults), then test with a small reference audio and optional transcript
+6. For Cosy Voice: upload required prompt audio and provide matching prompt text; Generate
+7. For CSM 1B: test speaker values 0 or 1 and max duration; Generate
+8. History shows 🗣️ badge, filter by TTS, modal opens as "Audio Preview" with download
 1. Switch to "Image Edit" mode  
 2. Upload a test image (any jpg/png)
 3. Verify the image appears in the thumbnail
@@ -120,6 +131,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 ├── js/                     # Modular JavaScript files
 │   ├── main.js             # Entry point, coordinates all modules
 │   ├── models.js           # MODEL_CONFIGS and VIDEO_MODEL_CONFIGS definitions
+│   ├── tts configs in models.js as TTS_MODEL_CONFIGS
 │   ├── api.js              # API communication (quota, generate, etc.)
 │   ├── storage.js          # localStorage/IndexedDB operations
 │   ├── ui.js               # UI state management and DOM manipulation
@@ -159,6 +171,7 @@ Image/text models are defined in `js/models.js` with:
   - `parameterMapping`: Maps UI concepts to model-specific parameter names (e.g., `cfgScale: 'guidance_scale'`)
   - `resolutionFormat`: For models with resolution enums, format string (`'star'` for W*H, `'x'` for WxH)
   - `includeResolutionIn`: For video models, which sub-modes include resolution
+  - TTS: `TTS_MODEL_CONFIGS` includes `params` (with types: enum, ranges, required) and optional `audioInput` { type, field, label, required }
 
 **Resolution enums for specific models:**
 Some models (e.g., Wan2.1 14b image/video, Skyreels video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`; Skyreels: `WxH`).
@@ -211,6 +224,14 @@ params: {
   - Metadata: `payloadFormat` (currently `flat`), `resolutionFormat` (`'star'` or `'x'`), and `includeResolutionIn` (e.g., `['text2video']` for Wan)
 2. The UI will automatically populate resolution presets from `params.resolution.options` and hide resolution controls in modes not listed in `includeResolutionIn`.
 3. The request payload will be built automatically in `js/eventListeners.js` using the metadata and defaults.
+#### Adding a New TTS Model:
+1. Add an entry to `TTS_MODEL_CONFIGS` with:
+  - `endpoint`
+  - `params` with `text` plus optional numeric ranges and enums
+  - Optional `audioInput`: `{ type: 'single', field: 'sample_audio_b64'|'prompt_audio_b64', label, required? }`
+2. The TTS UI will automatically render controls and handle audio uploads as needed.
+3. The request payload will include provided params and audio fields; empty optional params use model defaults.
+4. History will save audio as type `tts` with 🗣️ badge and filter support.
 
 #### UI Changes:
 1. Modify HTML structure in `index.html` (add new model to model select)
@@ -248,6 +269,7 @@ params: {
 - Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
 - Video models: Wan2.1 14b Video, Skyreels, Skyreels V2 14b 540p, and Skyreels V2 1.3b 540p
+- TTS models: Kokoro, Spark TTS, Cosy Voice TTS 16g, CSM 1B
 - Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
 - Image Edit mode uses image-edit model endpoints from `EDIT_MODEL_CONFIGS`
  - Video mode specifics:

@@ -26,7 +26,7 @@ import {
 let gridObjectUrls = new Set();
 
 // Track current filter state
-let currentFilter = 'all'; // 'all', 'images', 'videos'
+let currentFilter = 'all'; // 'all', 'images', 'videos', 'tts'
 
 // Clean up grid object URLs
 function cleanupGridObjectUrls() {
@@ -112,8 +112,10 @@ function filterHistoryByType(history) {
   
   return history.filter(item => {
     const isVideo = item.settings?.type === 'video';
+    const isTts = item.settings?.type === 'tts';
     if (currentFilter === 'videos') return isVideo;
     if (currentFilter === 'images') return !isVideo;
+    if (currentFilter === 'tts') return isTts;
     return true;
   });
 }
@@ -171,7 +173,7 @@ async function saveGeneratedImage(contentBlob, settings) {
 
   // Save blobs to IDB first
   try {
-    await idbPutBlob(contentKey, contentBlob, contentBlob.type || (settings.type === 'video' ? 'video/mp4' : 'image/jpeg'));
+  await idbPutBlob(contentKey, contentBlob, contentBlob.type || (settings.type === 'video' ? 'video/mp4' : settings.type === 'tts' ? 'audio/wav' : 'image/jpeg'));
     if (sourceKey) {
       // convert sourceB64 data to blob
       const srcDataUrl = `data:${sourceMime};base64,${sourceB64}`;
@@ -230,7 +232,7 @@ async function saveGeneratedImage(contentBlob, settings) {
       model: settings.model || (currentMode === 'text-to-image' ? currentModel : 'qwen-image-edit')
     },
     timestamp: Date.now(),
-    filename: `${settings.type === 'video' ? `${currentModel}-video` : (currentMode === 'image-edit' ? 'qwen-edit' : currentModel)}-${Date.now()}`
+    filename: `${settings.type === 'video' ? `${currentModel}-video` : settings.type === 'tts' ? `${currentModel}-tts` : (currentMode === 'image-edit' ? 'qwen-edit' : currentModel)}-${Date.now()}`
   };
 
   const history = getImageHistory();
@@ -421,7 +423,7 @@ function refreshImageGrid() {
     }
 
     if (!history || history.length === 0) {
-      grid.innerHTML = '<div class="empty-state"><span class="muted">No content generated yet. Create your first image or video to see it here!</span></div>';
+  grid.innerHTML = '<div class="empty-state"><span class="muted">No content generated yet. Create your first image, video, or TTS to see it here!</span></div>';
       document.getElementById('toggleSelectionBtn').style.display = 'none';
       return;
     }
@@ -433,8 +435,8 @@ function refreshImageGrid() {
     updateMissingFileSizes(filteredHistory);
     
     if (filteredHistory.length === 0) {
-      const filterText = currentFilter === 'images' ? 'images' : 
-                        currentFilter === 'videos' ? 'videos' : 'content';
+  const filterText = currentFilter === 'images' ? 'images' : 
+        currentFilter === 'videos' ? 'videos' : currentFilter === 'tts' ? 'TTS' : 'content';
       grid.innerHTML = `<div class="empty-state"><span class="muted">No ${filterText} found in history.</span></div>`;
       document.getElementById('toggleSelectionBtn').style.display = 'none';
       return;
@@ -445,9 +447,10 @@ function refreshImageGrid() {
     // Render grid items with placeholders; if metadata includes imageKey, load blob async
     grid.innerHTML = filteredHistory.map(img => {
       const isVideo = img.settings?.type === 'video';
+      const isTts = img.settings?.type === 'tts';
       const resolution = isVideo ? 
         img.settings.resolution || 'Unknown' : 
-        `${img.settings.width || '?'}×${img.settings.height || '?'}`;
+        (isTts ? 'Audio' : `${img.settings.width || '?'}×${img.settings.height || '?'}`);
       
       // Format file size if available
       const fileSize = img.fileSize ? formatBytes(img.fileSize) : 'Unknown';
@@ -458,7 +461,11 @@ function refreshImageGrid() {
            <img class="video-thumb" alt="Video thumbnail" />
            <video style="display:none;" data-image-id-src="${img.imageKey || ''}" muted preload="metadata"></video>
          </div>` :
-        `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`;
+        (isTts ? `
+         <div class="audio-thumbnail" data-image-id-src="${img.imageKey || ''}">
+           <div class="audio-icon">📢</div>
+         </div>` :
+         `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`);
       
       // Media type badge (video or image). If the generation was produced by
       // the Image Edit mode, show a small edit badge (wrench) next to the image emoji.
@@ -467,9 +474,11 @@ function refreshImageGrid() {
         ? `<div class="type-badge badge-video" title="Video">
              <span class="emoji">🎥</span>
            </div>`
-        : `<div class="type-badge badge-image" title="Image">
+        : (isTts ? `<div class="type-badge badge-tts" title="TTS">
+             <span class="emoji">🗣️</span>
+           </div>` : `<div class="type-badge badge-image" title="Image">
              <span class="emoji">🖼️</span>${isImageEdit ? '<span class="badge-edit">🔧</span>' : ''}
-           </div>`;
+           </div>`);
       
       return `
         <div class="image-grid-item" data-image-id="${img.id}">

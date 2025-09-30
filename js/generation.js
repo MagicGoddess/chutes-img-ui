@@ -1,6 +1,6 @@
 // Image generation utilities - handles timing, title management, and UI state
 
-import { els, hasResultImg } from './ui.js';
+import { els, hasResultImg, currentMode } from './ui.js';
 
 // Generation timing and title management
 let genTimer = null; 
@@ -80,16 +80,27 @@ function generationFailed() {
 }
 
 function setBusy(state, msg='Working…'){
-  els.generateBtn.disabled = state; 
-  els.downloadBtn.disabled = state || !hasResultImg(); 
-  els.copyBtn.disabled = state || !hasResultImg();
+  // Choose the visible run status element based on mode
+  const statusEl = currentMode === 'tts' && els.ttsRunStatus ? els.ttsRunStatus : els.runStatus;
+
+  // Disable appropriate generate button depending on mode
+  const genBtn = currentMode === 'tts' && els.ttsGenerateBtn ? els.ttsGenerateBtn : els.generateBtn;
+
+  genBtn.disabled = state; 
+  const hasAnyResult = () => {
+    const vidOk = !!(els.resultVideo && els.resultVideo.src);
+    const audOk = !!(els.resultAudio && els.resultAudio.src);
+    return hasResultImg() || vidOk || audOk;
+  };
+  els.downloadBtn.disabled = state || !hasAnyResult(); 
+  els.copyBtn.disabled = state || !hasAnyResult();
   
   if (state) {
-    els.runStatus.className = 'muted loading';
+    statusEl.className = 'muted loading';
     genStart = performance.now();
     const update = ()=>{
       const secs = (performance.now() - genStart) / 1000;
-      els.runStatus.textContent = `${msg} ${secs.toFixed(2)}s`;
+      statusEl.textContent = `${msg} ${secs.toFixed(2)}s`;
     };
     update();
     if (genTimer) clearInterval(genTimer);
@@ -98,8 +109,8 @@ function setBusy(state, msg='Working…'){
     startGenerationTitle();
   } else {
     if (genTimer) { clearInterval(genTimer); genTimer = null; }
-    els.runStatus.className = 'muted';
-    els.runStatus.textContent = '';
+    statusEl.className = 'muted';
+    statusEl.textContent = '';
     // When clearing busy state we don't automatically change the title here
     // generationComplete() will handle the success case and title/audio.
   }

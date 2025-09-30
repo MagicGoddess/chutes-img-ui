@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1759249442100" />
+  <link rel="stylesheet" href="./app.css?v=1759260349773" />
 </head>
 <body>
   <header>
@@ -58,6 +58,8 @@
         <label for="modeTextToImage">Text to Image</label>
         <input type="radio" id="modeVideoGeneration" name="mode" value="video-generation" />
         <label for="modeVideoGeneration">Video Generation</label>
+        <input type="radio" id="modeTTS" name="mode" value="tts" />
+        <label for="modeTTS">Text to Speech</label>
       </div>
       
       <!-- Video sub-mode toggle -->
@@ -76,7 +78,7 @@
     <div class="spacer"></div>
 
     <div class="two-col">
-      <div class="card">
+      <div class="card" id="inputCard">
         <h2 id="inputCardTitle">3) Input</h2>
         
         <!-- Model Selection for Text-to-Image and Video Generation -->
@@ -205,6 +207,35 @@
           <span id="runStatus" class="muted"></span>
         </div>
       </div>
+      <!-- TTS Card (shown only in TTS mode) -->
+      <div class="card" id="ttsCard" style="display:none;">
+        <h2>3) Text-to-Speech</h2>
+        <div class="row" id="ttsModelRow">
+          <label for="ttsModelSelect">Model</label>
+          <select id="ttsModelSelect"></select>
+        </div>
+        <div class="row">
+          <label for="ttsText">Text</label>
+          <textarea id="ttsText" placeholder="Enter the text you want to speak..."></textarea>
+        </div>
+        <!-- Dynamic TTS parameters will render here per model -->
+        <div class="row" id="ttsParamsContainer"></div>
+        <!-- Reference audio tools (shown as needed by model) -->
+        <div class="row" id="ttsAudioRow" style="display:none;">
+          <label id="ttsAudioLabel">Reference audio</label>
+          <div class="toolbar">
+            <button id="ttsAudioUploadBtn" class="secondary" type="button">📤 Upload audio</button>
+            <button id="ttsAudioClearBtn" class="secondary" type="button">🧹 Clear</button>
+          </div>
+          <input id="ttsAudioInput" type="file" accept="audio/*" style="display:none" />
+          <div class="muted" id="ttsAudioInfo" style="margin-top:4px">No audio selected</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="toolbar">
+          <button id="ttsGenerateBtn">Generate TTS</button>
+          <span id="ttsRunStatus" class="muted"></span>
+        </div>
+      </div>
       <div class="card">
         <h2>4) Result</h2>
         <div class="thumb">
@@ -212,6 +243,9 @@
           <video id="resultVideo" style="display: none; width: 100%; height: auto;" controls>
             Your browser does not support the video tag.
           </video>
+          <audio id="resultAudio" style="display: none; width: 100%;" controls>
+            Your browser does not support the audio element.
+          </audio>
         </div>
         <div class="toolbar" style="margin-top:8px">
           <button id="downloadBtn" class="secondary" disabled><span>📥</span> Download</button>
@@ -251,6 +285,7 @@
             <option value="all">All</option>
             <option value="images">Images</option>
             <option value="videos">Videos</option>
+            <option value="tts">TTS</option>
           </select>
           <button id="toggleSelectionBtn" class="secondary" style="display: none;">
             <span id="selectionIcon">☐</span> Select
@@ -327,7 +362,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1759249442100"></script>
+  <script type="module" src="./js/main.js?v=1759260349773"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

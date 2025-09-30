@@ -48,6 +48,16 @@ export async function openImageModal(imageId) {
     const bodyEl = document.querySelector('#imageModal .modal-body');
     if (bodyEl) bodyEl.insertBefore(modalVideo, bodyEl.firstChild);
   }
+  // Create/find an audio element for TTS previews
+  let modalAudio = document.getElementById('modalAudio');
+  if (!modalAudio) {
+    modalAudio = document.createElement('audio');
+    modalAudio.id = 'modalAudio';
+    modalAudio.style.display = 'none';
+    modalAudio.controls = true;
+    const bodyEl = document.querySelector('#imageModal .modal-body');
+    if (bodyEl) bodyEl.insertBefore(modalAudio, bodyEl.firstChild);
+  }
   const modalModel = document.getElementById('modalModel');
   const modalResolution = document.getElementById('modalResolution');
   const modalSeed = document.getElementById('modalSeed');
@@ -66,19 +76,27 @@ export async function openImageModal(imageId) {
   }
   
   const isVideo = image.settings?.type === 'video';
+  const isTts = image.settings?.type === 'tts';
   // Switch UI based on type
   if (isVideo) {
     modalTitle.textContent = 'Video Preview';
     modalImage.style.display = 'none';
     modalVideo.style.display = 'block';
+    modalAudio.style.display = 'none';
+  } else if (isTts) {
+    modalTitle.textContent = 'Audio Preview';
+    modalImage.style.display = 'none';
+    modalVideo.style.display = 'none';
+    modalAudio.style.display = 'block';
   } else {
     modalTitle.textContent = 'Image Preview';
     modalImage.style.display = 'block';
     modalVideo.style.display = 'none';
+    modalAudio.style.display = 'none';
   }
 
   // If the content is stored in IDB, load it async; otherwise use inlined data URL
-  if (!isVideo) {
+  if (!isVideo && !isTts) {
     modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   }
   if (image.imageKey) {
@@ -88,14 +106,16 @@ export async function openImageModal(imageId) {
       modalObjectUrl = url; // Track for cleanup
       if (isVideo) {
         modalVideo.src = url;
+      } else if (isTts) {
+        modalAudio.src = url;
       } else {
         modalImage.src = url;
       }
     }).catch(e => {
       console.warn('Failed to load modal content blob', e);
-      if (!isVideo && image.imageData) modalImage.src = image.imageData;
+      if (!isVideo && !isTts && image.imageData) modalImage.src = image.imageData;
     });
-  } else if (!isVideo && image.imageData) {
+  } else if (!isVideo && !isTts && image.imageData) {
     modalImage.src = image.imageData;
   }
   
@@ -103,6 +123,8 @@ export async function openImageModal(imageId) {
   // Resolution for video entries uses resolution string; images use width/height
   if (isVideo) {
     modalResolution.textContent = image.settings.resolution || '-';
+  } else if (isTts) {
+    modalResolution.textContent = 'Audio';
   } else {
     modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
   }
@@ -156,6 +178,9 @@ export async function openImageModal(imageId) {
     // Change download label and hide Send to Edit
     if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Video';
     if (modalSendToEditBtn) modalSendToEditBtn.style.display = 'none';
+  } else if (isTts) {
+    if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Audio';
+    if (modalSendToEditBtn) modalSendToEditBtn.style.display = 'none';
   } else {
     if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Image';
     if (modalSendToEditBtn) modalSendToEditBtn.style.display = '';
@@ -208,7 +233,9 @@ export function downloadModalImage() {
         const a = document.createElement('a'); 
         a.href = url; 
         const isVideo = currentModalImage.settings?.type === 'video';
-        a.download = `${currentModalImage.filename}.${isVideo ? 'mp4' : 'jpg'}`; 
+        const isTts = currentModalImage.settings?.type === 'tts';
+        const ext = isVideo ? 'mp4' : isTts ? 'wav' : 'jpg';
+        a.download = `${currentModalImage.filename}.${ext}`; 
         a.click();
         URL.revokeObjectURL(url);
       } else if (currentModalImage.imageData) {

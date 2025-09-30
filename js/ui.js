@@ -1,6 +1,6 @@
 // UI state management and DOM manipulation
 
-import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS } from './models.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS, TTS_MODEL_CONFIGS } from './models.js';
 import { PRESETS, findPresetForDimensions, computeAutoDims } from './imageUtils.js';
 import { clamp, snap, ts, fileToBase64 } from './helpers.js';
 import { log } from './activityLog.js';
@@ -18,6 +18,22 @@ export const els = {
   videoModeToggle: document.getElementById('videoModeToggle'),
   videoModeText2Video: document.getElementById('videoModeText2Video'),
   videoModeImage2Video: document.getElementById('videoModeImage2Video'),
+  // TTS mode elements
+  modeTTS: document.getElementById('modeTTS'),
+  ttsCard: document.getElementById('ttsCard'),
+  inputCard: document.getElementById('inputCard'),
+  ttsModelSelect: document.getElementById('ttsModelSelect'),
+  ttsModelRow: document.getElementById('ttsModelRow'),
+  ttsText: document.getElementById('ttsText'),
+  ttsParamsContainer: document.getElementById('ttsParamsContainer'),
+  ttsAudioRow: document.getElementById('ttsAudioRow'),
+  ttsAudioLabel: document.getElementById('ttsAudioLabel'),
+  ttsAudioUploadBtn: document.getElementById('ttsAudioUploadBtn'),
+  ttsAudioClearBtn: document.getElementById('ttsAudioClearBtn'),
+  ttsAudioInfo: document.getElementById('ttsAudioInfo'),
+  ttsAudioInput: document.getElementById('ttsAudioInput'),
+  ttsGenerateBtn: document.getElementById('ttsGenerateBtn'),
+  ttsRunStatus: document.getElementById('ttsRunStatus'),
   modelSelect: document.getElementById('modelSelect'), 
   modelRow: document.getElementById('modelRow'),
   imgInput: document.getElementById('imgInput'), 
@@ -50,6 +66,7 @@ export const els = {
   runStatus: document.getElementById('runStatus'),
   resultImg: document.getElementById('resultImg'), 
   resultVideo: document.getElementById('resultVideo'),
+  resultAudio: document.getElementById('resultAudio'),
   downloadBtn: document.getElementById('downloadBtn'), 
   copyBtn: document.getElementById('copyBtn'), 
   sendToEditBtn: document.getElementById('sendToEditBtn'), 
@@ -67,6 +84,19 @@ export let sourceMimes = [];
 export let lastBlobUrl = null;
 export let autoDimsCache = null; // {w,h}
 let imgThumbObjectUrl = null; // Track object URL for imgThumb to prevent memory leaks
+// TTS reference audio state
+export let ttsAudioB64 = null;
+export let ttsAudioMime = null;
+
+export function setTtsAudio(b64, mime) {
+  ttsAudioB64 = b64 || null;
+  ttsAudioMime = mime || null;
+}
+
+export function clearTtsAudio() {
+  ttsAudioB64 = null;
+  ttsAudioMime = null;
+}
 
 /**
  * Cleanup function to revoke imgThumbObjectUrl to prevent memory leaks.
@@ -445,11 +475,16 @@ export function switchMode(mode) {
   const isTextToImage = mode === 'text-to-image';
   const isVideoGeneration = mode === 'video-generation';
   const isImageEdit = mode === 'image-edit';
+  const isTTS = mode === 'tts';
   
   // Update UI visibility
-  // Show model select for text-to-image, video-generation, and image-edit (edit models)
+  // TTS uses a dedicated card; hide the main input card when in TTS
+  if (els.inputCard) els.inputCard.style.display = isTTS ? 'none' : '';
+  if (els.ttsCard) els.ttsCard.style.display = isTTS ? '' : 'none';
+  // Show model select for non-TTS modes
   els.modelRow.style.display = (isTextToImage || isVideoGeneration || isImageEdit) ? 'block' : 'none';
-  els.sourceImageSection.style.display = (isTextToImage) ? 'none' : 'block';
+  if (els.ttsModelRow) els.ttsModelRow.style.display = isTTS ? 'block' : 'none';
+  els.sourceImageSection.style.display = (isTextToImage || isTTS) ? 'none' : 'block';
   
   // Show/hide video mode toggle
   if (els.videoModeToggle) {
@@ -470,6 +505,8 @@ export function switchMode(mode) {
   // Update prompt placeholder
   if (isVideoGeneration) {
     els.prompt.placeholder = 'Describe the video you want to generate...';
+  } else if (isTTS) {
+    if (els.ttsText) els.ttsText.placeholder = 'Enter the text you want to speak...';
   } else {
     els.prompt.placeholder = isTextToImage ? 
       'Describe the image you want to generate...' : 
@@ -509,12 +546,112 @@ export function switchMode(mode) {
     updateParametersForEditModel(currentModel);
   }
   
+  // Initialize TTS UI when entering TTS mode
+  if (isTTS) {
+    updateModelSelectForTTS();
+    if (els.ttsModelSelect && els.ttsModelSelect.value) {
+      updateTTSParametersForModel(els.ttsModelSelect.value);
+    }
+  }
+  
   // Update source image visibility based on video sub-mode
   if (isVideoGeneration) {
     updateVideoModeUI();
   }
   
   log(`[${ts()}] Switched to ${mode} mode`);
+}
+
+/**
+ * Populate TTS model select
+ */
+export function updateModelSelectForTTS() {
+  const modelSelect = els.ttsModelSelect;
+  if (!modelSelect) return;
+  const currentSelection = modelSelect.value;
+  modelSelect.innerHTML = Object.entries(TTS_MODEL_CONFIGS)
+    .map(([key, config]) => `<option value="${key}">${config.name || key}</option>`)
+    .join('');
+  const keys = Object.keys(TTS_MODEL_CONFIGS);
+  if (keys.includes(currentSelection)) {
+    modelSelect.value = currentSelection;
+  } else if (keys.length > 0) {
+    const first = keys[0];
+    modelSelect.value = first;
+  }
+}
+
+/**
+ * Render TTS params for selected model
+ */
+export function updateTTSParametersForModel(modelKey) {
+  const config = TTS_MODEL_CONFIGS[modelKey];
+  if (!config || !els.ttsParamsContainer) return;
+  const params = config.params || {};
+  const parts = [];
+  for (const [name, schema] of Object.entries(params)) {
+    if (name === 'text') continue; // Provided by ttsText
+    if (schema?.type === 'enum' && Array.isArray(schema.options)) {
+      const opts = schema.options.map(v => `<option value="${v}">${v}</option>`).join('');
+      parts.push(`
+        <div>
+          <label for="tts_${name}">${labelize(name)}</label>
+          <select id="tts_${name}" data-param="${name}">${opts}</select>
+        </div>`);
+      continue;
+    }
+    if (typeof schema?.min !== 'undefined' || typeof schema?.max !== 'undefined') {
+      const step = schema.step ?? 1;
+      parts.push(`
+        <div>
+          <label for="tts_${name}">${labelize(name)}${schema.required ? ' (required)' : ''}</label>
+          <input id="tts_${name}" data-param="${name}" type="number" min="${schema.min ?? ''}" max="${schema.max ?? ''}" step="${step}" placeholder="${schema.default ?? ''}" />
+        </div>`);
+      continue;
+    }
+    // Text inputs: use a larger textarea for transcript-like fields
+    const lname = String(name).toLowerCase();
+    const isLong = (lname.includes('text') && lname !== 'text') || lname.includes('transcript');
+    if (isLong) {
+      parts.push(`
+        <div>
+          <label for="tts_${name}">${labelize(name)}${schema?.required ? ' (required)' : ''}</label>
+          <textarea id="tts_${name}" data-param="${name}" class="tts-longtext" placeholder="${schema?.default ?? ''}"></textarea>
+        </div>`);
+    } else {
+      parts.push(`
+        <div>
+          <label for="tts_${name}">${labelize(name)}${schema?.required ? ' (required)' : ''}</label>
+          <input id="tts_${name}" data-param="${name}" type="text" placeholder="${schema?.default ?? ''}" />
+        </div>`);
+    }
+  }
+  els.ttsParamsContainer.innerHTML = `<div class="grid-cols-2">${parts.join('')}</div>`;
+  // Audio row visibility
+  const audioMeta = config.audioInput;
+  if (els.ttsAudioRow) {
+    if (audioMeta) {
+      els.ttsAudioRow.style.display = '';
+      if (els.ttsAudioLabel) els.ttsAudioLabel.textContent = audioMeta.label || 'Reference audio';
+    } else {
+      els.ttsAudioRow.style.display = 'none';
+    }
+  }
+
+  // Apply default selection values for enums
+  for (const [name, schema] of Object.entries(params)) {
+    if (name === 'text') continue;
+    if (schema?.type === 'enum' && schema.default !== undefined) {
+      const el = document.getElementById(`tts_${name}`);
+      if (el) {
+        el.value = schema.default;
+      }
+    }
+  }
+}
+
+function labelize(key) {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /**

@@ -502,3 +502,74 @@ export const EDIT_MODEL_CONFIGS = {
     }
   }
 };
+
+// Text-to-Speech model configurations
+// These definitions drive the TTS UI and payload builder generically.
+export const TTS_MODEL_CONFIGS = {
+  'kokoro': {
+    name: 'Kokoro',
+    endpoint: 'https://chutes-kokoro.chutes.ai/speak',
+    payloadFormat: 'flat',
+    // Simple params: text (required), optional speed and voice enum
+    params: {
+      text: { required: true },
+      speed: { min: 0.1, max: 3, step: 0.1, default: 1 },
+      voice: {
+        type: 'enum',
+        options: [
+          'af_heart','af_alloy','af_aoede','af_bella','af_jessica','af_kore','af_nicole','af_nova','af_river','af_sarah','af_sky',
+          'am_adam','am_echo','am_eric','am_fenrir','am_liam','am_michael','am_onyx','am_puck','am_santa',
+          'bf_alice','bf_emma','bf_isabella','bf_lily',
+          'bm_daniel','bm_fable','bm_george','bm_lewis',
+          'ef_dora','em_alex','em_santa','ff_siwis',
+          'hf_alpha','hf_beta','hm_omega','hm_psi',
+          'if_sara','im_nicola',
+          'jf_alpha','jf_gongitsune','jf_nezumi','jf_tebukuro','jm_kumo',
+          'pf_dora','pm_alex','pm_santa',
+          'zf_xiaobei','zf_xiaoni','zf_xiaoxiao','zf_xiaoyi','zm_yunjian','zm_yunxi','zm_yunxia','zm_yunyang'
+        ],
+        default: 'af_heart'
+      }
+    }
+  },
+  'spark-tts': {
+    name: 'Spark TTS',
+    endpoint: 'https://chutes-spark-tts.chutes.ai/speak',
+    payloadFormat: 'flat',
+    // Supports reference audio and various sampling controls
+    audioInput: { type: 'single', field: 'sample_audio_b64', label: 'Reference audio (optional)' },
+    params: {
+      text: { required: true },
+      pitch: { type: 'enum', options: ['very_low','low','moderate','high','very_high'], default: 'moderate' },
+      speed: { type: 'enum', options: ['very_low','low','moderate','high','very_high'], default: 'moderate' },
+      top_k: { min: 1, max: 200, step: 1, default: 50 },
+      top_p: { min: 0, max: 1, step: 0.01, default: 0.95 },
+      gender: { type: 'enum', options: ['male','female'], default: 'female' },
+      temperature: { min: 0, max: 2, step: 0.05, default: 0.8 },
+      sample_audio_text: { default: null }
+    }
+  },
+  'cosy-voice-tts-16g': {
+    name: 'Cosy Voice TTS 16g',
+    endpoint: 'https://kikakkz-cosy-voice-tts-16g.chutes.ai/v1/speak',
+    payloadFormat: 'flat',
+    // Requires a prompt reference audio and matching transcript text
+    audioInput: { type: 'single', field: 'prompt_audio_b64', label: 'Prompt audio (required)' },
+    params: {
+      text: { required: true },
+      speed: { min: 0.1, max: 3, step: 0.1, default: 1 },
+      prompt_audio_text: { required: true }
+    }
+  },
+  'csm-1b': {
+    name: 'CSM 1B',
+    endpoint: 'https://chutes-csm-1b.chutes.ai/speak',
+    payloadFormat: 'flat',
+    // Context is supported by the API but omitted from UI for now; speaker optional
+    params: {
+      text: { required: true },
+      speaker: { min: 0, max: 1, step: 1, default: 1 },
+      max_duration_ms: { min: 1000, max: 60000, step: 500, default: 10000 }
+    }
+  }
+};

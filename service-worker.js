@@ -1,5 +1,5 @@
 /* Simple app-shell cache. Avoid caching authenticated API calls. */
-const CACHE_VERSION = 1759249442100; // Dynamic cache version - updated by build script
+const CACHE_VERSION = 1759260349773; // Dynamic cache version - updated by build script
 const CACHE = `qwen-edit-cache-v${CACHE_VERSION}`;
 const APP_SHELL = [
   './',
@@ -44,9 +44,17 @@ self.addEventListener('activate', (e)=>{
     
     // Notify all clients about the update
     const clients = await self.clients.matchAll();
-    clients.forEach(client => {
-      client.postMessage({ type: 'CACHE_UPDATED', version: CACHE_VERSION });
-    });
+    for (const client of clients) {
+      try {
+        // Some clients can be controlled but not ready to receive messages yet.
+        if (client && client.postMessage) {
+          client.postMessage({ type: 'CACHE_UPDATED', version: CACHE_VERSION });
+        }
+      } catch (e) {
+        // Ignore transient disconnect errors
+        // console.debug('SW postMessage skipped:', e);
+      }
+    }
   })());
 });
 self.addEventListener('fetch', (e)=>{

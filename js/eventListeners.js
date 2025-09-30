@@ -1,6 +1,6 @@
 // Event listeners setup - centralizes all UI event bindings
 
-import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS } from './models.js';
+import { MODEL_CONFIGS, VIDEO_MODEL_CONFIGS, EDIT_MODEL_CONFIGS, TTS_MODEL_CONFIGS } from './models.js';
 import { generateImage, generateVideo } from './api.js';
 import { 
   getStoredApiKey, saveApiKey, removeApiKey 
@@ -20,7 +20,8 @@ import {
   lastSourceObjectUrl, computeAndDisplayAutoDims,
   applyPreset, handleImageFile, handleImageFiles, setSourceImage, setSourceImages, setImgThumbContent,
   updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel, updateVideoResolutionPresets,
-  renderSourceThumbs, appendImageFiles
+  renderSourceThumbs, appendImageFiles,
+  updateTTSParametersForModel, setTtsAudio, clearTtsAudio, ttsAudioB64
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -41,6 +42,11 @@ export function setupEventListeners() {
   els.modeTextToImage.addEventListener('change', () => {
     if (els.modeTextToImage.checked) switchMode('text-to-image');
   });
+  if (els.modeTTS) {
+    els.modeTTS.addEventListener('change', () => {
+      if (els.modeTTS.checked) switchMode('tts');
+    });
+  }
   
   // Video generation mode listener
   if (els.modeVideoGeneration) {
@@ -90,6 +96,15 @@ export function setupEventListeners() {
       updateParametersForEditModel(els.modelSelect.value);
     }
   });
+
+  // TTS model change
+  if (els.ttsModelSelect) {
+    els.ttsModelSelect.addEventListener('change', () => {
+      if (els.modeTTS && els.modeTTS.checked) {
+        updateTTSParametersForModel(els.ttsModelSelect.value);
+      }
+    });
+  }
 
   // API key management
   els.saveKeyBtn.addEventListener('click', async ()=>{
@@ -184,6 +199,30 @@ export function setupEventListeners() {
     }
   });
 
+  // TTS audio upload handlers
+  if (els.ttsAudioUploadBtn) {
+    els.ttsAudioUploadBtn.addEventListener('click', () => {
+      els.ttsAudioInput?.click();
+    });
+  }
+  if (els.ttsAudioClearBtn) {
+    els.ttsAudioClearBtn.addEventListener('click', () => {
+      els.ttsAudioInput.value = '';
+      clearTtsAudio();
+      if (els.ttsAudioInfo) els.ttsAudioInfo.textContent = 'No audio selected';
+    });
+  }
+  if (els.ttsAudioInput) {
+    els.ttsAudioInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const b64 = await (await import('./helpers.js')).fileToBase64(f);
+      const data = (b64 || '').split(',')[1] || '';
+      setTtsAudio(data, f.type || 'audio/wav');
+      if (els.ttsAudioInfo) els.ttsAudioInfo.textContent = `Selected: ${f.name}`;
+    });
+  }
+
   // Resolution preset handling
   if (els.resolutionPreset){
     els.resolutionPreset.addEventListener('change', applyPreset);
@@ -209,7 +248,7 @@ export function setupEventListeners() {
       }
       
       // Check video generation requirements
-      if (currentMode === 'video-generation') {
+  if (currentMode === 'video-generation') {
         const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
         if (videoMode === 'image-to-video' && !sourceB64) {
           return toast('Select a source image for image-to-video generation', true);
@@ -404,7 +443,7 @@ export function setupEventListeners() {
         }
 
         body = payload; // flat JSON
-      } else {
+      } else if (currentMode === 'text-to-image' || currentMode === 'image-edit') {
         // Text-to-image generation (config-driven)
         const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
@@ -493,6 +532,9 @@ export function setupEventListeners() {
         
         body = payload;
         endpoint = config.endpoint;
+      } else if (currentMode === 'tts') {
+        // TTS is handled via its own button; ignore this button in TTS mode
+        return;
       }
 
       setBusy(true, 'Generating…');
@@ -544,11 +586,13 @@ export function setupEventListeners() {
         // Show video player
         els.resultImg.style.display = 'none';
         els.resultVideo.style.display = 'block';
+        if (els.resultAudio) els.resultAudio.style.display = 'none';
         els.resultVideo.src = newBlobUrl;
         els.resultVideo.load(); // Force reload of video element
       } else {
         // Show image
         els.resultVideo.style.display = 'none';
+        if (els.resultAudio) els.resultAudio.style.display = 'none';
         els.resultImg.style.display = 'block';
         createResultImg(newBlobUrl);
       }
@@ -649,6 +693,123 @@ export function setupEventListeners() {
     }
   });
 
+  // TTS Generate button
+  if (els.ttsGenerateBtn) {
+    els.ttsGenerateBtn.addEventListener('click', async () => {
+      let t0 = null;
+      try {
+          setBusy(true, 'Generating audio…');
+        const key = (els.apiKey.value || '').trim();
+        if (!key) { 
+          toast('Add your API key first', true); 
+          els.keyStatus.textContent='API key required'; 
+          els.keyStatus.classList.add('error'); 
+          els.apiKey.focus(); 
+          return; 
+        }
+        const modelKey = els.ttsModelSelect?.value;
+        const cfg = TTS_MODEL_CONFIGS[modelKey];
+        if (!cfg) return toast('Invalid TTS model selected', true);
+        const text = (els.ttsText?.value || '').trim();
+        if (!text) return toast('Text cannot be empty', true);
+        // Build payload based on config
+        const payload = { text };
+        for (const [name, schema] of Object.entries(cfg.params || {})) {
+          if (name === 'text') continue;
+          const el = document.getElementById(`tts_${name}`);
+          let val = null;
+          if (el) {
+            const raw = (el.value || '').trim();
+            if (raw !== '') {
+              if (el.type === 'number') {
+                const n = Number(raw);
+                val = Number.isNaN(n) ? undefined : (String(schema.step || '').includes('.') ? parseFloat(raw) : parseInt(raw, 10));
+              } else {
+                val = raw;
+              }
+            }
+          }
+          if (val === null || typeof val === 'undefined' || val === '') {
+            if (schema.required) {
+              return toast(`${name} is required`, true);
+            }
+            val = schema.default;
+          }
+          if (typeof val !== 'undefined') payload[name] = val;
+        }
+        // Attach reference audio depending on model
+        const audioMeta = cfg.audioInput;
+        if (audioMeta) {
+          const ui = await import('./ui.js');
+          const b64 = ui.ttsAudioB64;
+          if (audioMeta.required && !b64) {
+            return toast('Reference audio is required for this model', true);
+          }
+          if (b64) payload[audioMeta.field || 'sample_audio_b64'] = b64;
+        }
+
+        // Log and send
+        t0 = performance.now();
+        log(`[${ts()}] Sending request to ${cfg.name} (TTS)…`);
+        log(`[${ts()}] Request body: ${JSON.stringify(payload, (k,v)=>k.endsWith('_b64')?'[b64]':v, 2)}`);
+
+        const resp = await fetch(cfg.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+          const textErr = await resp.text().catch(()=>resp.statusText);
+          throw new Error(`HTTP ${resp.status} — ${textErr}`);
+        }
+        const blob = await resp.blob();
+
+        // Show result as audio
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        const newBlobUrl = URL.createObjectURL(blob);
+        setLastBlobUrl(newBlobUrl);
+        // Hide image/video, show audio
+        els.resultImg.style.display = 'none';
+        els.resultVideo.style.display = 'none';
+        const audioEl = els.resultAudio;
+        if (audioEl) {
+          audioEl.style.display = 'block';
+          audioEl.src = newBlobUrl;
+          audioEl.load();
+        }
+        els.downloadBtn.disabled = false;
+        els.copyBtn.disabled = false; // we'll copy URL
+        if (els.sendToEditBtn) { els.sendToEditBtn.disabled = true; els.sendToEditBtn.style.display = 'none'; }
+        const dt = ((performance.now()-t0)/1000).toFixed(1);
+        const sizeDisplay = blob.size > 1024*1024 ? `${(blob.size/(1024*1024)).toFixed(1)} MB` : `${(blob.size/1024).toFixed(0)} KB`;
+        els.outMeta.textContent = `Output ${blob.type || 'audio/wav'} • ${sizeDisplay} • ${dt}s`;
+        toast('Done ✓');
+        log(`[${ts()}] Done ✓`);
+
+        // Save to history as TTS
+        const generationSettings = {
+          text,
+          model: modelKey,
+          mode: 'tts',
+          type: 'tts'
+        };
+        await (await import('./imageHistory.js')).saveGeneratedImage(blob, generationSettings);
+        await refreshQuotaUsage();
+        ;(await import('./generation.js')).generationComplete();
+      } catch (err) {
+        console.error(err);
+        toast(err.message || String(err), true);
+        try { (await import('./generation.js')).generationFailed(); } catch(_){}
+      }
+        finally {
+          setBusy(false);
+        }
+    });
+  }
+
   // Download and copy functionality
   els.downloadBtn.addEventListener('click', ()=>{
     if (currentMode === 'video-generation') {
@@ -658,6 +819,13 @@ export function setupEventListeners() {
       const a = document.createElement('a'); 
       a.href = els.resultVideo.src; 
       a.download = `${prefix}-${Date.now()}.mp4`; 
+      a.click();
+    } else if (currentMode === 'tts') {
+      // Download audio
+      if (!els.resultAudio.src) return;
+      const a = document.createElement('a');
+      a.href = els.resultAudio.src;
+      a.download = `tts-${Date.now()}.wav`;
       a.click();
     } else {
       // Download image
@@ -672,7 +840,7 @@ export function setupEventListeners() {
   });
 
   els.copyBtn.addEventListener('click', async ()=>{
-    if (currentMode === 'video-generation') {
+  if (currentMode === 'video-generation') {
       // For videos, copy the URL (browsers don't support video clipboard)
       if (!els.resultVideo.src) return;
       try {
@@ -688,6 +856,27 @@ export function setupEventListeners() {
           document.execCommand('copy');
           document.body.removeChild(textArea);
           toast('Video URL copied to clipboard');
+        }
+        return;
+      } catch (e) {
+        toast('Copy failed - ' + e.message, true);
+        return;
+      }
+    }
+    if (currentMode === 'tts') {
+      if (!els.resultAudio.src) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(els.resultAudio.src);
+          toast('Audio URL copied to clipboard');
+        } else {
+          const textArea = document.createElement('textarea');
+          textArea.value = els.resultAudio.src;
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+          toast('Audio URL copied to clipboard');
         }
         return;
       } catch (e) {
