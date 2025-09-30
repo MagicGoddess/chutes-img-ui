@@ -45,7 +45,7 @@ export const els = {
   framesVal: document.getElementById('framesVal'),
   sampleShift: document.getElementById('sampleShift'),
   sampleShiftVal: document.getElementById('sampleShiftVal'),
-  singleFrame: document.getElementById('singleFrame'),
+  // singleFrame removed
   generateBtn: document.getElementById('generateBtn'), 
   runStatus: document.getElementById('runStatus'),
   resultImg: document.getElementById('resultImg'), 
@@ -269,7 +269,19 @@ function removeImage(index) {
  * Does nothing if current model doesn't support multiple images.
  */
 export async function appendImageFiles(files) {
-  const cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { type: 'single', maxItems: 1 };
+  // Determine capability based on current mode/model
+  let cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { type: 'single', maxItems: 1 };
+  if (currentMode === 'video-generation') {
+    const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+    // Only allow multiple in video mode when in image-to-video and model supports it
+    const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+    if (isImage2Video && vcfg?.imageInput?.type === 'multiple') {
+      cfg = { type: 'multiple', maxItems: Math.max(1, vcfg.imageInput.maxItems || 2) };
+    } else {
+      cfg = { type: 'single', maxItems: 1 };
+    }
+  }
+
   if (cfg.type !== 'multiple') {
     // Fallback to single-file handler
     const f = files && files[0];
@@ -1010,9 +1022,20 @@ export async function handleImageFiles(files) {
     els.imgThumb.classList.remove('multi-grid');
     return;
   }
-  // Determine allowed max
-  const cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { maxItems: 1 };
-  const maxItems = Math.max(1, cfg.maxItems || 1);
+  // Determine allowed max based on mode/model
+  let maxItems = 1;
+  if (currentMode === 'image-edit') {
+    const cfg = EDIT_MODEL_CONFIGS[currentModel]?.imageInput || { maxItems: 1 };
+    maxItems = Math.max(1, cfg.maxItems || 1);
+  } else if (currentMode === 'video-generation') {
+    const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+    const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+    if (isImage2Video && vcfg?.imageInput?.type === 'multiple') {
+      maxItems = Math.max(1, vcfg.imageInput.maxItems || 2);
+    } else {
+      maxItems = 1;
+    }
+  }
   const sel = arr.slice(0, maxItems);
 
   // Build base64 arrays
@@ -1210,6 +1233,7 @@ export function updateParametersForVideoGeneration() {
   // Update resolution presets and reflect defaults for the current video model
   updateVideoResolutionPresets();
   
+  // Sync muted values to show defaults when inputs are empty in video mode
   sync();
 }
 
@@ -1219,28 +1243,22 @@ export function updateParametersForVideoGeneration() {
 export function updateModelSelectForVideo() {
   const modelSelect = els.modelSelect;
   if (!modelSelect) return;
-  
-  // Save current selection
+
   const currentSelection = modelSelect.value;
-  
-  // Clear and repopulate with video models only
-  modelSelect.innerHTML = '';
-  Object.keys(VIDEO_MODEL_CONFIGS).forEach(key => {
-    const config = VIDEO_MODEL_CONFIGS[key];
-    const option = document.createElement('option');
-    option.value = key;
-    option.textContent = config.name;
-    modelSelect.appendChild(option);
-  });
-  
-  // Try to restore previous selection if it's a video model, otherwise default to first
-  if (Object.keys(VIDEO_MODEL_CONFIGS).includes(currentSelection)) {
+
+  // Populate with video models only
+  modelSelect.innerHTML = Object.entries(VIDEO_MODEL_CONFIGS)
+    .map(([key, config]) => `<option value="${key}">${config.name || key}</option>`)
+    .join('');
+
+  const keys = Object.keys(VIDEO_MODEL_CONFIGS);
+  if (keys.includes(currentSelection)) {
     modelSelect.value = currentSelection;
     currentModel = currentSelection;
-  } else {
-    const firstVideoModel = Object.keys(VIDEO_MODEL_CONFIGS)[0];
-    modelSelect.value = firstVideoModel;
-    currentModel = firstVideoModel;
+  } else if (keys.length > 0) {
+    const first = keys[0];
+    modelSelect.value = first;
+    currentModel = first;
   }
 }
 
@@ -1267,16 +1285,17 @@ export function updateVideoParametersForModel(modelKey) {
     }
   }
   
-  // Update steps
-  if (params.steps) {
-    els.steps.min = params.steps.min;
-    els.steps.max = params.steps.max;
-    els.steps.step = params.steps.step;
-    els.steps.placeholder = params.steps.default;
+  // Update steps (supports 'steps' or 'inference_steps')
+  const stepsParam = params.steps || params.inference_steps;
+  if (stepsParam) {
+    els.steps.min = stepsParam.min;
+    els.steps.max = stepsParam.max;
+    els.steps.step = stepsParam.step;
+    els.steps.placeholder = stepsParam.default;
     els.steps.value = '';
     const stepsLabel = document.querySelector('label[for="steps"]');
     if (stepsLabel) {
-      stepsLabel.textContent = `Steps (${params.steps.min}–${params.steps.max})`;
+      stepsLabel.textContent = `Steps (${stepsParam.min}–${stepsParam.max})`;
     }
   }
   
@@ -1293,30 +1312,45 @@ export function updateVideoParametersForModel(modelKey) {
     }
   }
   
-  if (params.frames && els.frames) {
-    els.frames.min = params.frames.min;
-    els.frames.max = params.frames.max;
-    els.frames.step = params.frames.step;
-    els.frames.placeholder = params.frames.default;
+  const framesParam = params.frames || params.num_frames || params.base_num_frames;
+  if (framesParam && els.frames) {
+    els.frames.min = framesParam.min;
+    els.frames.max = framesParam.max;
+    els.frames.step = framesParam.step;
+    els.frames.placeholder = framesParam.default;
     els.frames.value = '';
     const framesLabel = document.querySelector('label[for="frames"]');
     if (framesLabel) {
-      framesLabel.textContent = `Frames (${params.frames.min}–${params.frames.max})`;
+      framesLabel.textContent = `Frames (${framesParam.min}–${framesParam.max})`;
     }
   }
   
-  if (params.sample_shift && els.sampleShift) {
-    els.sampleShift.min = params.sample_shift.min;
-    els.sampleShift.max = params.sample_shift.max;
-    els.sampleShift.step = params.sample_shift.step;
-    els.sampleShift.placeholder = params.sample_shift.default || 'Auto';
+  const sampleParam = params.sample_shift || params.shift;
+  if (sampleParam && els.sampleShift) {
+    els.sampleShift.min = sampleParam.min;
+    els.sampleShift.max = sampleParam.max;
+    els.sampleShift.step = sampleParam.step;
+    els.sampleShift.placeholder = sampleParam.default ?? 'Auto';
     els.sampleShift.value = '';
+    const ssLabel = document.querySelector('label[for="sampleShift"]');
+    if (ssLabel && params.shift && !params.sample_shift) {
+      ssLabel.textContent = `Shift (${sampleParam.min}–${sampleParam.max})`;
+    }
   }
   
   // Update negative prompt
   if (params.negative_prompt && params.negative_prompt.default) {
     els.negPrompt.placeholder = params.negative_prompt.default;
   }
+
+  // If enum resolution, ensure width/height placeholders are '--'
+  if (config.resolutionFormat === 'enum') {
+    if (els.width) { els.width.placeholder = '--'; }
+    if (els.height) { els.height.placeholder = '--'; }
+  }
+
+  // After updating ranges/placeholders, refresh the muted displays
+  sync();
 }
 
 /**
@@ -1336,7 +1370,7 @@ export function updateVideoResolutionPresets() {
     const autoLabel = defParts.length === 2 ? `Auto (${defParts[0]} × ${defParts[1]})` : 'Auto (model default)';
 
     let optsHtml = `<option value="auto">${autoLabel}</option>`;
-    res.options.forEach(opt => {
+    res.options.forEach((opt) => {
       const display = String(opt).replace(/[*x]/, ' × ');
       // Keep value as-is (UI stores in model's format; payload builder normalizes)
       optsHtml += `<option value="${opt}">${display}</option>`;
@@ -1345,11 +1379,17 @@ export function updateVideoResolutionPresets() {
     preset.innerHTML = optsHtml;
     preset.value = 'auto';
 
-    // Reflect default resolution into width/height boxes
-    const parts = String(defStr).includes('*') ? String(defStr).split('*') : String(defStr).split('x');
-    if (els.width && els.height && parts.length === 2) {
-      els.width.value = parseInt(parts[0], 10) || '';
-      els.height.value = parseInt(parts[1], 10) || '';
+    // For models with resolution enums (e.g., '540P'), we don't know exact W/H; show '--'
+    if (config.resolutionFormat === 'enum') {
+      if (els.width) { els.width.value = ''; els.width.placeholder = '--'; }
+      if (els.height) { els.height.value = ''; els.height.placeholder = '--'; }
+    } else {
+      // Reflect default resolution into width/height boxes when parseable
+      const parts = String(defStr).includes('*') ? String(defStr).split('*') : String(defStr).split('x');
+      if (els.width && els.height && parts.length === 2) {
+        els.width.value = parseInt(parts[0], 10) || '';
+        els.height.value = parseInt(parts[1], 10) || '';
+      }
     }
   }
 
@@ -1376,21 +1416,30 @@ export function updateVideoModeUI() {
     els.sourceImageRequired.textContent = isImage2Video ? '(required)' : '';
   }
 
-  // Video image-to-video only supports a single source image.
-  // Ensure the file input does not allow multi-select and hide the multi-image hint.
+  // Enforce single/multiple selection based on selected video model capabilities
+  const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+  const supportsMulti = isImage2Video && vcfg?.imageInput?.type === 'multiple';
   if (els.imgInput) {
-    // Always enforce single selection for video modes
-    els.imgInput.removeAttribute('multiple');
+    if (supportsMulti) {
+      els.imgInput.setAttribute('multiple', 'multiple');
+    } else {
+      els.imgInput.removeAttribute('multiple');
+    }
   }
   const multiHint = document.getElementById('multiImageHint');
   if (multiHint) {
-    multiHint.style.display = 'none';
+    if (supportsMulti) {
+      multiHint.textContent = vcfg?.imageInput?.hint || 'This model supports multiple source images. You can select up to the model\'s limit.';
+      multiHint.style.display = '';
+    } else {
+      multiHint.style.display = 'none';
+    }
   }
-  // Update the label text to drop the plural when in video i2v, preserving the existing required span
+  // Update the label text pluralization and required state
   const srcLabel = els.sourceImageSection ? els.sourceImageSection.querySelector('label') : null;
   if (srcLabel) {
     const reqSpan = els.sourceImageRequired || srcLabel.querySelector('#sourceImageRequired');
-    const leadingText = isImage2Video ? 'Source Image ' : 'Source Image(s) ';
+    const leadingText = isImage2Video ? (supportsMulti ? 'Source Image(s) ' : 'Source Image ') : 'Source Image(s) ';
     if (srcLabel.firstChild && srcLabel.firstChild.nodeType === Node.TEXT_NODE) {
       srcLabel.firstChild.nodeValue = leadingText;
     } else {
@@ -1401,26 +1450,37 @@ export function updateVideoModeUI() {
     }
   }
 
-  // If we previously had multiple images (from Image Edit multi-image model),
-  // trim to the first image for video i2v and update the thumbnail view.
-  if (isImage2Video && Array.isArray(sourceB64s) && sourceB64s.length > 1) {
-    const firstB64 = sourceB64s[0];
-    const firstMime = (sourceMimes && sourceMimes[0]) || 'image/jpeg';
-    setSourceImages([firstB64], [firstMime]);
-    // Prefer using the currently displayed first <img> if available
-    let url = lastSourceObjectUrl();
-    if (!url && firstB64) {
-      url = `data:${firstMime};base64,${firstB64}`;
-    }
-    if (url) {
-      setImgThumbContent(`<img src="${url}" alt="source"/>`);
-      els.imgThumb.classList.remove('multi-grid');
+  // Enforce max items when switching modes/models and render appropriately
+  if (isImage2Video) {
+    if (supportsMulti) {
+      const maxItems = Math.max(1, vcfg?.imageInput?.maxItems || 2);
+      if (Array.isArray(sourceB64s) && sourceB64s.length > maxItems) {
+        setSourceImages(sourceB64s.slice(0, maxItems), sourceMimes.slice(0, maxItems));
+      }
+      if (Array.isArray(sourceB64s) && sourceB64s.length > 1) {
+        renderSourceThumbs();
+      }
+    } else {
+      // Single image only: trim to first and show single preview
+      if (Array.isArray(sourceB64s) && sourceB64s.length > 1) {
+        const firstB64 = sourceB64s[0];
+        const firstMime = (sourceMimes && sourceMimes[0]) || 'image/jpeg';
+        setSourceImages([firstB64], [firstMime]);
+      }
+      let url = lastSourceObjectUrl();
+      if (!url && sourceB64) {
+        url = `data:${sourceMime || 'image/jpeg'};base64,${sourceB64}`;
+      }
+      if (url) {
+        setImgThumbContent(`<img src="${url}" alt="source"/>`);
+        els.imgThumb.classList.remove('multi-grid');
+      }
     }
   }
 
   // Hide resolution UI when the selected model omits resolution for image-to-video
-  const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
-  const includeRes = Array.isArray(vcfg?.includeResolutionIn) ? vcfg.includeResolutionIn : ['text2video', 'image2video'];
+  const vcfg2 = VIDEO_MODEL_CONFIGS[currentModel];
+  const includeRes = Array.isArray(vcfg2?.includeResolutionIn) ? vcfg2.includeResolutionIn : ['text2video', 'image2video'];
   const shouldHideResolution = isImage2Video && !includeRes.includes('image2video');
   // Resolution preset container (first column)
   const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;

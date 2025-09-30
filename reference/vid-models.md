@@ -548,3 +548,875 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+
+## Skyreels V2 14b 540p image2video (skyreels-v2-14b-540p)
+### Example
+```sh
+curl -X POST \
+		https://kikakkz-skyreels-v2-14b-540p.chutes.ai/image2video \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "prompt": "example-string",
+    "ar_step": 0,
+    "img_b64_first": null,
+    "base_num_frames": 97,
+    "inference_steps": 30,
+    "causal_block_size": 1,
+    "addnoise_condition": 20
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/image_to_video",
+  "function": "image_to_video",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/image2video",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "args"
+    ],
+    "properties": {
+      "args": {
+        "$ref": "#/definitions/VideoGenInput"
+      }
+    },
+    "definitions": {
+      "VideoGenInput": {
+        "type": "object",
+        "$defs": {
+          "Resolution": {
+            "enum": [
+              "720P",
+              "540P"
+            ],
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24,
+            "maximum": 60,
+            "minimum": 16
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": 42
+          },
+          "shift": {
+            "type": "number",
+            "title": "Shift",
+            "default": 8,
+            "maximum": 10,
+            "minimum": 1
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "ar_step": {
+            "type": "integer",
+            "title": "Ar Step",
+            "default": 0,
+            "maximum": 5,
+            "minimum": 0
+          },
+          "num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Frames",
+            "default": 97
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Resolution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "540P"
+          },
+          "img_b64_last": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 Last",
+            "default": null
+          },
+          "img_b64_first": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 First",
+            "default": null
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7.5,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 6
+          },
+          "base_num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Num Frames",
+            "default": 97
+          },
+          "inference_steps": {
+            "type": "integer",
+            "title": "Inference Steps",
+            "default": 30,
+            "maximum": 50,
+            "minimum": 10
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+          },
+          "overlap_history": {
+            "type": "integer",
+            "title": "Overlap History",
+            "default": 17,
+            "maximum": 10000
+          },
+          "causal_block_size": {
+            "type": "integer",
+            "title": "Causal Block Size",
+            "default": 1,
+            "maximum": 50,
+            "minimum": 0
+          },
+          "addnoise_condition": {
+            "type": "integer",
+            "title": "Addnoise Condition",
+            "default": 20,
+            "maximum": 50,
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": "video/mp4",
+  "minimal_input_schema": null
+}
+```
+
+## Skyreels V2 14b 540p text2video (skyreels-v2-14b-540p)
+### Example
+```sh
+curl -X POST \
+		https://kikakkz-skyreels-v2-14b-540p.chutes.ai/text2video \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "fps": 24,
+    "seed": 42,
+    "prompt": "example-string",
+    "guidance_scale": 6,
+    "base_num_frames": 97,
+    "overlap_history": 17,
+    "causal_block_size": 1,
+    "addnoise_condition": 20
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/text_to_video",
+  "function": "text_to_video",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/text2video",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "args"
+    ],
+    "properties": {
+      "args": {
+        "$ref": "#/definitions/VideoGenInput"
+      }
+    },
+    "definitions": {
+      "VideoGenInput": {
+        "type": "object",
+        "$defs": {
+          "Resolution": {
+            "enum": [
+              "720P",
+              "540P"
+            ],
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24,
+            "maximum": 60,
+            "minimum": 16
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": 42
+          },
+          "shift": {
+            "type": "number",
+            "title": "Shift",
+            "default": 8,
+            "maximum": 10,
+            "minimum": 1
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "ar_step": {
+            "type": "integer",
+            "title": "Ar Step",
+            "default": 0,
+            "maximum": 5,
+            "minimum": 0
+          },
+          "num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Frames",
+            "default": 97
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Resolution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "540P"
+          },
+          "img_b64_last": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 Last",
+            "default": null
+          },
+          "img_b64_first": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 First",
+            "default": null
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7.5,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 6
+          },
+          "base_num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Num Frames",
+            "default": 97
+          },
+          "inference_steps": {
+            "type": "integer",
+            "title": "Inference Steps",
+            "default": 30,
+            "maximum": 50,
+            "minimum": 10
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+          },
+          "overlap_history": {
+            "type": "integer",
+            "title": "Overlap History",
+            "default": 17,
+            "maximum": 10000
+          },
+          "causal_block_size": {
+            "type": "integer",
+            "title": "Causal Block Size",
+            "default": 1,
+            "maximum": 50,
+            "minimum": 0
+          },
+          "addnoise_condition": {
+            "type": "integer",
+            "title": "Addnoise Condition",
+            "default": 20,
+            "maximum": 50,
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": "video/mp4",
+  "minimal_input_schema": null
+}
+```
+
+## Skyreels V2 1.3b 540p text2video (skyreels-v2-1.3b-540p)
+### Example
+```sh
+curl -X POST \
+		https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/text2video \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "fps": 24,
+    "shift": 8,
+    "prompt": "example-string",
+    "num_frames": 97,
+    "resolution": "540P",
+    "base_num_frames": 97,
+    "inference_steps": 30,
+    "causal_block_size": 1
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/text_to_video",
+  "function": "text_to_video",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/text2video",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "args"
+    ],
+    "properties": {
+      "args": {
+        "$ref": "#/definitions/VideoGenInput"
+      }
+    },
+    "definitions": {
+      "VideoGenInput": {
+        "type": "object",
+        "$defs": {
+          "Resolution": {
+            "enum": [
+              "720P",
+              "540P"
+            ],
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24,
+            "maximum": 60,
+            "minimum": 16
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": 42
+          },
+          "shift": {
+            "type": "number",
+            "title": "Shift",
+            "default": 8,
+            "maximum": 10,
+            "minimum": 1
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "ar_step": {
+            "type": "integer",
+            "title": "Ar Step",
+            "default": 0,
+            "maximum": 5,
+            "minimum": 0
+          },
+          "num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Frames",
+            "default": 97
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Resolution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "540P"
+          },
+          "img_b64_last": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 Last",
+            "default": null
+          },
+          "img_b64_first": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 First",
+            "default": null
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7.5,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 6
+          },
+          "base_num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Num Frames",
+            "default": 97
+          },
+          "inference_steps": {
+            "type": "integer",
+            "title": "Inference Steps",
+            "default": 30,
+            "maximum": 50,
+            "minimum": 10
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+          },
+          "overlap_history": {
+            "type": "integer",
+            "title": "Overlap History",
+            "default": 17,
+            "maximum": 10000
+          },
+          "causal_block_size": {
+            "type": "integer",
+            "title": "Causal Block Size",
+            "default": 1,
+            "maximum": 50,
+            "minimum": 0
+          },
+          "addnoise_condition": {
+            "type": "integer",
+            "title": "Addnoise Condition",
+            "default": 20,
+            "maximum": 50,
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": "video/mp4",
+  "minimal_input_schema": null
+}
+```
+
+## Skyreels V2 1.3b 540p image2video (skyreels-v2-1.3b-540p)
+### Example
+```sh
+curl -X POST \
+		https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/image2video \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "fps": 24,
+    "shift": 8,
+    "prompt": "example-string",
+    "ar_step": 0,
+    "resolution": "540P",
+    "negative_prompt": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走",
+    "overlap_history": 17,
+    "causal_block_size": 1,
+    "addnoise_condition": 20
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/image_to_video",
+  "function": "image_to_video",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/image2video",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "args"
+    ],
+    "properties": {
+      "args": {
+        "$ref": "#/definitions/VideoGenInput"
+      }
+    },
+    "definitions": {
+      "VideoGenInput": {
+        "type": "object",
+        "$defs": {
+          "Resolution": {
+            "enum": [
+              "720P",
+              "540P"
+            ],
+            "type": "string",
+            "title": "Resolution"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 24,
+            "maximum": 60,
+            "minimum": 16
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": 42
+          },
+          "shift": {
+            "type": "number",
+            "title": "Shift",
+            "default": 8,
+            "maximum": 10,
+            "minimum": 1
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "ar_step": {
+            "type": "integer",
+            "title": "Ar Step",
+            "default": 0,
+            "maximum": 5,
+            "minimum": 0
+          },
+          "num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Frames",
+            "default": 97
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Resolution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "540P"
+          },
+          "img_b64_last": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 Last",
+            "default": null
+          },
+          "img_b64_first": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Img B64 First",
+            "default": null
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 7.5,
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 6
+          },
+          "base_num_frames": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10000,
+                "minimum": 97
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Num Frames",
+            "default": 97
+          },
+          "inference_steps": {
+            "type": "integer",
+            "title": "Inference Steps",
+            "default": 30,
+            "maximum": 50,
+            "minimum": 10
+          },
+          "negative_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Negative Prompt",
+            "default": "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走"
+          },
+          "overlap_history": {
+            "type": "integer",
+            "title": "Overlap History",
+            "default": 17,
+            "maximum": 10000
+          },
+          "causal_block_size": {
+            "type": "integer",
+            "title": "Causal Block Size",
+            "default": 1,
+            "maximum": 50,
+            "minimum": 0
+          },
+          "addnoise_condition": {
+            "type": "integer",
+            "title": "Addnoise Condition",
+            "default": 20,
+            "maximum": 50,
+            "minimum": 0
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": "video/mp4",
+  "minimal_input_schema": null
+}
+```

@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1759011982916" />
+  <link rel="stylesheet" href="./app.css?v=1759249442100" />
 </head>
 <body>
   <header>
@@ -101,6 +101,8 @@
             <!-- Video models -->
             <option value="wan2.1-14b-video">Wan2.1 14b Video</option>
             <option value="skyreels-video">Skyreels</option>
+            <option value="skyreels-v2-14b-540p">Skyreels V2 14b 540p</option>
+            <option value="skyreels-v2-1.3b-540p">Skyreels V2 1.3b 540p</option>
           </select>
         </div>
 
@@ -193,14 +195,6 @@
               <label for="sampleShift">Sample Shift (1–7)</label>
               <input id="sampleShift" type="number" min="1" max="7" step="0.1" placeholder="Auto" />
               <div class="muted">Value: <span id="sampleShiftVal">default</span></div>
-            </div>
-            <div>
-              <label for="singleFrame">Single Frame</label>
-              <select id="singleFrame">
-                <option value="false">False</option>
-                <option value="true">True</option>
-              </select>
-              <div class="muted">Generate single frame vs video</div>
             </div>
           </div>
         </div>
@@ -333,7 +327,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1759011982916"></script>
+  <script type="module" src="./js/main.js?v=1759249442100"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

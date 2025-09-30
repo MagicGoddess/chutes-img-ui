@@ -291,8 +291,7 @@ export const VIDEO_MODEL_CONFIGS = {
       fps: { min: 16, max: 60, default: 24, step: 1 },
       steps: { min: 10, max: 30, default: 25, step: 1 },
       frames: { min: 81, max: 241, default: 81, step: 1 },
-      sample_shift: { min: 1, max: 7, default: null, step: 0.1 },
-      single_frame: { default: false },
+  sample_shift: { min: 1, max: 7, default: null, step: 0.1 },
       guidance_scale: { min: 1, max: 7.5, default: 5, step: 0.1 },
       seed: { min: 0, max: null, default: 42 },
       negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
@@ -316,6 +315,97 @@ export const VIDEO_MODEL_CONFIGS = {
       guidance_scale: { min: 1.001, max: 10, default: 6, step: 0.1 },
       seed: { min: 0, max: null, default: 42 },
       negative_prompt: { default: 'Aerial view, aerial view, overexposed, low quality, deformation, a poor composition, bad hands, bad teeth, bad eyes, bad limbs, distortion' }
+    }
+  },
+  'skyreels-v2-14b-540p': {
+    name: 'Skyreels V2 14b 540p',
+    // Metadata to inform payload construction and UI behavior
+    payloadFormat: 'flat',
+    // Resolution is an enum like "720P" or "540P"; keep as-is
+    resolutionFormat: 'enum',
+    includeResolutionIn: ['text2video', 'image2video'],
+    endpoints: {
+      // Text2Video endpoint assumed by convention; if unavailable server-side, request will fail and surface error
+      text2video: 'https://kikakkz-skyreels-v2-14b-540p.chutes.ai/text2video',
+      image2video: 'https://kikakkz-skyreels-v2-14b-540p.chutes.ai/image2video'
+    },
+    // This model supports start and end frame images in image-to-video mode
+    imageInput: {
+      type: 'multiple',
+      maxItems: 2,
+      minItems: 1,
+      mapping: {
+        single: 'img_b64_first',
+        multiple: ['img_b64_first', 'img_b64_last']
+      },
+      hint: 'Supports start (first) and end (last) frames. Upload 1–2 images and drag to reorder.'
+    },
+    params: {
+      resolution: {
+        options: ['720P', '540P'],
+        default: '540P'
+      },
+      fps: { min: 16, max: 60, default: 24, step: 1 },
+      seed: { min: 0, max: null, default: 42 },
+      shift: { min: 1, max: 10, default: 8, step: 0.1 },
+      ar_step: { min: 0, max: 5, default: 0, step: 1 },
+      // Both num_frames and base_num_frames exist in schema; include both so backend can use either
+      num_frames: { min: 97, max: 10000, default: 97, step: 1 },
+      base_num_frames: { min: 97, max: 10000, default: 97, step: 1 },
+      guidance_scale: { min: 1, max: 7.5, default: 6, step: 0.1 },
+      inference_steps: { min: 10, max: 50, default: 30, step: 1 },
+      overlap_history: { min: 0, max: 10000, default: 17, step: 1 },
+      causal_block_size: { min: 0, max: 50, default: 1, step: 1 },
+      addnoise_condition: { min: 0, max: 50, default: 20, step: 1 },
+      // Image fields included for completeness; values provided via imageInput mapping in payload builder
+      img_b64_first: { default: null },
+      img_b64_last: { default: null },
+      negative_prompt: { default: '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走' }
+    }
+  }
+  ,
+  'skyreels-v2-1.3b-540p': {
+    name: 'Skyreels V2 1.3b 540p',
+    // Metadata to inform payload construction and UI behavior
+    payloadFormat: 'flat',
+    // Resolution is an enum like "720P" or "540P"; keep as-is
+    resolutionFormat: 'enum',
+    includeResolutionIn: ['text2video', 'image2video'],
+    endpoints: {
+      text2video: 'https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/text2video',
+      image2video: 'https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/image2video'
+    },
+    // Supports start and end frame images in image-to-video mode
+    imageInput: {
+      type: 'multiple',
+      maxItems: 2,
+      minItems: 1,
+      mapping: {
+        single: 'img_b64_first',
+        multiple: ['img_b64_first', 'img_b64_last']
+      },
+      hint: 'Supports start (first) and end (last) frames. Upload 1–2 images and drag to reorder.'
+    },
+    params: {
+      resolution: {
+        options: ['720P', '540P'],
+        default: '540P'
+      },
+      fps: { min: 16, max: 60, default: 24, step: 1 },
+      seed: { min: 0, max: null, default: 42 },
+      shift: { min: 1, max: 10, default: 8, step: 0.1 },
+      ar_step: { min: 0, max: 5, default: 0, step: 1 },
+      num_frames: { min: 97, max: 10000, default: 97, step: 1 },
+      base_num_frames: { min: 97, max: 10000, default: 97, step: 1 },
+      guidance_scale: { min: 1, max: 7.5, default: 6, step: 0.1 },
+      inference_steps: { min: 10, max: 50, default: 30, step: 1 },
+      overlap_history: { min: 0, max: 10000, default: 17, step: 1 },
+      causal_block_size: { min: 0, max: 50, default: 1, step: 1 },
+      addnoise_condition: { min: 0, max: 50, default: 20, step: 1 },
+      // Image fields included for completeness
+      img_b64_first: { default: null },
+      img_b64_last: { default: null },
+      negative_prompt: { default: '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走' }
     }
   }
 };

@@ -55,6 +55,8 @@ export function setupEventListeners() {
       if (els.videoModeText2Video.checked) {
         // Switch to text-to-video mode
         updateVideoModeUI();
+        // Refresh muted values to reflect placeholders/defaults
+        sync();
       }
     });
   }
@@ -63,6 +65,8 @@ export function setupEventListeners() {
       if (els.videoModeImage2Video.checked) {
         // Switch to image-to-video mode
         updateVideoModeUI();
+        // Refresh muted values to reflect placeholders/defaults
+        sync();
       }
     });
   }
@@ -79,6 +83,8 @@ export function setupEventListeners() {
       updateVideoResolutionPresets();
       // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
       updateVideoModeUI();
+      // Sync muted displays (e.g., stepsVal) to the new model's defaults/placeholders
+      sync();
     } else if (currentMode === 'image-edit') {
       setCurrentModel(els.modelSelect.value);
       updateParametersForEditModel(els.modelSelect.value);
@@ -144,7 +150,17 @@ export function setupEventListeners() {
       els.imgThumb.classList.remove('multi-grid');
       return; 
     }
-    if (currentMode === 'image-edit' && EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple') {
+    // Determine if current context supports multiple images
+    let supportsMulti = false;
+    if (currentMode === 'image-edit') {
+      supportsMulti = EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple';
+    } else if (currentMode === 'video-generation') {
+      const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+      const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+      supportsMulti = isImage2Video && vcfg?.imageInput?.type === 'multiple';
+    }
+
+    if (supportsMulti) {
       // Append to existing rather than replace
       await appendImageFiles(files);
       renderSourceThumbs();
@@ -175,6 +191,8 @@ export function setupEventListeners() {
 
   // Generate button - main image generation logic
   els.generateBtn.addEventListener('click', async ()=>{
+    // Track request start time for duration/error messaging
+    let t0 = null;
     try{
       const key = (els.apiKey.value || '').trim();
       if (!key) { 
@@ -287,7 +305,7 @@ export function setupEventListeners() {
         const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
 
-        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+  const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
         const videoConfig = VIDEO_MODEL_CONFIGS[currentModel];
         if (!videoConfig) return toast('Invalid video model selected', true);
 
@@ -295,7 +313,7 @@ export function setupEventListeners() {
         endpoint = videoMode === 'image-to-video' ? videoConfig.endpoints.image2video : videoConfig.endpoints.text2video;
 
         // Build payload generically from model config
-        const payload = { prompt };
+  const payload = { prompt };
 
         // Resolution handling per model metadata
         const includeRes = Array.isArray(videoConfig.includeResolutionIn) ? videoConfig.includeResolutionIn : ['text2video', 'image2video'];
@@ -320,13 +338,20 @@ export function setupEventListeners() {
         // Parameter mapping from config param names to UI elements
         const paramToElId = {
           guidance_scale: 'cfg',
-          steps: 'steps',
+          steps: 'steps', // not used by all video models
+          inference_steps: 'steps', // Skyreels V2 uses inference_steps
           fps: 'fps',
           frames: 'frames',
+          num_frames: 'frames', // Skyreels V2 supports num_frames/base_num_frames
+          base_num_frames: 'frames',
           seed: 'seed',
           sample_shift: 'sampleShift',
-          single_frame: 'singleFrame',
-          negative_prompt: 'negPrompt'
+          shift: 'sampleShift', // Skyreels V2 uses 'shift'
+          negative_prompt: 'negPrompt',
+          ar_step: null,
+          overlap_history: null,
+          causal_block_size: null,
+          addnoise_condition: null
         };
 
         for (const [paramName, schema] of Object.entries(videoConfig.params)) {
@@ -338,8 +363,6 @@ export function setupEventListeners() {
             if (raw !== '') {
               if (paramName === 'negative_prompt') {
                 val = raw;
-              } else if (paramName === 'single_frame') {
-                val = raw === 'true';
               } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
                 // floating number
                 val = parseFloat(raw);
@@ -360,9 +383,24 @@ export function setupEventListeners() {
           }
         }
 
-        // For image-to-video, include image
+        // For image-to-video, include image(s)
         if (videoMode === 'image-to-video') {
-          payload.image_b64 = sourceB64;
+          if (videoConfig.imageInput?.type === 'multiple') {
+            // Map first/last according to config mapping
+            const imgs = Array.isArray(sourceB64s) ? sourceB64s.slice(0, Math.max(1, videoConfig.imageInput.maxItems || 2)) : (sourceB64 ? [sourceB64] : []);
+            const mapping = videoConfig.imageInput.mapping || {};
+            if (imgs.length === 1) {
+              const field = mapping.single || 'image_b64';
+              payload[field] = imgs[0];
+            } else if (imgs.length >= 2) {
+              const firstField = (mapping.multiple && mapping.multiple[0]) || 'img_b64_first';
+              const lastField = (mapping.multiple && mapping.multiple[1]) || 'img_b64_last';
+              payload[firstField] = imgs[0];
+              payload[lastField] = imgs[1];
+            }
+          } else {
+            payload.image_b64 = sourceB64;
+          }
         }
 
         body = payload; // flat JSON
@@ -472,13 +510,21 @@ export function setupEventListeners() {
       
       log(`[${ts()}] Sending request to ${generationType}…`);
       const redactor = (key, value) => {
-        if ((key === 'image_b64') && typeof value === 'string') return `${value.substring(0, 40)}...[truncated]`;
-        if (key === 'image_b64s' && Array.isArray(value)) return `[${value.length} images]`;
+        // Truncate any single base64 field similar to Qwen 2509 behavior
+        // Examples: image_b64, img_b64_first, img_b64_last
+        if (typeof value === 'string' && (/_b64$/i.test(key) || /b64/i.test(key))) {
+          return `${value.substring(0, 40)}...[truncated]`;
+        }
+        // Summarize arrays of base64 fields similar to image_b64s
+        if (Array.isArray(value) && (/_b64s$/i.test(key) || /b64s/i.test(key))) {
+          return `[${value.length} images]`;
+        }
         return value;
       };
       log(`[${ts()}] Request body: ${JSON.stringify(body, redactor, 2)}`);
       
-      const t0 = performance.now();
+  // Start timer right before issuing the network request
+  t0 = performance.now();
       
       // Use appropriate API function based on mode
       let blob;
@@ -573,10 +619,21 @@ export function setupEventListeners() {
       generationComplete();
     } catch(err){
       console.error(err);
-      // Show toast and also append the error to the activity log
-      toast(err.message || String(err), true);
+      // Show a more helpful message if a long-running request hit a network error (likely server/proxy idle timeout)
+      const elapsedSec = t0 ? ((performance.now() - t0) / 1000).toFixed(1) : '0.0';
+      if ((err && String(err).includes('NetworkError')) && currentMode === 'video-generation') {
+        const hint = `The network request failed after ~${elapsedSec}s. This often means the server or a proxy closed the connection before the video finished rendering. Try reducing Frames, Steps, or using 540P, or try with a single start image. If the issue persists, the endpoint may require an async job flow.`;
+        toast(hint, true);
+      } else {
+        // Generic error toast
+        toast(err.message || String(err), true);
+      }
       try {
-        log(`[${ts()}] Error: ${err.message || String(err)}`);
+        if ((err && String(err).includes('NetworkError')) && currentMode === 'video-generation') {
+          log(`[${ts()}] Error after ${elapsedSec}s: Network error during video generation (likely server/proxy timeout). Consider reducing Frames/Steps or resolution.`);
+        } else {
+          log(`[${ts()}] Error: ${err.message || String(err)}`);
+        }
       } catch(e) {
         // Don't let logging failures break the UI - just warn
         console.warn('Failed to write to activity log:', e);
@@ -813,8 +870,15 @@ export function setupEventListeners() {
   els.imgThumb.addEventListener('drop', async (e)=>{
     const files = e.dataTransfer?.files;
     if (!files || files.length === 0) return;
-    const multi = currentMode === 'image-edit' && EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple';
-    if (multi) {
+    let supportsMulti = false;
+    if (currentMode === 'image-edit') {
+      supportsMulti = EDIT_MODEL_CONFIGS[currentModel]?.imageInput?.type === 'multiple';
+    } else if (currentMode === 'video-generation') {
+      const vcfg = VIDEO_MODEL_CONFIGS[currentModel];
+      const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+      supportsMulti = isImage2Video && vcfg?.imageInput?.type === 'multiple';
+    }
+    if (supportsMulti) {
       await appendImageFiles(files);
       renderSourceThumbs();
     } else {

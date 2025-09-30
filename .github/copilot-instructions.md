@@ -67,7 +67,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 7. Sending an image from history to Image Edit should still load it as the single source; switching models preserves the uploaded image(s) per capability
 #### Video Generation Mode Testing:
 1. Switch to "Video Generation" mode
-2. Choose a video model: "Wan2.1 14b Video" or "Skyreels"
+2. Choose a video model: "Wan2.1 14b Video", "Skyreels", "Skyreels V2 14b 540p", or "Skyreels V2 1.3b 540p"
 3. Toggle sub-mode:
   - Text to Video: enter a prompt
   - Image to Video: upload a source image and enter a prompt
@@ -207,7 +207,7 @@ params: {
 #### Adding a New Video Model:
 1. Add an entry to `VIDEO_MODEL_CONFIGS` with:
   - `endpoints` for `text2video` and `image2video`
-  - `params` including any of: `resolution`, `guidance_scale`, `steps`, `fps`, `frames`, `seed`, `sample_shift`, `single_frame`, `negative_prompt`
+  - `params` including any of: `resolution`, `guidance_scale`, `steps`, `fps`, `frames`, `seed`, `sample_shift`, `negative_prompt`
   - Metadata: `payloadFormat` (currently `flat`), `resolutionFormat` (`'star'` or `'x'`), and `includeResolutionIn` (e.g., `['text2video']` for Wan)
 2. The UI will automatically populate resolution presets from `params.resolution.options` and hide resolution controls in modes not listed in `includeResolutionIn`.
 3. The request payload will be built automatically in `js/eventListeners.js` using the metadata and defaults.
@@ -247,12 +247,13 @@ params: {
 - API key stored in localStorage
 - Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
-- Video models: Wan2.1 14b Video and Skyreels
+- Video models: Wan2.1 14b Video, Skyreels, Skyreels V2 14b 540p, and Skyreels V2 1.3b 540p
 - Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
 - Image Edit mode uses image-edit model endpoints from `EDIT_MODEL_CONFIGS`
  - Video mode specifics:
-   - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift` and `single_frame`.
-   - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.
+  - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift`.
+  - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.
+  - Skyreels V2 14b/1.3b 540p: text2video/image2video expect flat JSON with `resolution` as enum (e.g., "540P"); supports start and end frames in i2v as `img_b64_first` and optional `img_b64_last`.
 
 ### PWA Features:
 - Service worker for offline app shell caching
@@ -295,7 +296,7 @@ params: {
 ### Models
 - `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints, parameter limits, and behavior metadata for video models
   - `payloadFormat`: request body shape (currently `flat` top-level JSON)
-  - `resolutionFormat`: `'star'` for `W*H` (Wan), `'x'` for `WxH` (Skyreels)
+  - `resolutionFormat`: `'star'` for `W*H` (Wan), `'x'` for `WxH` (Skyreels), `'enum'` for literal enums (Skyreels V2)
   - `includeResolutionIn`: which sub-modes include a `resolution` field (e.g., `['text2video']` for Wan)
 
 ### API

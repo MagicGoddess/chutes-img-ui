@@ -5,7 +5,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 ## Features
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports three modes: Image Edit, Text-to-Image, and Video Generation (Text-to-Video / Image-to-Video)
-- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit / Qwen Image Edit 2509 / Hidream Edit; Wan2.1 14b Video, Skyreels)
+- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit / Qwen Image Edit 2509 / Hidream Edit; Wan2.1 14b Video, Skyreels, Skyreels V2 14b 540p, Skyreels V2 1.3b 540p)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video) handled via dropdown
@@ -47,6 +47,12 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
   - Skyreels Video:
     - Text-to-Video: `POST https://chutes-skyreels.chutes.ai/generate`
     - Image-to-Video: `POST https://chutes-skyreels.chutes.ai/animate`
+  - Skyreels V2 14b 540p Video:
+    - Text-to-Video: `POST https://kikakkz-skyreels-v2-14b-540p.chutes.ai/text2video`
+    - Image-to-Video: `POST https://kikakkz-skyreels-v2-14b-540p.chutes.ai/image2video`
+  - Skyreels V2 1.3b 540p Video:
+    - Text-to-Video: `POST https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/text2video`
+    - Image-to-Video: `POST https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/image2video`
 - Request body (flat):
   - Image Edit:
     - Qwen Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
@@ -55,13 +61,15 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
   - Wan2.1 14b (Image): `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `sample_shift`, `seed`, `negative_prompt`.
   - Video (flat JSON, returns mp4 Blob):
-    - Wan2.1 14b Video – Text-to-Video: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `steps`, `fps`, `frames`, `seed`, optional `sample_shift`, `single_frame`, optional `negative_prompt`.
+  - Wan2.1 14b Video – Text-to-Video: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `steps`, `fps`, `frames`, `seed`, optional `sample_shift`, optional `negative_prompt`.
     - Wan2.1 14b Video – Image-to-Video: same fields as above but without `resolution`; include `image_b64` for the source image.
     - Skyreels – Text-to-Video: `prompt`, `resolution` (e.g. "544x960"), `guidance_scale`, `seed`, optional `negative_prompt`.
     - Skyreels – Image-to-Video: same as above plus `image_b64`.
+    - Skyreels V2 14b/1.3b 540p – Text-to-Video: `prompt`, `resolution` (enum: `"720P"` or `"540P"`), `guidance_scale`, `inference_steps`, `fps`, `num_frames`/`base_num_frames`, `shift`, `seed`, optional `negative_prompt`.
+    - Skyreels V2 14b/1.3b 540p – Image-to-Video: same as above; include start/end frame images as `img_b64_first` (required) and optional `img_b64_last` (when two images are uploaded). Order is preserved from the UI.
 
 Notes:
-- Resolution strings are model-specific: Wan uses `W*H`, Skyreels uses `WxH`. The app formats and includes/omits `resolution` automatically based on each model's metadata.
+- Resolution strings are model-specific: Wan uses `W*H`, Skyreels uses `WxH`, and Skyreels V2 uses enum strings (e.g., `"540P"`). The app formats and includes/omits `resolution` automatically based on each model's metadata.
 - Parameter names vary by model: some use `guidance_scale`, others use `true_cfg_scale`. The app maps UI inputs to correct parameter names using each model's `parameterMapping` metadata.
 
 ## Usage
