@@ -378,14 +378,14 @@ export function setupEventListeners() {
         const paramToElId = {
           guidance_scale: 'cfg',
           steps: 'steps', // not used by all video models
-          inference_steps: 'steps', // Skyreels V2 uses inference_steps
+          inference_steps: 'steps', // some models use inference_steps
           fps: 'fps',
           frames: 'frames',
-          num_frames: 'frames', // Skyreels V2 supports num_frames/base_num_frames
+          num_frames: 'frames', // some models support num_frames/base_num_frames
           base_num_frames: 'frames',
           seed: 'seed',
           sample_shift: 'sampleShift',
-          shift: 'sampleShift', // Skyreels V2 uses 'shift'
+          shift: 'sampleShift', // some models use 'shift'
           negative_prompt: 'negPrompt',
           ar_step: null,
           overlap_history: null,

@@ -46,7 +46,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 #### Text-to-Image Mode Testing:
 1. Navigate to http://localhost:5173
 2. Switch to "Text to Image" mode
-3. Select a model (e.g., "Hidream", "FLUX.1 Dev", etc.)
+3. Select a model (e.g., "FLUX.1 Dev", etc.)
 4. Enter a test prompt: "a beautiful sunset over mountains"
 5. Set custom CFG and Steps values, choose a resolution preset
 6. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt)
@@ -69,12 +69,12 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 7. Sending an image from history to Image Edit should still load it as the single source; switching models preserves the uploaded image(s) per capability
 #### Video Generation Mode Testing:
 1. Switch to "Video Generation" mode
-2. Choose a video model: "Wan2.1 14b Video", "Skyreels", "Skyreels V2 14b 540p", or "Skyreels V2 1.3b 540p"
+2. Choose a video model: "Wan2.1 14b Video"
 3. Toggle sub-mode:
   - Text to Video: enter a prompt
   - Image to Video: upload a source image and enter a prompt
 4. Resolution presets:
-  - Defaults reflect model enums (Wan uses "W*H"; Skyreels uses "WxH")
+  - Defaults reflect model enums (Wan uses "W*H")
   - For Wan Image-to-Video specifically, resolution is not applicable and the control is hidden
 5. Set/leave FPS, Frames, Steps, CFG; empty fields use model placeholders/defaults
 6. Generate and verify:
@@ -86,10 +86,10 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
   - Modal opens as "Video Preview" with a playable element and "Download Video"
 #### TTS Mode Testing:
 1. Switch to "Text to Speech" mode
-2. Verify a Model dropdown is visible with options: Kokoro, Spark TTS, Cosy Voice TTS 16g, CSM 1B
+2. Verify a Model dropdown is visible with options: Kokoro, CSM 1B
 3. Enter sample text: "Hello from Chutes TTS"
 4. For Kokoro: pick a voice from the enum and adjust speed; Generate and play audio
-5. For Spark TTS: leave params empty (defaults), then test with a small reference audio and optional transcript
+
 6. For Cosy Voice: upload required prompt audio and provide matching prompt text; Generate
 7. For CSM 1B: test speaker values 0 or 1 and max duration; Generate
 8. History shows 🗣️ badge, filter by TTS, modal opens as "Audio Preview" with download
@@ -174,7 +174,7 @@ Image/text models are defined in `js/models.js` with:
   - TTS: `TTS_MODEL_CONFIGS` includes `params` (with types: enum, ranges, required) and optional `audioInput` { type, field, label, required }
 
 **Resolution enums for specific models:**
-Some models (e.g., Wan2.1 14b image/video, Skyreels video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`; Skyreels: `WxH`).
+Some models (e.g., Wan2.1 14b image/video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`).
 
 Example for Wan2.1 14b image:
 ```javascript
@@ -188,7 +188,7 @@ params: {
 ```
 
 - **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`).
-- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`, Skyreels uses `WxH`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 - **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
 
 #### Cache Management:
@@ -266,16 +266,15 @@ params: {
 ### API Integration:
 - Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Image models: Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
+- Image models: Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
-- Video models: Wan2.1 14b Video, Skyreels, Skyreels V2 14b 540p, and Skyreels V2 1.3b 540p
-- TTS models: Kokoro, Spark TTS, Cosy Voice TTS 16g, CSM 1B
+- Video models: Wan2.1 14b Video
+- TTS models: Kokoro, CSM 1B
 - Wan2.1 14b Image/Video use dedicated endpoints and fixed resolution enums (see schema).
 - Image Edit mode uses image-edit model endpoints from `EDIT_MODEL_CONFIGS`
  - Video mode specifics:
   - Wan2.1 14b Video: text2video expects flat JSON with `resolution` in "W*H" form; image2video expects the same but without `resolution`. Optional: `sample_shift`.
-  - Skyreels: expects flat JSON with `resolution` in "WxH" form for generate/animate; `image_b64` for i2v.
-  - Skyreels V2 14b/1.3b 540p: text2video/image2video expect flat JSON with `resolution` as enum (e.g., "540P"); supports start and end frames in i2v as `img_b64_first` and optional `img_b64_last`.
+
 
 ### PWA Features:
 - Service worker for offline app shell caching
@@ -318,7 +317,7 @@ params: {
 ### Models
 - `VIDEO_MODEL_CONFIGS` in `js/models.js` defines endpoints, parameter limits, and behavior metadata for video models
   - `payloadFormat`: request body shape (currently `flat` top-level JSON)
-  - `resolutionFormat`: `'star'` for `W*H` (Wan), `'x'` for `WxH` (Skyreels), `'enum'` for literal enums (Skyreels V2)
+  - `resolutionFormat`: `'star'` for `W*H` (Wan)
   - `includeResolutionIn`: which sub-modes include a `resolution` field (e.g., `['text2video']` for Wan)
 
 ### API

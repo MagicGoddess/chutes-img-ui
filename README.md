@@ -6,7 +6,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports three modes: Image Edit, Text-to-Image, and Video Generation (Text-to-Video / Image-to-Video)
 - New: Text-to-Speech (TTS) mode with multiple models
-- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hidream, Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit / Qwen Image Edit 2509 / Hidream Edit; Wan2.1 14b Video, Skyreels, Skyreels V2 14b 540p, Skyreels V2 1.3b 540p)
+- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit 2509; Wan2.1 14b Video)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video) handled via dropdown
@@ -40,29 +40,19 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Chutes API key is stored in `localStorage['chutes_api_key']`.
 - Quota usage endpoint: `GET https://api.chutes.ai/users/me/quota_usage/me`
 - API endpoints:
-    - Image Edit:\n    - Qwen Image Edit: `POST https://chutes-qwen-image-edit.chutes.ai/generate`\n    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`\n    - Hidream Edit: `POST https://chutes-hidream-edit.chutes.ai/generate`
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
+    - Image Edit:\n\n    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`
   - Wan2.1 14b (Image): `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
   - Wan2.1 14b Video:
     - Text-to-Video: `POST https://chutes-wan2-1-14b.chutes.ai/text2video`
     - Image-to-Video: `POST https://chutes-wan2-1-14b.chutes.ai/image2video`
-  - Skyreels Video:
-    - Text-to-Video: `POST https://chutes-skyreels.chutes.ai/generate`
-    - Image-to-Video: `POST https://chutes-skyreels.chutes.ai/animate`
-  - Skyreels V2 14b 540p Video:
-    - Text-to-Video: `POST https://kikakkz-skyreels-v2-14b-540p.chutes.ai/text2video`
-    - Image-to-Video: `POST https://kikakkz-skyreels-v2-14b-540p.chutes.ai/image2video`
-  - Skyreels V2 1.3b 540p Video:
-    - Text-to-Video: `POST https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/text2video`
-    - Image-to-Video: `POST https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/image2video`
+
   - Text-to-Speech:
     - Kokoro: `POST https://chutes-kokoro.chutes.ai/speak`
-    - Spark TTS: `POST https://chutes-spark-tts.chutes.ai/speak`
-    - Cosy Voice TTS 16g: `POST https://kikakkz-cosy-voice-tts-16g.chutes.ai/v1/speak`
+
     - CSM 1B: `POST https://chutes-csm-1b.chutes.ai/speak`
 - Request body (flat):
   - Image Edit:
-    - Qwen Image Edit: `width`, `height`, `prompt`, `image_b64`, `true_cfg_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`.
     - Qwen Image Edit 2509: `width`, `height`, `prompt`, `image_b64s` (array, 1–3), `true_cfg_scale`, `num_inference_steps` (default 40), optionally `negative_prompt`, `seed`.
   - **Send to Image Edit**: One-click button on result and in modal to use an image as the source for Image Edit
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
@@ -70,18 +60,17 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
   - Video (flat JSON, returns mp4 Blob):
   - Wan2.1 14b Video – Text-to-Video: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `steps`, `fps`, `frames`, `seed`, optional `sample_shift`, optional `negative_prompt`.
     - Wan2.1 14b Video – Image-to-Video: same fields as above but without `resolution`; include `image_b64` for the source image.
-    - Skyreels – Text-to-Video: `prompt`, `resolution` (e.g. "544x960"), `guidance_scale`, `seed`, optional `negative_prompt`.
-    - Skyreels – Image-to-Video: same as above plus `image_b64`.
-    - Skyreels V2 14b/1.3b 540p – Text-to-Video: `prompt`, `resolution` (enum: `"720P"` or `"540P"`), `guidance_scale`, `inference_steps`, `fps`, `num_frames`/`base_num_frames`, `shift`, `seed`, optional `negative_prompt`.
-    - Skyreels V2 14b/1.3b 540p – Image-to-Video: same as above; include start/end frame images as `img_b64_first` (required) and optional `img_b64_last` (when two images are uploaded). Order is preserved from the UI.
+
+
+
+
   - TTS (flat JSON, returns audio/wav Blob):
     - Kokoro: `text` (required), optional `speed`, `voice` enum
-    - Spark TTS: `text` (required), optional `pitch`, `speed`, `top_k`, `top_p`, `gender`, `temperature`, and reference `sample_audio_b64` and `sample_audio_text`
-    - Cosy Voice TTS 16g: `text`, `prompt_audio_b64` (required), `prompt_audio_text` (required), optional `speed`
+
     - CSM 1B: `text` (required), optional `speaker`, `max_duration_ms`; advanced `context` omitted from UI
 
 Notes:
-- Resolution strings are model-specific: Wan uses `W*H`, Skyreels uses `WxH`, and Skyreels V2 uses enum strings (e.g., `"540P"`). The app formats and includes/omits `resolution` automatically based on each model's metadata.
+- Resolution strings are model-specific: Wan uses `W*H`. The app formats and includes/omits `resolution` automatically based on each model's metadata.
 - Parameter names vary by model: some use `guidance_scale`, others use `true_cfg_scale`. The app maps UI inputs to correct parameter names using each model's `parameterMapping` metadata.
 
 ## Usage
@@ -95,7 +84,7 @@ Notes:
   - Drag the ☰ handle (or long-press on touch) to reorder; use ✕ to remove
   - Auto resolution uses the first image; reorder to change the base dims
 - For Video Generation:
-  - Pick a video model (Wan 2.1 14b Video or Skyreels)
+  - Pick a video model (Wan 2.1 14b Video)
   - Choose sub-mode: Text-to-Video or Image-to-Video (upload a source image for i2v)
   - Use presets for resolution (Auto reflects model defaults; for Wan i2v, resolution is hidden)
   - Adjust FPS/Frames/Steps/CFG as needed and Generate

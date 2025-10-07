@@ -1,22 +1,6 @@
 // Model configurations based on actual API schemas from img-models.jsonl and vid-models.md
 export const MODEL_CONFIGS = {
-  'hidream': {
-    name: 'Hidream',
-    endpoint: 'https://kikakkz-hidream-i1-full.chutes.ai/generate',
-    // Metadata for payload construction
-    payloadFormat: 'flat', // flat JSON at top level
-    parameterMapping: {
-      cfgScale: 'guidance_scale',
-      steps: 'num_inference_steps'
-    },
-    params: {
-      width: { min: 256, max: 2560, default: 1024, step: 64 },
-      height: { min: 256, max: 2560, default: 1024, step: 64 },
-      guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
-      num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
-      seed: { min: 0, max: 100000000, default: null }
-    }
-  },
+
   'qwen-image': {
     name: 'Qwen Image',
     endpoint: 'https://image.chutes.ai/generate',
@@ -297,117 +281,7 @@ export const VIDEO_MODEL_CONFIGS = {
       negative_prompt: { default: 'Vibrant colors, overexposed, static, blurry details, subtitles, style, artwork, painting, picture, still, overall grayish, worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, motionless image, cluttered background, three legs, many people in the background, walking backwards, slow motion' }
     }
   },
-  'skyreels-video': {
-    name: 'Skyreels',
-    // Metadata to inform payload construction and UI behavior
-    payloadFormat: 'flat', // flat JSON at top level
-    resolutionFormat: 'x', // resolution expressed as "WxH"
-    includeResolutionIn: ['text2video', 'image2video'],
-    endpoints: {
-      text2video: 'https://chutes-skyreels.chutes.ai/generate',
-      image2video: 'https://chutes-skyreels.chutes.ai/animate'
-    },
-    params: {
-      resolution: {
-        options: ['544x960', '960x544'],
-        default: '544x960'
-      },
-      guidance_scale: { min: 1.001, max: 10, default: 6, step: 0.1 },
-      seed: { min: 0, max: null, default: 42 },
-      negative_prompt: { default: 'Aerial view, aerial view, overexposed, low quality, deformation, a poor composition, bad hands, bad teeth, bad eyes, bad limbs, distortion' }
-    }
-  },
-  'skyreels-v2-14b-540p': {
-    name: 'Skyreels V2 14b 540p',
-    // Metadata to inform payload construction and UI behavior
-    payloadFormat: 'flat',
-    // Resolution is an enum like "720P" or "540P"; keep as-is
-    resolutionFormat: 'enum',
-    includeResolutionIn: ['text2video', 'image2video'],
-    endpoints: {
-      // Text2Video endpoint assumed by convention; if unavailable server-side, request will fail and surface error
-      text2video: 'https://kikakkz-skyreels-v2-14b-540p.chutes.ai/text2video',
-      image2video: 'https://kikakkz-skyreels-v2-14b-540p.chutes.ai/image2video'
-    },
-    // This model supports start and end frame images in image-to-video mode
-    imageInput: {
-      type: 'multiple',
-      maxItems: 2,
-      minItems: 1,
-      mapping: {
-        single: 'img_b64_first',
-        multiple: ['img_b64_first', 'img_b64_last']
-      },
-      hint: 'Supports start (first) and end (last) frames. Upload 1–2 images and drag to reorder.'
-    },
-    params: {
-      resolution: {
-        options: ['720P', '540P'],
-        default: '540P'
-      },
-      fps: { min: 16, max: 60, default: 24, step: 1 },
-      seed: { min: 0, max: null, default: 42 },
-      shift: { min: 1, max: 10, default: 8, step: 0.1 },
-      ar_step: { min: 0, max: 5, default: 0, step: 1 },
-      // Both num_frames and base_num_frames exist in schema; include both so backend can use either
-      num_frames: { min: 97, max: 10000, default: 97, step: 1 },
-      base_num_frames: { min: 97, max: 10000, default: 97, step: 1 },
-      guidance_scale: { min: 1, max: 7.5, default: 6, step: 0.1 },
-      inference_steps: { min: 10, max: 50, default: 30, step: 1 },
-      overlap_history: { min: 0, max: 10000, default: 17, step: 1 },
-      causal_block_size: { min: 0, max: 50, default: 1, step: 1 },
-      addnoise_condition: { min: 0, max: 50, default: 20, step: 1 },
-      // Image fields included for completeness; values provided via imageInput mapping in payload builder
-      img_b64_first: { default: null },
-      img_b64_last: { default: null },
-      negative_prompt: { default: '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走' }
-    }
-  }
-  ,
-  'skyreels-v2-1.3b-540p': {
-    name: 'Skyreels V2 1.3b 540p',
-    // Metadata to inform payload construction and UI behavior
-    payloadFormat: 'flat',
-    // Resolution is an enum like "720P" or "540P"; keep as-is
-    resolutionFormat: 'enum',
-    includeResolutionIn: ['text2video', 'image2video'],
-    endpoints: {
-      text2video: 'https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/text2video',
-      image2video: 'https://kikakkz-skyreels-v2-1-3b-540p.chutes.ai/image2video'
-    },
-    // Supports start and end frame images in image-to-video mode
-    imageInput: {
-      type: 'multiple',
-      maxItems: 2,
-      minItems: 1,
-      mapping: {
-        single: 'img_b64_first',
-        multiple: ['img_b64_first', 'img_b64_last']
-      },
-      hint: 'Supports start (first) and end (last) frames. Upload 1–2 images and drag to reorder.'
-    },
-    params: {
-      resolution: {
-        options: ['720P', '540P'],
-        default: '540P'
-      },
-      fps: { min: 16, max: 60, default: 24, step: 1 },
-      seed: { min: 0, max: null, default: 42 },
-      shift: { min: 1, max: 10, default: 8, step: 0.1 },
-      ar_step: { min: 0, max: 5, default: 0, step: 1 },
-      num_frames: { min: 97, max: 10000, default: 97, step: 1 },
-      base_num_frames: { min: 97, max: 10000, default: 97, step: 1 },
-      guidance_scale: { min: 1, max: 7.5, default: 6, step: 0.1 },
-      inference_steps: { min: 10, max: 50, default: 30, step: 1 },
-      overlap_history: { min: 0, max: 10000, default: 17, step: 1 },
-      causal_block_size: { min: 0, max: 50, default: 1, step: 1 },
-      addnoise_condition: { min: 0, max: 50, default: 20, step: 1 },
-      // Image fields included for completeness
-      img_b64_first: { default: null },
-      img_b64_last: { default: null },
-      negative_prompt: { default: '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走' }
-    }
-  }
+
 };
 
 // Image Edit model configurations (for Image Edit mode)
@@ -437,70 +311,7 @@ export const EDIT_MODEL_CONFIGS = {
       negative_prompt: { default: '' }
     }
   },
-  'qwen-image-edit': {
-    name: 'Qwen Image Edit',
-    endpoint: 'https://chutes-qwen-image-edit.chutes.ai/generate',
-    payloadFormat: 'flat',
-    // Maps UI concepts to model parameter names
-    parameterMapping: {
-      cfgScale: 'true_cfg_scale',
-      steps: 'num_inference_steps'
-    },
-    imageInput: {
-      type: 'single',
-      field: 'image_b64',
-      maxItems: 1
-    },
-    params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      true_cfg_scale: { min: 0, max: 10, default: 4, step: 0.1 },
-      num_inference_steps: { min: 5, max: 100, default: 50, step: 1 },
-      seed: { min: 0, max: 4294967295, default: null },
-      negative_prompt: { default: '' }
-    }
-  },
-  "hidream-edit": {
-    name: "Hidream Edit",
-    endpoint: "https://chutes-hidream-edit.chutes.ai/generate",
-    payloadFormat: 'flat',
-    params: {
-      width: { min: 128, max: 2048, default: 1024, step: 64 },
-      height: { min: 128, max: 2048, default: 1024, step: 64 },
-      guidance_scale: {
-        default: 5,
-        min: 0,
-        max: 10
-      },
-      num_inference_steps: {
-        default: 28,
-        min: 5,
-        max: 75
-      },
-      seed: {
-        default: null,
-        min: 0,
-        max: 100000000
-      },
-      negative_prompt: {
-        default: "low resolution, blur"
-      },
-      image_guidance_scale: {
-        default: 4,
-        min: 0,
-        max: 10
-      }
-    },
-    parameterMapping: {
-      cfgScale: 'guidance_scale',
-      steps: 'num_inference_steps'
-    },
-    imageInput: {
-      type: 'single',
-      field: 'image_b64',
-      maxItems: 1
-    }
-  }
+
 };
 
 // Text-to-Speech model configurations
@@ -532,35 +343,8 @@ export const TTS_MODEL_CONFIGS = {
       }
     }
   },
-  'spark-tts': {
-    name: 'Spark TTS',
-    endpoint: 'https://chutes-spark-tts.chutes.ai/speak',
-    payloadFormat: 'flat',
-    // Supports reference audio and various sampling controls
-    audioInput: { type: 'single', field: 'sample_audio_b64', label: 'Reference audio (optional)' },
-    params: {
-      text: { required: true },
-      pitch: { type: 'enum', options: ['very_low','low','moderate','high','very_high'], default: 'moderate' },
-      speed: { type: 'enum', options: ['very_low','low','moderate','high','very_high'], default: 'moderate' },
-      top_k: { min: 1, max: 200, step: 1, default: 50 },
-      top_p: { min: 0, max: 1, step: 0.01, default: 0.95 },
-      gender: { type: 'enum', options: ['male','female'], default: 'female' },
-      temperature: { min: 0, max: 2, step: 0.05, default: 0.8 },
-      sample_audio_text: { default: null }
-    }
-  },
-  'cosy-voice-tts-16g': {
-    name: 'Cosy Voice TTS 16g',
-    endpoint: 'https://kikakkz-cosy-voice-tts-16g.chutes.ai/v1/speak',
-    payloadFormat: 'flat',
-    // Requires a prompt reference audio and matching transcript text
-    audioInput: { type: 'single', field: 'prompt_audio_b64', label: 'Prompt audio (required)' },
-    params: {
-      text: { required: true },
-      speed: { min: 0.1, max: 3, step: 0.1, default: 1 },
-      prompt_audio_text: { required: true }
-    }
-  },
+
+
   'csm-1b': {
     name: 'CSM 1B',
     endpoint: 'https://chutes-csm-1b.chutes.ai/speak',

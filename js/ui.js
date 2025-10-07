@@ -1650,13 +1650,13 @@ export function restoreModelSelectForImages() {
     })
     .join('');
   
-  // Try to restore previous selection if it's an image model, otherwise default to hidream
+  // Try to restore previous selection if it's an image model, otherwise default to qwen-image
   if (Object.keys(MODEL_CONFIGS).includes(currentSelection)) {
     modelSelect.value = currentSelection;
     currentModel = currentSelection;
   } else {
-    modelSelect.value = 'hidream';
-    currentModel = 'hidream';
+    modelSelect.value = 'qwen-image';
+    currentModel = 'qwen-image';
   }
 }
 
