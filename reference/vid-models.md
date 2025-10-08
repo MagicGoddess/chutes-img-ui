@@ -326,3 +326,115 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+
+## Musetalk (musetalk)
+### Example
+```sh
+curl -X POST \
+		https://chutes-musetalk.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+		-H "Content-Type: application/json" \
+		-d '  {
+    "fps": 25,
+    "batch_size": 8,
+    "audio_input": "example-string",
+    "video_input": "example-string",
+    "extra_margin": 10,
+    "parsing_mode": "jaw",
+    "left_cheek_width": 90,
+    "right_cheek_width": 90
+  }'
+```
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate_lipsync",
+  "function": "generate_lipsync",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MuseTalkInput"
+      }
+    },
+    "definitions": {
+      "MuseTalkInput": {
+        "type": "object",
+        "required": [
+          "video_input",
+          "audio_input"
+        ],
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 25,
+            "maximum": 60,
+            "minimum": 1,
+            "description": "Output video FPS"
+          },
+          "batch_size": {
+            "type": "integer",
+            "title": "Batch Size",
+            "default": 8,
+            "maximum": 32,
+            "minimum": 1,
+            "description": "Batch size for inference"
+          },
+          "audio_input": {
+            "type": "string",
+            "title": "Audio Input",
+            "description": "Base64 encoded audio or HTTPS URL"
+          },
+          "video_input": {
+            "type": "string",
+            "title": "Video Input",
+            "description": "Base64 encoded video or HTTPS URL"
+          },
+          "extra_margin": {
+            "type": "integer",
+            "title": "Extra Margin",
+            "default": 10,
+            "maximum": 50,
+            "minimum": 0,
+            "description": "Extra margin for face crop"
+          },
+          "parsing_mode": {
+            "type": "string",
+            "title": "Parsing Mode",
+            "default": "jaw",
+            "description": "Face blending mode"
+          },
+          "left_cheek_width": {
+            "type": "integer",
+            "title": "Left Cheek Width",
+            "default": 90,
+            "maximum": 200,
+            "minimum": 0,
+            "description": "Left cheek width"
+          },
+          "right_cheek_width": {
+            "type": "integer",
+            "title": "Right Cheek Width",
+            "default": 90,
+            "maximum": 200,
+            "minimum": 0,
+            "description": "Right cheek width"
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "video/mp4",
+  "minimal_input_schema": null
+}
+```
