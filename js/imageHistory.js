@@ -112,9 +112,10 @@ function filterHistoryByType(history) {
   
   return history.filter(item => {
     const isVideo = item.settings?.type === 'video';
+    const isLipSync = item.settings?.type === 'lipsync';  
     const isTts = item.settings?.type === 'tts';
-    if (currentFilter === 'videos') return isVideo;
-    if (currentFilter === 'images') return !isVideo;
+    if (currentFilter === 'videos') return isVideo || isLipSync;
+    if (currentFilter === 'images') return !isVideo && !isLipSync && !isTts;
     if (currentFilter === 'tts') return isTts;
     return true;
   });
@@ -448,15 +449,16 @@ function refreshImageGrid() {
     grid.innerHTML = filteredHistory.map(img => {
       const isVideo = img.settings?.type === 'video';
       const isTts = img.settings?.type === 'tts';
-      const resolution = isVideo ? 
+      const isLipSync = img.settings?.type === 'lipsync';
+      const resolution = (isVideo || isLipSync) ? 
         img.settings.resolution || 'Unknown' : 
         (isTts ? 'Audio' : `${img.settings.width || '?'}×${img.settings.height || '?'}`);
       
       // Format file size if available
       const fileSize = img.fileSize ? formatBytes(img.fileSize) : 'Unknown';
       
-      // For videos, show a captured first-frame thumbnail (with hidden video for capture)
-      const mediaContent = isVideo ? 
+      // For videos (including lip sync), show a captured first-frame thumbnail (with hidden video for capture)
+      const mediaContent = (isVideo || isLipSync) ? 
         `<div class="video-thumbnail" data-image-id-src="${img.imageKey || ''}">
            <img class="video-thumb" alt="Video thumbnail" />
            <video style="display:none;" data-image-id-src="${img.imageKey || ''}" muted preload="metadata"></video>
@@ -467,10 +469,14 @@ function refreshImageGrid() {
          </div>` :
          `<img data-image-id-src="${img.imageKey || ''}" src="${img.imageData || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='}" alt="Generated content" loading="lazy" />`);
       
-      // Media type badge (video or image). If the generation was produced by
+      // Media type badge (video, lip sync, audio, or image). If the generation was produced by
       // the Image Edit mode, show a small edit badge (wrench) next to the image emoji.
       const isImageEdit = img.settings?.mode === 'image-edit';
-      const typeBadge = isVideo
+      const typeBadge = isLipSync
+        ? `<div class="type-badge badge-lipsync" title="Lip Sync">
+             <span class="emoji">${img.settings.typeBadge || '📹👄'}</span>
+           </div>`
+        : isVideo
         ? `<div class="type-badge badge-video" title="Video">
              <span class="emoji">🎥</span>
            </div>`

@@ -21,7 +21,8 @@ import {
   applyPreset, handleImageFile, handleImageFiles, setSourceImage, setSourceImages, setImgThumbContent,
   updateVideoModeUI, updateVideoParametersForModel, updateParametersForEditModel, updateVideoResolutionPresets,
   renderSourceThumbs, appendImageFiles,
-  updateTTSParametersForModel, setTtsAudio, clearTtsAudio, ttsAudioB64
+  updateTTSParametersForModel, setTtsAudio, clearTtsAudio, ttsAudioB64,
+  setLipSyncVideo, setLipSyncAudio, clearLipSyncVideo, clearLipSyncAudio, lipSyncVideoB64, lipSyncAudioB64
 } from './ui.js';
 import { refreshQuotaUsage, hideQuotaCounter } from './quota.js';
 import { setBusy, generationComplete } from './generation.js';
@@ -59,6 +60,12 @@ export function setupEventListeners() {
   if (els.videoModeText2Video) {
     els.videoModeText2Video.addEventListener('change', () => {
       if (els.videoModeText2Video.checked) {
+        log(`[${ts()}] Switching to text-to-video mode`);
+        // Refresh model dropdown for text-to-video mode
+        restoreModelSelectForVideo();
+        // Update parameters for newly selected model
+        updateVideoParametersForModel(currentModel);
+        updateVideoResolutionPresets();
         // Switch to text-to-video mode
         updateVideoModeUI();
         // Refresh muted values to reflect placeholders/defaults
@@ -69,7 +76,29 @@ export function setupEventListeners() {
   if (els.videoModeImage2Video) {
     els.videoModeImage2Video.addEventListener('change', () => {
       if (els.videoModeImage2Video.checked) {
+        log(`[${ts()}] Switching to image-to-video mode`);
+        // Refresh model dropdown for image-to-video mode
+        restoreModelSelectForVideo();
+        // Update parameters for newly selected model
+        updateVideoParametersForModel(currentModel);
+        updateVideoResolutionPresets();
         // Switch to image-to-video mode
+        updateVideoModeUI();
+        // Refresh muted values to reflect placeholders/defaults
+        sync();
+      }
+    });
+  }
+  if (els.videoModeLipSync) {
+    els.videoModeLipSync.addEventListener('change', () => {
+      if (els.videoModeLipSync.checked) {
+        log(`[${ts()}] Switching to lip sync mode`);
+        // Refresh model dropdown for lip sync mode
+        restoreModelSelectForVideo();
+        // Update parameters for newly selected model
+        updateVideoParametersForModel(currentModel);
+        updateVideoResolutionPresets();
+        // Switch to lip sync mode
         updateVideoModeUI();
         // Refresh muted values to reflect placeholders/defaults
         sync();
@@ -83,8 +112,16 @@ export function setupEventListeners() {
       updateParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
     } else if (currentMode === 'video-generation') {
+      log(`[${ts()}] Video model changed to: ${els.modelSelect.value}`);
       updateVideoParametersForModel(els.modelSelect.value);
       setCurrentModel(els.modelSelect.value);
+      
+      // Auto-switch to lip sync mode if Musetalk is selected
+      if (els.modelSelect.value === 'musetalk' && els.videoModeLipSync) {
+        log(`[${ts()}] Auto-switching to lip sync mode for Musetalk`);
+        els.videoModeLipSync.checked = true;
+      }
+      
       // Refresh resolution presets and width/height to match selected video model
       updateVideoResolutionPresets();
       // Ensure UI reflects model capabilities (e.g., hide resolution for Wan i2v)
@@ -223,6 +260,70 @@ export function setupEventListeners() {
     });
   }
 
+  // Video upload handlers for lip sync
+  if (els.videoUploadBtn) {
+    els.videoUploadBtn.addEventListener('click', () => {
+      els.videoInput?.click();
+    });
+  }
+  if (els.clearVideoBtn) {
+    els.clearVideoBtn.addEventListener('click', () => {
+      els.videoInput.value = '';
+      clearLipSyncVideo();
+      if (els.videoThumb) els.videoThumb.innerHTML = '<span class="muted">No video selected</span>';
+    });
+  }
+  if (els.videoInput) {
+    els.videoInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      
+      log(`[${ts()}] Reading video file: ${f.name}`);
+      const b64 = await fileToBase64(f);
+      const data = (b64 || '').split(',')[1] || '';
+      setLipSyncVideo(data, f.type || 'video/mp4');
+      
+      // Create video thumbnail
+      const url = URL.createObjectURL(f);
+      if (els.videoThumb) {
+        els.videoThumb.innerHTML = `<video src="${url}" style="width:100%;height:auto;max-height:200px;" controls muted></video>`;
+      }
+      log(`[${ts()}] Video ready (Base64 in memory).`);
+    });
+  }
+
+  // Audio upload handlers for lip sync  
+  if (els.audioUploadBtn) {
+    els.audioUploadBtn.addEventListener('click', () => {
+      els.audioInput?.click();
+    });
+  }
+  if (els.clearAudioBtn) {
+    els.clearAudioBtn.addEventListener('click', () => {
+      els.audioInput.value = '';
+      clearLipSyncAudio();
+      if (els.audioThumb) els.audioThumb.innerHTML = '<span class="muted">No audio selected</span>';
+    });
+  }
+  if (els.audioInput) {
+    els.audioInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      
+      log(`[${ts()}] Reading audio file: ${f.name}`);
+      const b64 = await fileToBase64(f);
+      const data = (b64 || '').split(',')[1] || '';
+      setLipSyncAudio(data, f.type || 'audio/wav');
+      
+      // Create audio thumbnail/preview
+      const url = URL.createObjectURL(f);
+      if (els.audioThumb) {
+        els.audioThumb.innerHTML = `<audio src="${url}" style="width:100%;" controls></audio>`;
+      }
+      log(`[${ts()}] Audio ready (Base64 in memory).`);
+    });
+  }
+
   // Resolution preset handling
   if (els.resolutionPreset){
     els.resolutionPreset.addEventListener('change', applyPreset);
@@ -341,108 +442,178 @@ export function setupEventListeners() {
         endpoint = editCfg.endpoint;
       } else if (currentMode === 'video-generation') {
         // Video generation logic (config-driven)
-        const prompt = els.prompt.value.trim();
-        if (!prompt) return toast('Prompt cannot be empty', true);
-
-  const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        const isLipSync = els.videoModeLipSync?.checked;
+        const videoMode = isLipSync ? 'lip-sync' : (els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video');
         const videoConfig = VIDEO_MODEL_CONFIGS[currentModel];
-        if (!videoConfig) return toast('Invalid video model selected', true);
-
-        // Select endpoint based on sub-mode
-        endpoint = videoMode === 'image-to-video' ? videoConfig.endpoints.image2video : videoConfig.endpoints.text2video;
-
-        // Build payload generically from model config
-  const payload = { prompt };
-
-        // Resolution handling per model metadata
-        const includeRes = Array.isArray(videoConfig.includeResolutionIn) ? videoConfig.includeResolutionIn : ['text2video', 'image2video'];
-        const modeKey = videoMode === 'image-to-video' ? 'image2video' : 'text2video';
-        if (includeRes.includes(modeKey) && videoConfig.params.resolution) {
-          let resStr;
-          const sel = els.resolutionPreset?.value;
-          if (sel && sel !== 'auto' && sel !== 'custom') {
-            resStr = sel; // values in UI match model format
-          } else {
-            resStr = videoConfig.params.resolution.default;
-          }
-          // Normalize potential display variants just in case
-          if (videoConfig.resolutionFormat === 'star') {
-            resStr = String(resStr).replace('x', '*');
-          } else if (videoConfig.resolutionFormat === 'x') {
-            resStr = String(resStr).replace('*', 'x');
-          }
-          payload.resolution = resStr;
+        if (!videoConfig) {
+          log(`[${ts()}] ERROR: Invalid video model selected: ${currentModel}`);
+          return toast('Invalid video model selected', true);
         }
+        
+        log(`[${ts()}] Using video model: ${videoConfig.name}, mode: ${videoMode}`);
 
-        // Parameter mapping from config param names to UI elements
-        const paramToElId = {
-          guidance_scale: 'cfg',
-          steps: 'steps', // not used by all video models
-          inference_steps: 'steps', // some models use inference_steps
-          fps: 'fps',
-          frames: 'frames',
-          num_frames: 'frames', // some models support num_frames/base_num_frames
-          base_num_frames: 'frames',
-          seed: 'seed',
-          sample_shift: 'sampleShift',
-          shift: 'sampleShift', // some models use 'shift'
-          negative_prompt: 'negPrompt',
-          ar_step: null,
-          overlap_history: null,
-          causal_block_size: null,
-          addnoise_condition: null
-        };
+        if (isLipSync) {
+          // Lip sync mode - validate required inputs
+          if (!lipSyncVideoB64) return toast('Video file is required for lip sync', true);
+          if (!lipSyncAudioB64) return toast('Audio file is required for lip sync', true);
+          
+          // Select lip sync endpoint
+          endpoint = videoConfig.endpoints.lipsync;
+          log(`[${ts()}] Lip sync endpoint: ${endpoint}`);
+          
+          // Build lip sync payload
+          const payload = {
+            video_input: lipSyncVideoB64,
+            audio_input: lipSyncAudioB64
+          };
 
-        for (const [paramName, schema] of Object.entries(videoConfig.params)) {
-          if (paramName === 'resolution') continue; // handled above
-          const elId = paramToElId[paramName];
-          let val = null;
-          if (elId && els[elId] != null && typeof els[elId].value !== 'undefined') {
-            const raw = (els[elId].value || '').toString().trim();
-            if (raw !== '') {
-              if (paramName === 'negative_prompt') {
-                val = raw;
-              } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
-                // floating number
-                val = parseFloat(raw);
-              } else {
-                // integer or generic number
-                const n = Number(raw);
-                val = Number.isNaN(n) ? raw : (Number.isInteger(n) ? parseInt(raw, 10) : n);
+          // Parameter mapping for lip sync specific parameters
+          const paramToElId = {
+            fps: 'fps',
+            batch_size: 'batchSize',
+            extra_margin: 'extraMargin',
+            parsing_mode: 'parsingMode',
+            left_cheek_width: 'leftCheekWidth',
+            right_cheek_width: 'rightCheekWidth'
+          };
+
+          for (const [paramName, schema] of Object.entries(videoConfig.params)) {
+            const elId = paramToElId[paramName];
+            let val = null;
+            if (elId && els[elId] != null && typeof els[elId].value !== 'undefined') {
+              const raw = (els[elId].value || '').toString().trim();
+              if (raw !== '') {
+                if (schema?.type === 'enum') {
+                  val = raw;
+                } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
+                  // floating number
+                  val = parseFloat(raw);
+                } else {
+                  // integer or generic number
+                  const n = Number(raw);
+                  val = Number.isNaN(n) ? raw : (Number.isInteger(n) ? parseInt(raw, 10) : n);
+                }
               }
             }
-          }
-          if (val === null || typeof val === 'undefined' || val === '') {
-            // Fallback to model default (can be null)
-            val = schema?.default;
-          }
-          // Only set if not undefined to avoid sending extraneous fields
-          if (typeof val !== 'undefined') {
-            payload[paramName] = val;
-          }
-        }
-
-        // For image-to-video, include image(s)
-        if (videoMode === 'image-to-video') {
-          if (videoConfig.imageInput?.type === 'multiple') {
-            // Map first/last according to config mapping
-            const imgs = Array.isArray(sourceB64s) ? sourceB64s.slice(0, Math.max(1, videoConfig.imageInput.maxItems || 2)) : (sourceB64 ? [sourceB64] : []);
-            const mapping = videoConfig.imageInput.mapping || {};
-            if (imgs.length === 1) {
-              const field = mapping.single || 'image_b64';
-              payload[field] = imgs[0];
-            } else if (imgs.length >= 2) {
-              const firstField = (mapping.multiple && mapping.multiple[0]) || 'img_b64_first';
-              const lastField = (mapping.multiple && mapping.multiple[1]) || 'img_b64_last';
-              payload[firstField] = imgs[0];
-              payload[lastField] = imgs[1];
+            if (val === null || typeof val === 'undefined' || val === '') {
+              // Fallback to model default (can be null)
+              val = schema?.default;
             }
-          } else {
-            payload.image_b64 = sourceB64;
+            // Only set if not undefined to avoid sending extraneous fields
+            if (typeof val !== 'undefined') {
+              payload[paramName] = val;
+            }
           }
-        }
 
-        body = payload; // flat JSON
+          body = payload;
+        } else {
+          // Regular video generation (text-to-video or image-to-video)
+          const prompt = els.prompt.value.trim();
+          if (!prompt) return toast('Prompt cannot be empty', true);
+
+          // Select endpoint based on sub-mode
+          endpoint = videoMode === 'image-to-video' ? videoConfig.endpoints.image2video : videoConfig.endpoints.text2video;
+          log(`[${ts()}] Regular video endpoint: ${endpoint} for mode: ${videoMode}`);
+          
+          // Check if the selected model supports the current video mode
+          if (!endpoint) {
+            log(`[${ts()}] ERROR: ${videoConfig.name} does not support ${videoMode} mode`);
+            return toast(`${videoConfig.name} does not support ${videoMode} mode. Please select Lip Sync mode for this model.`, true);
+          }
+
+          // Build payload generically from model config
+          const payload = { prompt };
+
+          // Resolution handling per model metadata
+          const includeRes = Array.isArray(videoConfig.includeResolutionIn) ? videoConfig.includeResolutionIn : ['text2video', 'image2video'];
+          const modeKey = videoMode === 'image-to-video' ? 'image2video' : 'text2video';
+          if (includeRes.includes(modeKey) && videoConfig.params.resolution) {
+            let resStr;
+            const sel = els.resolutionPreset?.value;
+            if (sel && sel !== 'auto' && sel !== 'custom') {
+              resStr = sel; // values in UI match model format
+            } else {
+              resStr = videoConfig.params.resolution.default;
+            }
+            // Normalize potential display variants just in case
+            if (videoConfig.resolutionFormat === 'star') {
+              resStr = String(resStr).replace('x', '*');
+            } else if (videoConfig.resolutionFormat === 'x') {
+              resStr = String(resStr).replace('*', 'x');
+            }
+            payload.resolution = resStr;
+          }
+
+          // Parameter mapping from config param names to UI elements
+          const paramToElId = {
+            guidance_scale: 'cfg',
+            steps: 'steps', // not used by all video models
+            inference_steps: 'steps', // some models use inference_steps
+            fps: 'fps',
+            frames: 'frames',
+            num_frames: 'frames', // some models support num_frames/base_num_frames
+            base_num_frames: 'frames',
+            seed: 'seed',
+            sample_shift: 'sampleShift',
+            shift: 'sampleShift', // some models use 'shift'
+            negative_prompt: 'negPrompt',
+            ar_step: null,
+            overlap_history: null,
+            causal_block_size: null,
+            addnoise_condition: null
+          };
+
+          for (const [paramName, schema] of Object.entries(videoConfig.params)) {
+            if (paramName === 'resolution') continue; // handled above
+            const elId = paramToElId[paramName];
+            let val = null;
+            if (elId && els[elId] != null && typeof els[elId].value !== 'undefined') {
+              const raw = (els[elId].value || '').toString().trim();
+              if (raw !== '') {
+                if (paramName === 'negative_prompt') {
+                  val = raw;
+                } else if (schema && typeof schema.step === 'number' && String(schema.step).includes('.')) {
+                  // floating number
+                  val = parseFloat(raw);
+                } else {
+                  // integer or generic number
+                  const n = Number(raw);
+                  val = Number.isNaN(n) ? raw : (Number.isInteger(n) ? parseInt(raw, 10) : n);
+                }
+              }
+            }
+            if (val === null || typeof val === 'undefined' || val === '') {
+              // Fallback to model default (can be null)
+              val = schema?.default;
+            }
+            // Only set if not undefined to avoid sending extraneous fields
+            if (typeof val !== 'undefined') {
+              payload[paramName] = val;
+            }
+          }
+
+          // For image-to-video, include image(s)
+          if (videoMode === 'image-to-video') {
+            if (videoConfig.imageInput?.type === 'multiple') {
+              // Map first/last according to config mapping
+              const imgs = Array.isArray(sourceB64s) ? sourceB64s.slice(0, Math.max(1, videoConfig.imageInput.maxItems || 2)) : (sourceB64 ? [sourceB64] : []);
+              const mapping = videoConfig.imageInput.mapping || {};
+              if (imgs.length === 1) {
+                const field = mapping.single || 'image_b64';
+                payload[field] = imgs[0];
+              } else if (imgs.length >= 2) {
+                const firstField = (mapping.multiple && mapping.multiple[0]) || 'img_b64_first';
+                const lastField = (mapping.multiple && mapping.multiple[1]) || 'img_b64_last';
+                payload[firstField] = imgs[0];
+                payload[lastField] = imgs[1];
+              }
+            } else {
+              payload.image_b64 = sourceB64;
+            }
+          }
+
+          body = payload; // flat JSON
+        }
       } else if (currentMode === 'text-to-image' || currentMode === 'image-edit') {
         // Text-to-image generation (config-driven)
         const prompt = els.prompt.value.trim();
@@ -544,7 +715,8 @@ export function setupEventListeners() {
       if (currentMode === 'image-edit') {
         generationType = `${EDIT_MODEL_CONFIGS[currentModel]?.name || currentModel}`;
       } else if (currentMode === 'video-generation') {
-        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
+        const isLipSync = els.videoModeLipSync?.checked;
+        const videoMode = isLipSync ? 'lip-sync' : (els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video');
         generationType = `${VIDEO_MODEL_CONFIGS[currentModel]?.name || currentModel} (${videoMode})`;
       } else {
         generationType = config?.name || currentModel;
@@ -568,6 +740,11 @@ export function setupEventListeners() {
   // Start timer right before issuing the network request
   t0 = performance.now();
       
+      // Final safety check for endpoint
+      if (!endpoint || endpoint === 'undefined') {
+        return toast('Invalid endpoint configuration. Please check model and mode selection.', true);
+      }
+
       // Use appropriate API function based on mode
       let blob;
       if (currentMode === 'video-generation') {
@@ -625,21 +802,42 @@ export function setupEventListeners() {
       let generationSettings;
       if (currentMode === 'video-generation') {
         // Video generation settings from flat payload
-        const videoMode = els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video';
-        generationSettings = {
-          prompt: body.prompt,
-          negativePrompt: body.negative_prompt || '',
-          resolution: body.resolution,
-          cfgScale: body.guidance_scale,
-          steps: body.steps,
-          frames: body.frames,
-          fps: body.fps,
-          seed: body.seed,
-          model: currentModel,
-          mode: 'video-generation',
-          videoMode: videoMode,
-          type: 'video'
-        };
+        const isLipSync = els.videoModeLipSync?.checked;
+        const videoMode = isLipSync ? 'lip-sync' : (els.videoModeImage2Video?.checked ? 'image-to-video' : 'text-to-video');
+        
+        if (isLipSync) {
+          generationSettings = {
+            fps: body.fps,
+            batchSize: body.batch_size,
+            extraMargin: body.extra_margin,
+            parsingMode: body.parsing_mode,
+            leftCheekWidth: body.left_cheek_width,
+            rightCheekWidth: body.right_cheek_width,
+            model: currentModel,
+            mode: 'video-generation',
+            videoMode: videoMode,
+            type: 'lipsync',
+            typeBadge: '📹👄',
+            // Store the reference video and audio for history
+            sourceVideo: lipSyncVideoB64,
+            sourceAudio: lipSyncAudioB64
+          };
+        } else {
+          generationSettings = {
+            prompt: body.prompt,
+            negativePrompt: body.negative_prompt || '',
+            resolution: body.resolution,
+            cfgScale: body.guidance_scale,
+            steps: body.steps,
+            frames: body.frames,
+            fps: body.fps,
+            seed: body.seed,
+            model: currentModel,
+            mode: 'video-generation',
+            videoMode: videoMode,
+            type: 'video'
+          };
+        }
       } else {
         // Image generation settings
         generationSettings = {

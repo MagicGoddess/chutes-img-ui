@@ -194,6 +194,15 @@ textarea {
   }
   #sourceImageSection .thumb{ width:100%; }
   #sourceImageSection input[type="file"]{ display:none; }
+
+  /* Video and audio input sections for lip sync */
+  #sourceVideoSection, #sourceAudioSection { 
+    max-width:420px; 
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  #sourceVideoSection .thumb, #sourceAudioSection .thumb { width:100%; }
+  #sourceVideoSection input[type="file"], #sourceAudioSection input[type="file"] { display:none; }
 }
 
 button {

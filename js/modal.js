@@ -76,10 +76,11 @@ export async function openImageModal(imageId) {
   }
   
   const isVideo = image.settings?.type === 'video';
+  const isLipSync = image.settings?.type === 'lipsync';
   const isTts = image.settings?.type === 'tts';
   // Switch UI based on type
-  if (isVideo) {
-    modalTitle.textContent = 'Video Preview';
+  if (isVideo || isLipSync) {
+    modalTitle.textContent = isLipSync ? 'Lip Sync Video Preview' : 'Video Preview';
     modalImage.style.display = 'none';
     modalVideo.style.display = 'block';
     modalAudio.style.display = 'none';
@@ -96,7 +97,7 @@ export async function openImageModal(imageId) {
   }
 
   // If the content is stored in IDB, load it async; otherwise use inlined data URL
-  if (!isVideo && !isTts) {
+  if (!isVideo && !isLipSync && !isTts) {
     modalImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   }
   if (image.imageKey) {
@@ -104,7 +105,7 @@ export async function openImageModal(imageId) {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       modalObjectUrl = url; // Track for cleanup
-      if (isVideo) {
+      if (isVideo || isLipSync) {
         modalVideo.src = url;
       } else if (isTts) {
         modalAudio.src = url;
@@ -113,9 +114,9 @@ export async function openImageModal(imageId) {
       }
     }).catch(e => {
       console.warn('Failed to load modal content blob', e);
-      if (!isVideo && !isTts && image.imageData) modalImage.src = image.imageData;
+      if (!isVideo && !isLipSync && !isTts && image.imageData) modalImage.src = image.imageData;
     });
-  } else if (!isVideo && !isTts && image.imageData) {
+  } else if (!isVideo && !isLipSync && !isTts && image.imageData) {
     modalImage.src = image.imageData;
   }
   
@@ -174,9 +175,9 @@ export async function openImageModal(imageId) {
   }
 
   // Adjust actions based on type
-  if (isVideo) {
+  if (isVideo || isLipSync) {
     // Change download label and hide Send to Edit
-    if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Video';
+    if (modalDownloadBtn) modalDownloadBtn.innerHTML = `<span>📥</span> Download ${isLipSync ? 'Lip Sync Video' : 'Video'}`;
     if (modalSendToEditBtn) modalSendToEditBtn.style.display = 'none';
   } else if (isTts) {
     if (modalDownloadBtn) modalDownloadBtn.innerHTML = '<span>📥</span> Download Audio';
@@ -233,8 +234,9 @@ export function downloadModalImage() {
         const a = document.createElement('a'); 
         a.href = url; 
         const isVideo = currentModalImage.settings?.type === 'video';
+        const isLipSync = currentModalImage.settings?.type === 'lipsync';
         const isTts = currentModalImage.settings?.type === 'tts';
-        const ext = isVideo ? 'mp4' : isTts ? 'wav' : 'jpg';
+        const ext = (isVideo || isLipSync) ? 'mp4' : isTts ? 'wav' : 'jpg';
         a.download = `${currentModalImage.filename}.${ext}`; 
         a.click();
         URL.revokeObjectURL(url);

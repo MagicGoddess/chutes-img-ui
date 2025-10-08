@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1759923217022" />
+  <link rel="stylesheet" href="./app.css?v=1759946296870" />
 </head>
 <body>
   <header>
@@ -70,6 +70,8 @@
           <label for="videoModeText2Video">Text to Video</label>
           <input type="radio" id="videoModeImage2Video" name="videoMode" value="image-to-video" />
           <label for="videoModeImage2Video">Image to Video</label>
+          <input type="radio" id="videoModeLipSync" name="videoMode" value="lip-sync" />
+          <label for="videoModeLipSync">Lip Sync</label>
         </div>
       </div>
       </div>
@@ -103,6 +105,7 @@
             <option value="nova-cartoon-xl">Nova Cartoon Xl</option>
             <!-- Video models -->
             <option value="wan2.1-14b-video">Wan2.1 14b Video</option>
+            <option value="musetalk">Musetalk</option>
 
           </select>
         </div>
@@ -124,6 +127,28 @@
             <input id="imgInput" type="file" accept="image/*" style="display:none" />
             <div class="muted" id="multiImageHint" style="display:none;margin-top:4px">This model supports multiple source images. You can select up to the model's limit.</div>
             <div class="thumb" id="imgThumb"><span class="muted">No image selected</span></div>
+          </div>
+
+          <!-- Source Video Section (for lip sync) -->
+          <div id="sourceVideoSection" style="display: none;">
+            <label>Source Video <span id="sourceVideoRequired">(required)</span></label>
+            <div class="toolbar">
+              <button id="videoUploadBtn" class="secondary" type="button">📹 Upload video</button>
+              <button id="clearVideoBtn" class="secondary" type="button">🧹 Clear</button>
+            </div>
+            <input id="videoInput" type="file" accept="video/*" style="display:none" />
+            <div class="thumb" id="videoThumb"><span class="muted">No video selected</span></div>
+          </div>
+
+          <!-- Source Audio Section (for lip sync) -->
+          <div id="sourceAudioSection" style="display: none;">
+            <label>Source Audio <span id="sourceAudioRequired">(required)</span></label>
+            <div class="toolbar">
+              <button id="audioUploadBtn" class="secondary" type="button">🎵 Upload audio</button>
+              <button id="clearAudioBtn" class="secondary" type="button">🧹 Clear</button>
+            </div>
+            <input id="audioInput" type="file" accept="audio/*" style="display:none" />
+            <div class="thumb" id="audioThumb"><span class="muted">No audio selected</span></div>
           </div>
           <div class="preview">
             <label for="prompt">Prompt</label>
@@ -201,6 +226,46 @@
               <label for="sampleShift">Sample Shift (1–7)</label>
               <input id="sampleShift" type="number" min="1" max="7" step="0.1" placeholder="Auto" />
               <div class="muted">Value: <span id="sampleShiftVal">default</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lip Sync specific parameters -->
+        <div id="lipSyncParams" style="display: none;">
+          <div class="spacer"></div>
+          <div class="grid-cols-2">
+            <div>
+              <label for="batchSize">Batch Size (1–32)</label>
+              <input id="batchSize" type="number" min="1" max="32" step="1" placeholder="8" />
+              <div class="muted">Value: <span id="batchSizeVal">default</span></div>
+            </div>
+            <div>
+              <label for="extraMargin">Extra Margin (0–50)</label>
+              <input id="extraMargin" type="number" min="0" max="50" step="1" placeholder="10" />
+              <div class="muted">Value: <span id="extraMarginVal">default</span></div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div class="grid-cols-2">
+            <div>
+              <label for="leftCheekWidth">Left Cheek Width (0–200)</label>
+              <input id="leftCheekWidth" type="number" min="0" max="200" step="1" placeholder="90" />
+              <div class="muted">Value: <span id="leftCheekWidthVal">default</span></div>
+            </div>
+            <div>
+              <label for="rightCheekWidth">Right Cheek Width (0–200)</label>
+              <input id="rightCheekWidth" type="number" min="0" max="200" step="1" placeholder="90" />
+              <div class="muted">Value: <span id="rightCheekWidthVal">default</span></div>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div class="grid-cols-2">
+            <div>
+              <label for="parsingMode">Parsing Mode</label>
+              <select id="parsingMode">
+                <option value="jaw">jaw</option>
+              </select>
+              <div class="muted">Face blending mode</div>
             </div>
           </div>
         </div>
@@ -366,7 +431,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1759923217022"></script>
+  <script type="module" src="./js/main.js?v=1759946296870"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

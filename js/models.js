@@ -309,6 +309,39 @@ export const VIDEO_MODEL_CONFIGS = {
     }
   },
 
+  'musetalk': {
+    name: 'Musetalk',
+    // Metadata to inform payload construction and UI behavior
+    payloadFormat: 'flat', // flat JSON at top level
+    includeResolutionIn: [], // Musetalk does not use resolution
+    endpoints: {
+      lipsync: 'https://chutes-musetalk.chutes.ai/generate'
+    },
+    params: {
+      fps: { min: 1, max: 60, default: 25, step: 1 },
+      batch_size: { min: 1, max: 32, default: 8, step: 1 },
+      extra_margin: { min: 0, max: 50, default: 10, step: 1 },
+      parsing_mode: { 
+        type: 'enum',
+        options: ['jaw'],
+        default: 'jaw'
+      },
+      left_cheek_width: { min: 0, max: 200, default: 90, step: 1 },
+      right_cheek_width: { min: 0, max: 200, default: 90, step: 1 }
+    },
+    // Musetalk requires both audio and video inputs
+    audioInput: {
+      type: 'single',
+      field: 'audio_input',
+      required: true
+    },
+    videoInput: {
+      type: 'single', 
+      field: 'video_input',
+      required: true
+    }
+  }
+
 };
 
 // Image Edit model configurations (for Image Edit mode)

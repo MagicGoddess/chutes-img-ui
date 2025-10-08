@@ -18,6 +18,7 @@ export const els = {
   videoModeToggle: document.getElementById('videoModeToggle'),
   videoModeText2Video: document.getElementById('videoModeText2Video'),
   videoModeImage2Video: document.getElementById('videoModeImage2Video'),
+  videoModeLipSync: document.getElementById('videoModeLipSync'),
   // TTS mode elements
   modeTTS: document.getElementById('modeTTS'),
   ttsCard: document.getElementById('ttsCard'),
@@ -43,6 +44,19 @@ export const els = {
   sourceImageSection: document.getElementById('sourceImageSection'), 
   sourceImageRequired: document.getElementById('sourceImageRequired'), 
   imageInputRow: document.getElementById('imageInputRow'),
+  // Video and audio input sections for lip sync
+  sourceVideoSection: document.getElementById('sourceVideoSection'),
+  sourceVideoRequired: document.getElementById('sourceVideoRequired'),
+  videoInput: document.getElementById('videoInput'),
+  videoThumb: document.getElementById('videoThumb'),
+  videoUploadBtn: document.getElementById('videoUploadBtn'),
+  clearVideoBtn: document.getElementById('clearVideoBtn'),
+  sourceAudioSection: document.getElementById('sourceAudioSection'),
+  sourceAudioRequired: document.getElementById('sourceAudioRequired'),
+  audioInput: document.getElementById('audioInput'),
+  audioThumb: document.getElementById('audioThumb'),
+  audioUploadBtn: document.getElementById('audioUploadBtn'),
+  clearAudioBtn: document.getElementById('clearAudioBtn'),
   prompt: document.getElementById('prompt'), 
   negPrompt: document.getElementById('negPrompt'), 
   inputCardTitle: document.getElementById('inputCardTitle'),
@@ -63,6 +77,17 @@ export const els = {
   framesVal: document.getElementById('framesVal'),
   sampleShift: document.getElementById('sampleShift'),
   sampleShiftVal: document.getElementById('sampleShiftVal'),
+  // Lip sync specific parameters
+  lipSyncParams: document.getElementById('lipSyncParams'),
+  batchSize: document.getElementById('batchSize'),
+  batchSizeVal: document.getElementById('batchSizeVal'),
+  extraMargin: document.getElementById('extraMargin'),
+  extraMarginVal: document.getElementById('extraMarginVal'),
+  leftCheekWidth: document.getElementById('leftCheekWidth'),
+  leftCheekWidthVal: document.getElementById('leftCheekWidthVal'),
+  rightCheekWidth: document.getElementById('rightCheekWidth'),
+  rightCheekWidthVal: document.getElementById('rightCheekWidthVal'),
+  parsingMode: document.getElementById('parsingMode'),
   // singleFrame removed
   generateBtn: document.getElementById('generateBtn'), 
   runStatus: document.getElementById('runStatus'),
@@ -89,6 +114,13 @@ let imgThumbObjectUrl = null; // Track object URL for imgThumb to prevent memory
 // TTS reference audio state
 export let ttsAudioB64 = null;
 export let ttsAudioMime = null;
+// Lip sync video and audio state
+export let lipSyncVideoB64 = null;
+export let lipSyncVideoMime = null;
+export let lipSyncAudioB64 = null;
+export let lipSyncAudioMime = null;
+let videoThumbObjectUrl = null; // Track object URL for video thumb
+let audioThumbObjectUrl = null; // Track object URL for audio thumb
 
 export function setTtsAudio(b64, mime) {
   ttsAudioB64 = b64 || null;
@@ -98,6 +130,35 @@ export function setTtsAudio(b64, mime) {
 export function clearTtsAudio() {
   ttsAudioB64 = null;
   ttsAudioMime = null;
+}
+
+// Lip sync video and audio handling
+export function setLipSyncVideo(b64, mime) {
+  lipSyncVideoB64 = b64 || null;
+  lipSyncVideoMime = mime || null;
+}
+
+export function setLipSyncAudio(b64, mime) {
+  lipSyncAudioB64 = b64 || null;
+  lipSyncAudioMime = mime || null;
+}
+
+export function clearLipSyncVideo() {
+  lipSyncVideoB64 = null;
+  lipSyncVideoMime = null;
+  if (videoThumbObjectUrl) {
+    URL.revokeObjectURL(videoThumbObjectUrl);
+    videoThumbObjectUrl = null;
+  }
+}
+
+export function clearLipSyncAudio() {
+  lipSyncAudioB64 = null;
+  lipSyncAudioMime = null;
+  if (audioThumbObjectUrl) {
+    URL.revokeObjectURL(audioThumbObjectUrl);
+    audioThumbObjectUrl = null;
+  }
 }
 
 /**
@@ -466,6 +527,20 @@ export function sync() {
   if (els.sampleShiftVal) {
     els.sampleShiftVal.textContent = els.sampleShift.value || (els.sampleShift.placeholder ? `default (${els.sampleShift.placeholder})` : 'default');
   }
+
+  // Update lip sync parameter displays if elements exist
+  if (els.batchSizeVal) {
+    els.batchSizeVal.textContent = els.batchSize.value || (els.batchSize.placeholder ? `default (${els.batchSize.placeholder})` : 'default');
+  }
+  if (els.extraMarginVal) {
+    els.extraMarginVal.textContent = els.extraMargin.value || (els.extraMargin.placeholder ? `default (${els.extraMargin.placeholder})` : 'default');
+  }
+  if (els.leftCheekWidthVal) {
+    els.leftCheekWidthVal.textContent = els.leftCheekWidth.value || (els.leftCheekWidth.placeholder ? `default (${els.leftCheekWidth.placeholder})` : 'default');
+  }
+  if (els.rightCheekWidthVal) {
+    els.rightCheekWidthVal.textContent = els.rightCheekWidth.value || (els.rightCheekWidth.placeholder ? `default (${els.rightCheekWidth.placeholder})` : 'default');
+  }
 }
 
 /**
@@ -524,9 +599,8 @@ export function switchMode(mode) {
     
   // Update resolution presets and parameters based on mode
   if (isVideoGeneration) {
-    // Set default video model and update parameters
-    currentModel = Object.keys(VIDEO_MODEL_CONFIGS)[0];
-    els.modelSelect.value = currentModel;
+    // Populate video models based on current mode
+    restoreModelSelectForVideo();
     updateParametersForVideoGeneration();
     // Hide autoDims in video generation mode
     if (els.autoDims) { els.autoDims.style.display = 'none'; }
@@ -1518,8 +1592,84 @@ export function updateVideoParametersForModel(modelKey) {
     if (els.height) { els.height.placeholder = '--'; }
   }
 
+  // Update lip sync specific parameters if this is a lip sync model
+  if (modelKey === 'musetalk' || config.audioInput || config.videoInput) {
+    updateLipSyncParameters(config);
+  }
+
   // After updating ranges/placeholders, refresh the muted displays
   sync();
+}
+
+/**
+ * Updates UI elements specifically for lip sync models like Musetalk
+ */
+export function updateLipSyncParameters(config) {
+  if (!config || !config.params) return;
+  
+  const params = config.params;
+  
+  // Update batch size
+  if (params.batch_size && els.batchSize) {
+    els.batchSize.min = params.batch_size.min;
+    els.batchSize.max = params.batch_size.max;
+    els.batchSize.step = params.batch_size.step;
+    els.batchSize.placeholder = params.batch_size.default;
+    els.batchSize.value = '';
+    const batchSizeLabel = document.querySelector('label[for="batchSize"]');
+    if (batchSizeLabel) {
+      batchSizeLabel.textContent = `Batch Size (${params.batch_size.min}–${params.batch_size.max})`;
+    }
+  }
+  
+  // Update extra margin
+  if (params.extra_margin && els.extraMargin) {
+    els.extraMargin.min = params.extra_margin.min;
+    els.extraMargin.max = params.extra_margin.max;
+    els.extraMargin.step = params.extra_margin.step;
+    els.extraMargin.placeholder = params.extra_margin.default;
+    els.extraMargin.value = '';
+    const extraMarginLabel = document.querySelector('label[for="extraMargin"]');
+    if (extraMarginLabel) {
+      extraMarginLabel.textContent = `Extra Margin (${params.extra_margin.min}–${params.extra_margin.max})`;
+    }
+  }
+  
+  // Update left cheek width
+  if (params.left_cheek_width && els.leftCheekWidth) {
+    els.leftCheekWidth.min = params.left_cheek_width.min;
+    els.leftCheekWidth.max = params.left_cheek_width.max;
+    els.leftCheekWidth.step = params.left_cheek_width.step;
+    els.leftCheekWidth.placeholder = params.left_cheek_width.default;
+    els.leftCheekWidth.value = '';
+    const leftCheekWidthLabel = document.querySelector('label[for="leftCheekWidth"]');
+    if (leftCheekWidthLabel) {
+      leftCheekWidthLabel.textContent = `Left Cheek Width (${params.left_cheek_width.min}–${params.left_cheek_width.max})`;
+    }
+  }
+  
+  // Update right cheek width
+  if (params.right_cheek_width && els.rightCheekWidth) {
+    els.rightCheekWidth.min = params.right_cheek_width.min;
+    els.rightCheekWidth.max = params.right_cheek_width.max;
+    els.rightCheekWidth.step = params.right_cheek_width.step;
+    els.rightCheekWidth.placeholder = params.right_cheek_width.default;
+    els.rightCheekWidth.value = '';
+    const rightCheekWidthLabel = document.querySelector('label[for="rightCheekWidth"]');
+    if (rightCheekWidthLabel) {
+      rightCheekWidthLabel.textContent = `Right Cheek Width (${params.right_cheek_width.min}–${params.right_cheek_width.max})`;
+    }
+  }
+  
+  // Update parsing mode (enum)
+  if (params.parsing_mode && els.parsingMode) {
+    if (params.parsing_mode.options) {
+      els.parsingMode.innerHTML = params.parsing_mode.options
+        .map(opt => `<option value="${opt}">${opt}</option>`)
+        .join('');
+      els.parsingMode.value = params.parsing_mode.default || params.parsing_mode.options[0];
+    }
+  }
 }
 
 /**
@@ -1574,10 +1724,37 @@ export function updateVideoModeUI() {
   if (currentMode !== 'video-generation') return;
   
   const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+  const isLipSync = els.videoModeLipSync && els.videoModeLipSync.checked;
   
   // Show/hide source image section based on video mode
   if (els.sourceImageSection) {
     els.sourceImageSection.style.display = isImage2Video ? 'block' : 'none';
+  }
+  
+  // Show/hide video and audio sections for lip sync mode
+  if (els.sourceVideoSection) {
+    els.sourceVideoSection.style.display = isLipSync ? 'block' : 'none';
+  }
+  if (els.sourceAudioSection) {
+    els.sourceAudioSection.style.display = isLipSync ? 'block' : 'none';
+  }
+  
+  // Show/hide video parameters vs lip sync parameters
+  if (els.videoParams) {
+    els.videoParams.style.display = !isLipSync ? 'block' : 'none';
+  }
+  if (els.lipSyncParams) {
+    els.lipSyncParams.style.display = isLipSync ? 'block' : 'none';
+  }
+  
+  // Hide prompt and negative prompt inputs in lip sync mode (audio replaces text prompts)
+  const promptContainer = els.prompt?.parentElement;
+  const negPromptContainer = els.negPrompt?.parentElement;
+  if (promptContainer) {
+    promptContainer.style.display = isLipSync ? 'none' : 'block';
+  }
+  if (negPromptContainer) {
+    negPromptContainer.style.display = isLipSync ? 'none' : 'block';
   }
   
   // Update source image requirement text
@@ -1647,10 +1824,10 @@ export function updateVideoModeUI() {
     }
   }
 
-  // Hide resolution UI when the selected model omits resolution for image-to-video
+  // Hide resolution UI when the selected model omits resolution for image-to-video or lip sync
   const vcfg2 = VIDEO_MODEL_CONFIGS[currentModel];
   const includeRes = Array.isArray(vcfg2?.includeResolutionIn) ? vcfg2.includeResolutionIn : ['text2video', 'image2video'];
-  const shouldHideResolution = isImage2Video && !includeRes.includes('image2video');
+  const shouldHideResolution = (isImage2Video && !includeRes.includes('image2video')) || isLipSync;
   // Resolution preset container (first column)
   const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;
   if (rpContainer) {
@@ -1713,5 +1890,58 @@ export function restoreModelSelectForImageEdit() {
     const def = keys[0] || 'qwen-image-edit';
     modelSelect.value = def;
     currentModel = def;
+  }
+}
+
+/**
+ * Populates model select with video models filtered by current video mode
+ */
+export function restoreModelSelectForVideo() {
+  const modelSelect = els.modelSelect;
+  if (!modelSelect) return;
+
+  const currentSelection = modelSelect.value;
+  
+  // Determine current video mode
+  const isLipSync = els.videoModeLipSync && els.videoModeLipSync.checked;
+  const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+  const isText2Video = els.videoModeText2Video && els.videoModeText2Video.checked;
+
+  // Filter models based on mode
+  const filteredModels = Object.entries(VIDEO_MODEL_CONFIGS).filter(([key, config]) => {
+    if (isLipSync) {
+      // Only show models that have lipsync endpoint
+      return config.endpoints && config.endpoints.lipsync;
+    } else if (isImage2Video) {
+      // Only show models that have image2video endpoint
+      return config.endpoints && config.endpoints.image2video;
+    } else if (isText2Video) {
+      // Only show models that have text2video endpoint
+      return config.endpoints && config.endpoints.text2video;
+    }
+    // Default to showing models with text2video (most common)
+    return config.endpoints && config.endpoints.text2video;
+  });
+
+  modelSelect.innerHTML = filteredModels
+    .map(([key, config]) => `<option value="${key}">${config.name || key}</option>`)
+    .join('');
+
+  // Set appropriate default model based on mode
+  let defaultModel;
+  if (isLipSync) {
+    // Default to musetalk for lip sync
+    defaultModel = filteredModels.find(([key]) => key === 'musetalk')?.[0] || filteredModels[0]?.[0];
+  } else {
+    // Default to wan2.1-14b-video for other modes
+    defaultModel = filteredModels.find(([key]) => key === 'wan2.1-14b-video')?.[0] || filteredModels[0]?.[0];
+  }
+
+  if (filteredModels.find(([key]) => key === currentSelection)) {
+    modelSelect.value = currentSelection;
+    currentModel = currentSelection;
+  } else if (defaultModel) {
+    modelSelect.value = defaultModel;
+    currentModel = defaultModel;
   }
 }
