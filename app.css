@@ -159,6 +159,29 @@ textarea {
   }
 }
 
+/* Model-specific messages */
+.model-message {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.model-message.warning {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #ef4444;
+}
+
+.model-message.info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
 /* Improved layout: prevent source image column from becoming too wide so prompt area stays usable */
 @media(min-width:760px){
   .row-2:not(.t2i){

@@ -484,3 +484,124 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+
+## Hidream (hidream)
+
+### Example
+```sh
+curl -X POST \
+		https://chutes-hidream.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "seed": null,
+    "prompt": "example-string",
+    "resolution": "1024x1024",
+    "guidance_scale": 5,
+    "num_inference_steps": 50
+  }'
+```
+
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100000000,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1024x1024",
+                  "768x1360",
+                  "1360x768",
+                  "880x1168",
+                  "1168x880",
+                  "1248x832",
+                  "832x1248"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution",
+            "default": "1024x1024"
+          },
+          "guidance_scale": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Scale",
+            "default": 5
+          },
+          "num_inference_steps": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 75,
+                "minimum": 5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Inference Steps",
+            "default": 50
+          }
+        }
+      }
+    }
+  },
+  "output_schema": null,
+  "output_content_type": null,
+  "minimal_input_schema": null
+}
+```

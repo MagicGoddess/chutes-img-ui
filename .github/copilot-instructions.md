@@ -1,8 +1,7 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
 Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
-It now also supports Text-to-Speech (TTS) generation.
-
+It now also supports Text-to-Speech (TTS) generation.- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model's expected format (Wan uses `W*H`, HiDream uses `WxH`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 **Code Principles:** The code should be generic, extendable, and reusable. Avoid hardcoding model names or specific behaviors; use metadata-driven approaches for all model-specific logic.
 
 API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, video, and TTS models:
@@ -49,9 +48,11 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 3. Select a model (e.g., "FLUX.1 Dev", etc.)
 4. Enter a test prompt: "a beautiful sunset over mountains"
 5. Set custom CFG and Steps values, choose a resolution preset
-6. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt)
-7. Verify model-specific parameter ranges update correctly while preserving user values
-8. Test "Auto" resolution preset shows model default dimensions
+6. Switch to HiDream model - verify the warning message appears about dimension swapping
+7. Verify HiDream shows resolution enum options (1024×1024, 768×1360, etc.) instead of free width/height
+8. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt) and message disappears
+9. Verify model-specific parameter ranges update correctly while preserving user values
+10. Test "Auto" resolution preset shows model default dimensions
 
 #### Image Edit Mode Testing:
 1. Switch to "Image Edit" mode
@@ -174,7 +175,7 @@ Image/text models are defined in `js/models.js` with:
   - TTS: `TTS_MODEL_CONFIGS` includes `params` (with types: enum, ranges, required) and optional `audioInput` { type, field, label, required }
 
 **Resolution enums for specific models:**
-Some models (e.g., Wan2.1 14b image/video) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`).
+Some models (e.g., Wan2.1 14b image/video, HiDream) use predefined resolution options instead of free-form width/height. These are defined under `params.resolution.options` as strings in the format the model expects (Wan: `W*H`, HiDream: `WxH`).
 
 Example for Wan2.1 14b image:
 ```javascript
@@ -184,6 +185,26 @@ params: {
     default: "832*480"
   },
   // ... other params
+}
+```
+
+Example for HiDream (with model message):
+```javascript
+'hidream': {
+  name: 'HiDream',
+  endpoint: 'https://chutes-hidream.chutes.ai/generate',
+  resolutionFormat: 'x', // uses WxH format
+  message: {
+    type: 'warning',
+    text: '⚠️ Note: Width and height dimensions for most resolutions are currently swapped due to a bug on Chutes server side.'
+  },
+  params: {
+    resolution: {
+      options: ['1024x1024', '768x1360', '1360x768', '880x1168', '1168x880', '1248x832', '832x1248'],
+      default: '1024x1024'
+    },
+    // ... other params
+  }
 }
 ```
 
@@ -204,6 +225,7 @@ params: {
    - `payloadFormat`: currently `'flat'` for all models
    - `parameterMapping`: map UI concepts to model param names (e.g., `cfgScale: 'guidance_scale'`, `steps: 'num_inference_steps'`)
    - `resolutionFormat`: if model uses resolution enums, specify `'star'` or `'x'`
+   - `message`: optional model-specific warning/info message: `{ type: 'warning'/'info', text: 'Message content' }`
 3. Reference the API schema from `reference/img-models.md`
 4. Test with both default and edge-case parameter values
 5. Verify model switching updates UI controls correctly and payload uses correct parameter names
@@ -266,7 +288,7 @@ params: {
 ### API Integration:
 - Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Image models: Qwen Image, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
+- Image models: Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
 - Video models: Wan2.1 14b Video
 - TTS models: Kokoro, CSM 1B

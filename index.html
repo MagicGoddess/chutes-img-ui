@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1759260349773" />
+  <link rel="stylesheet" href="./app.css?v=1759923217022" />
 </head>
 <body>
   <header>
@@ -88,6 +88,7 @@
             <!-- Image models -->
 
             <option value="qwen-image">Qwen Image</option>
+            <option value="hidream">HiDream</option>
             <option value="flux-dev">FLUX.1 Dev</option>
             <option value="juggernaut-xl">JuggernautXL</option>
             <option value="chroma">Chroma</option>
@@ -104,6 +105,11 @@
             <option value="wan2.1-14b-video">Wan2.1 14b Video</option>
 
           </select>
+        </div>
+
+        <!-- Model-specific messages/warnings -->
+        <div class="row" id="modelMessageRow" style="display: none;">
+          <div id="modelMessage" class="model-message"></div>
         </div>
 
         <div class="row row-2" id="imageInputRow">
@@ -360,7 +366,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1759260349773"></script>
+  <script type="module" src="./js/main.js?v=1759923217022"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

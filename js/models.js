@@ -20,6 +20,33 @@ export const MODEL_CONFIGS = {
       negative_prompt: { default: '' }
     }
   },
+  'hidream': {
+    name: 'HiDream',
+    endpoint: 'https://chutes-hidream.chutes.ai/generate',
+    // Metadata for payload construction
+    payloadFormat: 'flat',
+    resolutionFormat: 'x', // uses WxH format
+    parameterMapping: {
+      cfgScale: 'guidance_scale',
+      steps: 'num_inference_steps'
+    },
+    // Model-specific message/warning
+    message: {
+      type: 'warning',
+      text: '⚠️ Note: Width and height dimensions for most resolutions are currently swapped due to a bug on Chutes server side.'
+    },
+    params: {
+      // This model uses named resolution presets rather than free width/height inputs
+      resolution: {
+        // allowed enum values from schema: "1024x1024", "768x1360", "1360x768", "880x1168", "1168x880", "1248x832", "832x1248"
+        options: ['1024x1024', '768x1360', '1360x768', '880x1168', '1168x880', '1248x832', '832x1248'],
+        default: '1024x1024'
+      },
+      guidance_scale: { min: 0, max: 10, default: 5, step: 0.1 },
+      num_inference_steps: { min: 5, max: 75, default: 50, step: 1 },
+      seed: { min: 0, max: 100000000, default: null }
+    }
+  },
   'flux-dev': {
     name: 'FLUX.1 Dev',
     endpoint: 'https://image.chutes.ai/generate',

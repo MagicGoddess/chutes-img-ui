@@ -36,6 +36,8 @@ export const els = {
   ttsRunStatus: document.getElementById('ttsRunStatus'),
   modelSelect: document.getElementById('modelSelect'), 
   modelRow: document.getElementById('modelRow'),
+  modelMessageRow: document.getElementById('modelMessageRow'),
+  modelMessage: document.getElementById('modelMessage'),
   imgInput: document.getElementById('imgInput'), 
   imgThumb: document.getElementById('imgThumb'), 
   sourceImageSection: document.getElementById('sourceImageSection'), 
@@ -588,6 +590,9 @@ export function updateTTSParametersForModel(modelKey) {
   const config = TTS_MODEL_CONFIGS[modelKey];
   if (!config || !els.ttsParamsContainer) return;
   const params = config.params || {};
+  
+  // Handle model-specific messages
+  updateModelMessage(config);
   const parts = [];
   for (const [name, schema] of Object.entries(params)) {
     if (name === 'text') continue; // Provided by ttsText
@@ -707,6 +712,9 @@ export function updateParametersForEditModel(modelKey) {
   if (!config) return;
   currentModel = modelKey;
   const params = config.params || {};
+  
+  // Handle model-specific messages
+  updateModelMessage(config);
 
   // Update CFG and Steps placeholders/ranges
   const cfgParam = params.true_cfg_scale || params.guidance_scale || params.cfg;
@@ -788,6 +796,24 @@ export function updateParametersForEditModel(modelKey) {
 }
 
 /**
+ * Updates model-specific messages/warnings display
+ * @param {Object} config - The model configuration object
+ */
+function updateModelMessage(config) {
+  if (!els.modelMessage || !els.modelMessageRow) return;
+  
+  if (config.message) {
+    // Show the message
+    els.modelMessage.textContent = config.message.text;
+    els.modelMessage.className = `model-message ${config.message.type || 'info'}`;
+    els.modelMessageRow.style.display = 'block';
+  } else {
+    // Hide the message row
+    els.modelMessageRow.style.display = 'none';
+  }
+}
+
+/**
  * Updates parameters for a specific model
  * @param {string} modelKey - The model key to update parameters for
  */
@@ -797,6 +823,9 @@ export function updateParametersForModel(modelKey) {
   
   currentModel = modelKey;
   const params = config.params;
+  
+  // Handle model-specific messages
+  updateModelMessage(config);
   
   // Store current resolution preset selection to preserve it
   const currentPreset = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
@@ -1408,6 +1437,9 @@ export function updateVideoParametersForModel(modelKey) {
   if (!config) return;
   
   const params = config.params;
+  
+  // Handle model-specific messages
+  updateModelMessage(config);
   
   // Update CFG/guidance scale
   if (params.guidance_scale) {
