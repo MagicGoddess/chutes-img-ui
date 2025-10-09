@@ -1411,13 +1411,28 @@ export function updateModelSelectForVideo() {
   if (!modelSelect) return;
 
   const currentSelection = modelSelect.value;
+  
+  // Determine current video sub-mode
+  const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+  const currentMode = isImage2Video ? 'image2video' : 'text2video';
 
-  // Populate with video models only
-  modelSelect.innerHTML = Object.entries(VIDEO_MODEL_CONFIGS)
+  // Filter video models based on current sub-mode
+  const availableModels = Object.entries(VIDEO_MODEL_CONFIGS)
+    .filter(([key, config]) => {
+      // If model specifies supportedModes, check if current mode is supported
+      if (config.supportedModes && Array.isArray(config.supportedModes)) {
+        return config.supportedModes.includes(currentMode);
+      }
+      // If no supportedModes specified, check if endpoint exists for current mode
+      return config.endpoints && config.endpoints[currentMode];
+    });
+
+  // Populate with filtered video models
+  modelSelect.innerHTML = availableModels
     .map(([key, config]) => `<option value="${key}">${config.name || key}</option>`)
     .join('');
 
-  const keys = Object.keys(VIDEO_MODEL_CONFIGS);
+  const keys = availableModels.map(([key]) => key);
   if (keys.includes(currentSelection)) {
     modelSelect.value = currentSelection;
     currentModel = currentSelection;
@@ -1562,9 +1577,16 @@ export function updateVideoResolutionPresets() {
     }
   }
 
-  // In video mode, width/height are display-only
+  // In video mode, width/height are display-only or hidden for enum-only models
   toggleDimInputs(false);
   if (els.autoDims) { els.autoDims.style.display = 'none'; }
+  
+  // Hide width/height inputs for models with enum-only resolutions
+  const hideWidthHeight = config && config.resolutionFormat === 'enum';
+  const wContainer = els.width ? els.width.parentElement : null;
+  const hContainer = els.height ? els.height.parentElement : null;
+  if (wContainer) wContainer.style.display = hideWidthHeight ? 'none' : '';
+  if (hContainer) hContainer.style.display = hideWidthHeight ? 'none' : '';
 }
 
 /**
@@ -1574,6 +1596,15 @@ export function updateVideoModeUI() {
   if (currentMode !== 'video-generation') return;
   
   const isImage2Video = els.videoModeImage2Video && els.videoModeImage2Video.checked;
+  
+  // Update model list based on current sub-mode
+  updateModelSelectForVideo();
+  
+  // Update parameters for the newly selected model
+  if (currentModel && VIDEO_MODEL_CONFIGS[currentModel]) {
+    updateVideoParametersForModel(currentModel);
+    updateVideoResolutionPresets();
+  }
   
   // Show/hide source image section based on video mode
   if (els.sourceImageSection) {
@@ -1651,6 +1682,10 @@ export function updateVideoModeUI() {
   const vcfg2 = VIDEO_MODEL_CONFIGS[currentModel];
   const includeRes = Array.isArray(vcfg2?.includeResolutionIn) ? vcfg2.includeResolutionIn : ['text2video', 'image2video'];
   const shouldHideResolution = isImage2Video && !includeRes.includes('image2video');
+  
+  // Hide width/height specifically for enum-only models (like '480p', '720p')
+  const shouldHideWidthHeight = vcfg2 && vcfg2.resolutionFormat === 'enum';
+  
   // Resolution preset container (first column)
   const rpContainer = els.resolutionPreset ? els.resolutionPreset.parentElement : null;
   if (rpContainer) {
@@ -1659,8 +1694,12 @@ export function updateVideoModeUI() {
   // Width/Height containers (second and third columns)
   const wContainer = els.width ? els.width.parentElement : null;
   const hContainer = els.height ? els.height.parentElement : null;
-  if (wContainer) wContainer.style.display = shouldHideResolution ? 'none' : '';
-  if (hContainer) hContainer.style.display = shouldHideResolution ? 'none' : '';
+  if (wContainer) {
+    wContainer.style.display = (shouldHideResolution || shouldHideWidthHeight) ? 'none' : '';
+  }
+  if (hContainer) {
+    hContainer.style.display = (shouldHideResolution || shouldHideWidthHeight) ? 'none' : '';
+  }
 }
 
 /**

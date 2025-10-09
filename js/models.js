@@ -309,6 +309,38 @@ export const VIDEO_MODEL_CONFIGS = {
     }
   },
 
+  // Wan 2.2 Image-to-Video fast I2V model
+  'wan-2-2-i2v-14b-fast': {
+    name: 'Wan 2.2 I2V 14B Fast',
+    payloadFormat: 'flat',
+    // This model exposes a single /generate endpoint for image->video only
+    resolutionFormat: 'enum', // resolutions like '480p', '720p'
+    includeResolutionIn: ['image2video'],
+    supportedModes: ['image2video'], // Only supports image-to-video
+    endpoints: {
+      image2video: 'https://chutes-wan-2-2-i2v-14b-fast.chutes.ai/generate'
+    },
+    // Describe how the UI should attach source images
+    imageInput: {
+      type: 'single',
+      field: 'image',
+      hint: 'Upload a single source image (URL or base64)'
+    },
+    params: {
+      resolution: {
+        options: ['480p', '720p'],
+        default: '480p'
+      },
+      fps: { min: 16, max: 24, default: 16, step: 1 },
+      fast: { type: 'boolean', default: true },
+      seed: { min: 0, max: null, default: null },
+      frames: { min: 21, max: 140, default: 81, step: 1 },
+      guidance_scale: { min: 0, max: 10, default: 1, step: 0.1 },
+      guidance_scale_2: { min: 0, max: 10, default: 1, step: 0.1 },
+      negative_prompt: { default: '色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走' }
+    }
+  },
+
 };
 
 // Image Edit model configurations (for Image Edit mode)

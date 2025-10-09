@@ -438,8 +438,10 @@ export function setupEventListeners() {
               payload[lastField] = imgs[1];
             }
           } else {
-            payload.image_b64 = sourceB64;
-          }
+              // Use model-configured single-image field name when provided (e.g., 'image')
+              const singleField = videoConfig.imageInput && videoConfig.imageInput.field ? videoConfig.imageInput.field : 'image_b64';
+              payload[singleField] = sourceB64;
+            }
         }
 
         body = payload; // flat JSON
@@ -553,8 +555,8 @@ export function setupEventListeners() {
       log(`[${ts()}] Sending request to ${generationType}…`);
       const redactor = (key, value) => {
         // Truncate any single base64 field similar to Qwen 2509 behavior
-        // Examples: image_b64, img_b64_first, img_b64_last
-        if (typeof value === 'string' && (/_b64$/i.test(key) || /b64/i.test(key))) {
+        // Examples: image_b64, img_b64_first, img_b64_last, image
+        if (typeof value === 'string' && (/_b64$/i.test(key) || /b64/i.test(key) || key === 'image')) {
           return `${value.substring(0, 40)}...[truncated]`;
         }
         // Summarize arrays of base64 fields similar to image_b64s
