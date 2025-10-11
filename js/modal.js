@@ -80,6 +80,7 @@ export async function openImageModal(imageId) {
     if (bodyEl) bodyEl.insertBefore(modalAudio, bodyEl.firstChild);
   }
   const modalModel = document.getElementById('modalModel');
+  const modalPrompt = document.getElementById('modalPrompt');
   const modalResolution = document.getElementById('modalResolution');
   const modalSeed = document.getElementById('modalSeed');
   const modalDate = document.getElementById('modalDate');
@@ -141,6 +142,13 @@ export async function openImageModal(imageId) {
   }
   
   modalModel.textContent = image.settings.model;
+  if (modalPrompt) {
+    const promptFromSettings = typeof image.settings?.prompt === 'string' ? image.settings.prompt.trim() : '';
+    const textFromSettings = typeof image.settings?.text === 'string' ? image.settings.text.trim() : '';
+    const fallbackPrompt = typeof image.prompt === 'string' ? image.prompt.trim() : '';
+    const promptText = promptFromSettings || textFromSettings || fallbackPrompt;
+    modalPrompt.textContent = promptText || '-';
+  }
   // Resolution for video entries uses resolution string; images use width/height
   if (isVideo) {
     modalResolution.textContent = image.settings.resolution || '-';

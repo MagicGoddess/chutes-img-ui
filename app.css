@@ -1141,6 +1141,18 @@ input[type="range"]:disabled::-moz-range-thumb {
   letter-spacing: 0.5px;
 }
 
+.metadata-item--prompt span {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.metadata-item--prompt {
+  grid-column: 1 / -1;
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
