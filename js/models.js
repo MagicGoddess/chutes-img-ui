@@ -11,6 +11,11 @@ export const MODEL_CONFIGS = {
     parameterMapping: {
       steps: 'steps'
     },
+    // Model-specific message/warning
+    message: {
+      type: 'warning',
+      text: '⚠️ Note: Width and height dimensions for most resolutions are currently swapped due to a bug on Chutes server side.'
+    },
     params: {
       width: { min: 128, max: 2048, default: 1024, step: 64 },
       height: { min: 128, max: 2048, default: 1024, step: 64 },

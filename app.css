@@ -182,6 +182,10 @@ textarea {
   border-color: #3b82f6;
 }
 
+#modelMessageRow {
+  margin-top: 7px;
+}
+
 /* Improved layout: prevent source image column from becoming too wide so prompt area stays usable */
 @media(min-width:760px){
   .row-2:not(.t2i){
