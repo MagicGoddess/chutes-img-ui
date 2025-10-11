@@ -10,7 +10,7 @@ API payloads: In `js/eventListeners.js`, payload construction is fully metadata-
   - Some image models expose `sizeParam` and `supportsAspectRatio`; build a `size` string when present (e.g., Hunyuan Image 3 accepts `auto`, `WxH`, or `W:H` aspect ratios) instead of width/height.
   - Image Edit models: defined in `EDIT_MODEL_CONFIGS`; use `parameterMapping` plus `imageInput` to indicate single vs multiple images (`image_b64` vs `image_b64s`).
   - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
-  - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
+  - All models: apply model defaults when UI inputs are empty; include only supported parameters (defined in the model's schema) when building requests to the Chutes API.
   - TTS models: `TTS_MODEL_CONFIGS` defines `params` (with enums/ranges) and optional `audioInput` metadata to request reference audio; the TTS UI renders inputs dynamically and builds the payload accordingly. Returns audio/wav Blobs.
 
 The application runs entirely client-side in the browser — only the API key and generated media are processed.
@@ -54,8 +54,9 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 7. Verify HiDream shows resolution enum options (1024×1024, 768×1360, etc.) instead of free width/height
 8. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt) and message disappears
 9. Verify model-specific parameter ranges update correctly while preserving user values
-10. Test "Auto" resolution preset shows model default dimensions
-11. Switch to Hunyuan Image 3 - confirm pixel presets appear along with a "Custom aspect ratio" option; select it, enter `16:9`, and verify width/height inputs disable while the payload uses the aspect ratio. Switch back to another preset and ensure the aspect ratio field hides again.
+10. Switch to a model that doesn't support negative prompt (e.g., if any) - verify the negative prompt input is hidden and disabled
+11. Test "Auto" resolution preset shows model default dimensions
+12. Switch to Hunyuan Image 3 - confirm pixel presets appear along with a "Custom aspect ratio" option; select it, enter `16:9`, and verify width/height inputs disable while the payload uses the aspect ratio. Switch back to another preset and ensure the aspect ratio field hides again.
 
 #### Image Edit Mode Testing:
 1. Switch to "Image Edit" mode
@@ -212,7 +213,7 @@ Example for HiDream (with model message):
 }
 ```
 
-- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`). Models with `supportsAspectRatio` should show the custom aspect ratio input when the `custom-aspect` option is selected and hide it otherwise.
+- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`). Models with `supportsAspectRatio` should show the custom aspect ratio input when the `custom-aspect` option is selected and hide it otherwise. Parameter visibility: Controls for parameters not defined in the model's schema (e.g., cfg, steps, seed, negative_prompt, fps, frames, sampleShift) are automatically hidden and disabled using `setControlVisibility`.
 - **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`). For models with `sizeParam`, build and send the `size` string (e.g., `auto`, `1024x768`, `16:9`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 - **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
 

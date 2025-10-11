@@ -9,6 +9,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hunyuan Image 3, Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit 2509; Wan2.1 14b Video)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
+  - Unsupported parameters (e.g., negative prompt for models that don't support it) are automatically hidden from the UI and omitted from API requests
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video, HiDream) handled via dropdown
   - In Video mode, width/height are reflected from the preset and kept read-only
   - For Wan Video Image-to-Video, resolution is not applicable and the UI hides it automatically

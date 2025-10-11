@@ -313,22 +313,40 @@ export function setupEventListeners() {
         const prompt = els.prompt.value.trim();
         if (!prompt) return toast('Prompt cannot be empty', true);
         const negative_prompt = els.negPrompt.value.trim();
+        const seedSchema = editCfg.params?.seed;
+        const cfgSchema = editCfg.params?.[pmap.cfgScale || 'true_cfg_scale'] || editCfg.params?.true_cfg_scale;
+        const stepsSchema = editCfg.params?.[pmap.steps || 'num_inference_steps'] || editCfg.params?.num_inference_steps;
         const seedVal = els.seed.value === '' ? null : clamp(parseInt(els.seed.value,10), 0, 4294967295);
-        // Resolve cfg/steps using placeholders when empty
-        const stepsMin = editCfg.params?.num_inference_steps?.min ?? 5;
-        const stepsMax = editCfg.params?.num_inference_steps?.max ?? 100;
-        const stepsDef = editCfg.params?.num_inference_steps?.default ?? 50;
-        const cfgMin = editCfg.params?.true_cfg_scale?.min ?? 0;
-        const cfgMax = editCfg.params?.true_cfg_scale?.max ?? 10;
-        const cfgDef = editCfg.params?.true_cfg_scale?.default ?? 4;
-        const steps = els.steps.value ? clamp(parseInt(els.steps.value,10), stepsMin, stepsMax) : stepsDef;
-        const cfg = els.cfg.value ? clamp(parseFloat(els.cfg.value), cfgMin, cfgMax) : cfgDef;
+
+        let cfg;
+        if (cfgSchema) {
+          const cfgMin = cfgSchema.min ?? 0;
+          const cfgMax = cfgSchema.max ?? 10;
+          const cfgDef = cfgSchema.default ?? 4;
+          cfg = els.cfg.value ? clamp(parseFloat(els.cfg.value), cfgMin, cfgMax) : cfgDef;
+        }
+
+        let steps;
+        if (stepsSchema) {
+          const stepsMin = stepsSchema.min ?? 5;
+          const stepsMax = stepsSchema.max ?? 100;
+          const stepsDef = stepsSchema.default ?? 50;
+          steps = els.steps.value ? clamp(parseInt(els.steps.value,10), stepsMin, stepsMax) : stepsDef;
+        }
 
         const payload = { width, height, prompt };
-        payload[pmap.cfgScale || 'true_cfg_scale'] = cfg;
-        payload[pmap.steps || 'num_inference_steps'] = steps;
-        if (negative_prompt) payload.negative_prompt = negative_prompt;
-        if (seedVal !== null && !Number.isNaN(seedVal)) payload.seed = seedVal;
+        if (cfgSchema && typeof cfg !== 'undefined') {
+          payload[pmap.cfgScale || 'true_cfg_scale'] = cfg;
+        }
+        if (stepsSchema && typeof steps !== 'undefined') {
+          payload[pmap.steps || 'num_inference_steps'] = steps;
+        }
+        if (editCfg.params?.negative_prompt && negative_prompt) {
+          payload.negative_prompt = negative_prompt;
+        }
+        if (seedSchema && seedVal !== null && !Number.isNaN(seedVal)) {
+          payload.seed = seedVal;
+        }
 
         // Attach images based on model capability
         const imgCap = editCfg.imageInput || { type: 'single', field: 'image_b64' };
@@ -524,15 +542,16 @@ export function setupEventListeners() {
         }
         
         // Parameter mapping from UI elements to model param names
-        const uiToModelParam = {
-          cfg: config.parameterMapping?.cfgScale || 'guidance_scale',
-          steps: config.parameterMapping?.steps || 'num_inference_steps',
-          seed: 'seed',
-          negative_prompt: 'negative_prompt'
-        };
+        const paramEntries = [];
+        const cfgKey = config.parameterMapping?.cfgScale || 'guidance_scale';
+        if (config.params[cfgKey]) paramEntries.push(['cfg', cfgKey]);
+        const stepsKey = config.parameterMapping?.steps || 'num_inference_steps';
+        if (config.params[stepsKey]) paramEntries.push(['steps', stepsKey]);
+        if (config.params.seed) paramEntries.push(['seed', 'seed']);
+        if (config.params.negative_prompt) paramEntries.push(['negative_prompt', 'negative_prompt']);
         
         // Map UI inputs to model parameters
-        for (const [uiParam, modelParam] of Object.entries(uiToModelParam)) {
+        for (const [uiParam, modelParam] of paramEntries) {
           let val = null;
           
           if (uiParam === 'cfg') {

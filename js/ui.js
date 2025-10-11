@@ -79,6 +79,63 @@ export const els = {
   outMeta: document.getElementById('outMeta')
 };
 
+const controlVisibilityMap = {
+  cfg: {
+    input: () => els.cfg,
+    container: () => els.cfg?.parentElement || null
+  },
+  steps: {
+    input: () => els.steps,
+    container: () => els.steps?.parentElement || null
+  },
+  seed: {
+    input: () => els.seed,
+    container: () => els.seed?.parentElement || null
+  },
+  negative_prompt: {
+    input: () => els.negPrompt,
+    label: () => document.querySelector('label[for="negPrompt"]')
+  },
+  fps: {
+    input: () => els.fps,
+    container: () => els.fps?.parentElement || null
+  },
+  frames: {
+    input: () => els.frames,
+    container: () => els.frames?.parentElement || null
+  },
+  sampleShift: {
+    input: () => els.sampleShift,
+    container: () => els.sampleShift?.parentElement || null
+  }
+};
+
+function setControlVisibility(key, visible) {
+  const meta = controlVisibilityMap[key];
+  if (!meta) return;
+  const inputEl = meta.input ? meta.input() : null;
+  const container = meta.container ? meta.container() : null;
+  const labelEl = meta.label ? meta.label() : null;
+  const display = visible ? '' : 'none';
+
+  if (container) {
+    container.style.display = display;
+  } else if (inputEl) {
+    inputEl.style.display = display;
+  }
+
+  if (labelEl) {
+    labelEl.style.display = display;
+  }
+
+  if (inputEl) {
+    inputEl.disabled = !visible;
+    if (!visible) {
+      inputEl.value = '';
+    }
+  }
+}
+
 // Current application state
 export let currentMode = 'image-edit';
 export let currentModel = 'qwen-image-edit-2509';
@@ -724,12 +781,15 @@ export function updateParametersForEditModel(modelKey) {
   if (!config) return;
   currentModel = modelKey;
   const params = config.params || {};
+
+  updateParametersForImageEdit();
   
   // Handle model-specific messages
   updateModelMessage(config);
 
   // Update CFG and Steps placeholders/ranges
   const cfgParam = params.true_cfg_scale || params.guidance_scale || params.cfg;
+  setControlVisibility('cfg', Boolean(cfgParam));
   if (cfgParam) {
     els.cfg.min = cfgParam.min;
     els.cfg.max = cfgParam.max;
@@ -738,8 +798,12 @@ export function updateParametersForEditModel(modelKey) {
     els.cfg.value = '';
     const cfgLabel = document.querySelector('label[for="cfg"]');
     if (cfgLabel) cfgLabel.textContent = `CFG Scale (${cfgParam.min}–${cfgParam.max})`;
+  } else {
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) cfgLabel.textContent = 'CFG Scale';
   }
   const stepsParam = params.num_inference_steps || params.steps;
+  setControlVisibility('steps', Boolean(stepsParam));
   if (stepsParam) {
     els.steps.min = stepsParam.min;
     els.steps.max = stepsParam.max;
@@ -748,6 +812,9 @@ export function updateParametersForEditModel(modelKey) {
     els.steps.value = '';
     const stepsLabel = document.querySelector('label[for="steps"]');
     if (stepsLabel) stepsLabel.textContent = `Inference Steps (${stepsParam.min}–${stepsParam.max})`;
+  } else {
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) stepsLabel.textContent = 'Inference Steps';
   }
 
   // Width/Height constraints
@@ -761,16 +828,17 @@ export function updateParametersForEditModel(modelKey) {
     els.height.max = params.height.max;
     els.height.step = params.height.step;
   }
-  // Set resolution preset options for image-edit
-  updateParametersForImageEdit();
 
   // Negative prompt placeholder
   const negPromptParam = params.negative_prompt;
+  setControlVisibility('negative_prompt', Boolean(negPromptParam));
   if (negPromptParam && negPromptParam.default !== undefined) {
     els.negPrompt.placeholder = `Things to avoid (optional)` + (negPromptParam.default ? `\nDefault: ${negPromptParam.default}` : '');
   } else {
     els.negPrompt.placeholder = 'Things to avoid (optional)';
   }
+
+  setControlVisibility('seed', Boolean(params.seed));
 
   // File input multi-selection based on model capability
   const imgCap = config.imageInput || { type: 'single', maxItems: 1 };
@@ -846,6 +914,7 @@ export function updateParametersForModel(modelKey) {
   
   // Update CFG/guidance scale (models use different parameter names) - update range and placeholder only
   const cfgParam = params.guidance_scale || params.true_cfg_scale || params.cfg;
+  setControlVisibility('cfg', Boolean(cfgParam));
   if (cfgParam) {
     els.cfg.min = cfgParam.min;
     els.cfg.max = cfgParam.max;
@@ -858,10 +927,16 @@ export function updateParametersForModel(modelKey) {
     if (cfgLabel) {
       cfgLabel.textContent = `CFG Scale (${cfgParam.min}–${cfgParam.max})`;
     }
+  } else {
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) {
+      cfgLabel.textContent = 'CFG Scale';
+    }
   }
   
   // Update inference steps (models use different parameter names) - update range and placeholder only
   const stepsParam = params.num_inference_steps || params.steps;
+  setControlVisibility('steps', Boolean(stepsParam));
   if (stepsParam) {
     els.steps.min = stepsParam.min;
     els.steps.max = stepsParam.max;
@@ -873,6 +948,11 @@ export function updateParametersForModel(modelKey) {
     const stepsLabel = document.querySelector('label[for="steps"]');
     if (stepsLabel) {
       stepsLabel.textContent = `Inference Steps (${stepsParam.min}–${stepsParam.max})`;
+    }
+  } else {
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) {
+      stepsLabel.textContent = 'Inference Steps';
     }
   }
   
@@ -987,6 +1067,7 @@ export function updateParametersForModel(modelKey) {
   }
   
   // Update seed
+  setControlVisibility('seed', Boolean(params.seed));
   if (params.seed) {
     els.seed.min = params.seed.min;
     if (params.seed.max) {
@@ -998,10 +1079,13 @@ export function updateParametersForModel(modelKey) {
     if (!els.seed.value) {
       els.seed.value = params.seed.default || '';
     }
+  } else {
+    els.seed.value = '';
   }
   
   // Update negative prompt placeholder based on model default
   const negPromptParam = params.negative_prompt;
+  setControlVisibility('negative_prompt', Boolean(negPromptParam));
   if (negPromptParam && negPromptParam.default) {
     // Model has a default negative prompt - include it in placeholder
     els.negPrompt.placeholder = `Things to avoid (optional)\nDefault: ${negPromptParam.default}`;
@@ -1536,6 +1620,7 @@ export function updateVideoParametersForModel(modelKey) {
   updateModelMessage(config);
   
   // Update CFG/guidance scale
+  setControlVisibility('cfg', Boolean(params.guidance_scale));
   if (params.guidance_scale) {
     els.cfg.min = params.guidance_scale.min;
     els.cfg.max = params.guidance_scale.max;
@@ -1546,10 +1631,16 @@ export function updateVideoParametersForModel(modelKey) {
     if (cfgLabel) {
       cfgLabel.textContent = `Guidance Scale (${params.guidance_scale.min}–${params.guidance_scale.max})`;
     }
+  } else {
+    const cfgLabel = document.querySelector('label[for="cfg"]');
+    if (cfgLabel) {
+      cfgLabel.textContent = 'Guidance Scale';
+    }
   }
   
   // Update steps (supports 'steps' or 'inference_steps')
   const stepsParam = params.steps || params.inference_steps;
+  setControlVisibility('steps', Boolean(stepsParam));
   if (stepsParam) {
     els.steps.min = stepsParam.min;
     els.steps.max = stepsParam.max;
@@ -1560,9 +1651,15 @@ export function updateVideoParametersForModel(modelKey) {
     if (stepsLabel) {
       stepsLabel.textContent = `Steps (${stepsParam.min}–${stepsParam.max})`;
     }
+  } else {
+    const stepsLabel = document.querySelector('label[for="steps"]');
+    if (stepsLabel) {
+      stepsLabel.textContent = 'Steps';
+    }
   }
   
   // Update video-specific parameters
+  setControlVisibility('fps', Boolean(params.fps));
   if (params.fps && els.fps) {
     els.fps.min = params.fps.min;
     els.fps.max = params.fps.max;
@@ -1576,6 +1673,7 @@ export function updateVideoParametersForModel(modelKey) {
   }
   
   const framesParam = params.frames || params.num_frames || params.base_num_frames;
+  setControlVisibility('frames', Boolean(framesParam));
   if (framesParam && els.frames) {
     els.frames.min = framesParam.min;
     els.frames.max = framesParam.max;
@@ -1589,6 +1687,7 @@ export function updateVideoParametersForModel(modelKey) {
   }
   
   const sampleParam = params.sample_shift || params.shift;
+  setControlVisibility('sampleShift', Boolean(sampleParam));
   if (sampleParam && els.sampleShift) {
     els.sampleShift.min = sampleParam.min;
     els.sampleShift.max = sampleParam.max;
@@ -1600,10 +1699,27 @@ export function updateVideoParametersForModel(modelKey) {
       ssLabel.textContent = `Shift (${sampleParam.min}–${sampleParam.max})`;
     }
   }
+  setControlVisibility('seed', Boolean(params.seed));
+  if (params.seed) {
+    els.seed.min = params.seed.min;
+    if (params.seed.max) {
+      els.seed.max = params.seed.max;
+    } else {
+      els.seed.removeAttribute('max');
+    }
+    if (!els.seed.value) {
+      els.seed.value = params.seed.default ?? '';
+    }
+  } else {
+    els.seed.value = '';
+  }
   
   // Update negative prompt
+  setControlVisibility('negative_prompt', Boolean(params.negative_prompt));
   if (params.negative_prompt && params.negative_prompt.default) {
     els.negPrompt.placeholder = params.negative_prompt.default;
+  } else if (params.negative_prompt) {
+    els.negPrompt.placeholder = 'Things to avoid (optional)';
   }
 
   // If enum resolution, ensure width/height placeholders are '--'
