@@ -1,11 +1,13 @@
 # Chutes Image UI - GitHub Copilot Instructions
 
 Chutes Image UI is a minimalist Progressive Web App (PWA) for generating and editing images and videos.
-It now also supports Text-to-Speech (TTS) generation.- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model's expected format (Wan uses `W*H`, HiDream uses `WxH`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
+It now also supports Text-to-Speech (TTS) generation.
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model's expected format (Wan uses `W*H`, HiDream uses `WxH`) instead of separate `width` and `height` fields. Models with a `sizeParam` (e.g., Hunyuan Image 3) expect a `size` string such as `auto`, `WxH`, or an aspect ratio like `16:9`. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 **Code Principles:** The code should be generic, extendable, and reusable. Avoid hardcoding model names or specific behaviors; use metadata-driven approaches for all model-specific logic.
 
 API payloads: In `js/eventListeners.js`, payload construction is fully metadata-driven for image, image-edit, video, and TTS models:
   - Image models: use `parameterMapping` to map UI fields (cfg, steps) to model parameter names (e.g., `guidance_scale`, `num_inference_steps`).
+  - Some image models expose `sizeParam` and `supportsAspectRatio`; build a `size` string when present (e.g., Hunyuan Image 3 accepts `auto`, `WxH`, or `W:H` aspect ratios) instead of width/height.
   - Image Edit models: defined in `EDIT_MODEL_CONFIGS`; use `parameterMapping` plus `imageInput` to indicate single vs multiple images (`image_b64` vs `image_b64s`).
   - Video models: use `includeResolutionIn` and `resolutionFormat` for resolution handling.
   - All models: apply model defaults when UI inputs are empty; include model-specific parameters automatically when building requests to the Chutes API.
@@ -53,6 +55,7 @@ npm run deploy-prep            # Runs cache update and shows deployment message 
 8. Switch to another model - verify user settings are preserved (CFG, Steps, resolution, negative prompt) and message disappears
 9. Verify model-specific parameter ranges update correctly while preserving user values
 10. Test "Auto" resolution preset shows model default dimensions
+11. Switch to Hunyuan Image 3 - confirm pixel presets appear along with a "Custom aspect ratio" option; select it, enter `16:9`, and verify width/height inputs disable while the payload uses the aspect ratio. Switch back to another preset and ensure the aspect ratio field hides again.
 
 #### Image Edit Mode Testing:
 1. Switch to "Image Edit" mode
@@ -171,6 +174,7 @@ Image/text models are defined in `js/models.js` with:
   - `payloadFormat`: Request body shape (currently `flat` for all models)
   - `parameterMapping`: Maps UI concepts to model-specific parameter names (e.g., `cfgScale: 'guidance_scale'`)
   - `resolutionFormat`: For models with resolution enums, format string (`'star'` for W*H, `'x'` for WxH)
+  - `sizeParam`: When present, send a `size` string instead of width/height; combine with `supportsAspectRatio` to enable aspect ratio inputs (e.g., Hunyuan Image 3)
   - `includeResolutionIn`: For video models, which sub-modes include resolution
   - TTS: `TTS_MODEL_CONFIGS` includes `params` (with types: enum, ranges, required) and optional `audioInput` { type, field, label, required }
 
@@ -208,8 +212,8 @@ Example for HiDream (with model message):
 }
 ```
 
-- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`).
-- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
+- **UI Handling:** In `js/ui.js`, when populating the resolution preset dropdown, check if the model has `params.resolution.options`. Populate the dropdown with those option strings; for display, convert separators to `×` (e.g., `832*480` → `832 × 480`). Models with `supportsAspectRatio` should show the custom aspect ratio input when the `custom-aspect` option is selected and hide it otherwise.
+- **API Payload:** In `js/eventListeners.js`, for models with enums, send a `resolution` parameter in the model’s expected format (Wan uses `W*H`). For models with `sizeParam`, build and send the `size` string (e.g., `auto`, `1024x768`, `16:9`) instead of separate `width` and `height` fields. Refer to the API schema in `reference/img-models.md` and `reference/vid-models.md` for the exact payload structure.
 - **Model Switching:** Ensure that when switching models, the UI updates to reflect whether the new model uses enums or free-form inputs, preserving user settings where possible.
 
 #### Cache Management:
@@ -225,6 +229,7 @@ Example for HiDream (with model message):
    - `payloadFormat`: currently `'flat'` for all models
    - `parameterMapping`: map UI concepts to model param names (e.g., `cfgScale: 'guidance_scale'`, `steps: 'num_inference_steps'`)
    - `resolutionFormat`: if model uses resolution enums, specify `'star'` or `'x'`
+  - `sizeParam`/`supportsAspectRatio`: when present, build size strings (`auto`, `WxH`, `W:H`) instead of width/height and show the aspect ratio control
    - `message`: optional model-specific warning/info message: `{ type: 'warning'/'info', text: 'Message content' }`
 3. Reference the API schema from `reference/img-models.md`
 4. Test with both default and edge-case parameter values
@@ -259,6 +264,7 @@ Example for HiDream (with model message):
 1. Modify HTML structure in `index.html` (add new model to model select)
 2. Update styles in `app.css`
 3. For UI logic changes, edit `js/ui.js` (ensure resolution enum is supported for models like Wan2.1 14b)
+  - Models with `supportsAspectRatio` must toggle the aspect ratio input when `custom-aspect` is selected.
 4. Test responsive layout at different screen sizes
 5. Validate PWA functionality still works
 
@@ -288,7 +294,7 @@ Example for HiDream (with model message):
 ### API Integration:
 - Uses Chutes API endpoints for image and video generation
 - API key stored in localStorage
-- Image models: Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
+- Image models: Hunyuan Image 3, Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b (image), Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl
 - Image Edit models: Qwen Image Edit, Qwen Image Edit 2509 (multi-image)
 - Video models: Wan2.1 14b Video
 - TTS models: Kokoro, CSM 1B

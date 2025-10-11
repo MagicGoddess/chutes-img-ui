@@ -1,6 +1,25 @@
 // Model configurations based on actual API schemas from img-models.jsonl and vid-models.md
 export const MODEL_CONFIGS = {
 
+  'hunyuan-image-3': {
+    name: 'Hunyuan Image 3',
+    endpoint: 'https://chutes-hunyuan-image-3.chutes.ai/generate',
+    // Metadata for payload construction
+    payloadFormat: 'flat',
+    sizeParam: 'size',
+    supportsAspectRatio: true,
+    parameterMapping: {
+      steps: 'steps'
+    },
+    params: {
+      width: { min: 128, max: 2048, default: 1024, step: 64 },
+      height: { min: 128, max: 2048, default: 1024, step: 64 },
+      steps: { min: 10, max: 100, default: 50, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null },
+      size: { default: 'auto' }
+    }
+  },
+
   'qwen-image': {
     name: 'Qwen Image',
     endpoint: 'https://image.chutes.ai/generate',

@@ -605,3 +605,106 @@ curl -X POST \
   "minimal_input_schema": null
 }
 ```
+
+## Hunyuan Image 3 (hunyuan-image-3)
+
+### Example
+```sh
+curl -X POST \
+		https://chutes-hunyuan-image-3.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "prompt": "A brown and white dog is running on the grass"
+  }'
+```
+
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerationInput"
+      }
+    },
+    "definitions": {
+      "GenerationInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "size": {
+            "type": "string",
+            "title": "Size",
+            "default": "auto",
+            "description": "Image resolution (auto, WxH like 1280x768, or aspect ratio like 16:9)"
+          },
+          "steps": {
+            "type": "integer",
+            "title": "Steps",
+            "default": 50,
+            "maximum": 100,
+            "minimum": 10
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/webp",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinifiedGenerationInput"
+      }
+    },
+    "definitions": {
+      "MinifiedGenerationInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "A brown and white dog is running on the grass"
+          }
+        }
+      }
+    }
+  }
+}
+```

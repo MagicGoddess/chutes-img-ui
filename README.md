@@ -6,12 +6,13 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
 - Clean single-page UI; desktop two-column layout (Input | Result)
 - Supports three modes: Image Edit, Text-to-Image, and Video Generation (Text-to-Video / Image-to-Video)
 - New: Text-to-Speech (TTS) mode with multiple models
-- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit 2509; Wan2.1 14b Video)
+- Model selector for Text-to-Image, Image Edit, and Video Generation (e.g., Hunyuan Image 3, Qwen Image, HiDream, FLUX.1 Dev, JuggernautXL, Chroma, iLustMix, Neta Lumina, Wan2.1 14b, Nova Anime3d Xl, Illustrij, Orphic Lora, Animij, HassakuXL, Nova Cartoon Xl; Qwen Image Edit 2509; Wan2.1 14b Video)
 - Smart parameter management:
   - Auto resolution preset; empty fields use model defaults; settings preserved when switching models
   - Models with fixed resolution enums (e.g., Wan2.1 14b image and video, HiDream) handled via dropdown
   - In Video mode, width/height are reflected from the preset and kept read-only
   - For Wan Video Image-to-Video, resolution is not applicable and the UI hides it automatically
+  - Hunyuan Image 3 supports pixel presets, custom dimensions, and a custom aspect ratio option that sends the model's `size` string (e.g., `auto`, `1024x768`, `16:9`)
 - Model-specific messaging system: Important notices and warnings display automatically (e.g., HiDream dimension swap warning)
 - Generation History: Automatically saves generated images and videos with metadata
   - Now also saves audio from TTS and shows 🗣️ badges
@@ -44,6 +45,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
   - Text-to-Image: `POST https://image.chutes.ai/generate` with `model` parameter
     - Image Edit:\n\n    - Qwen Image Edit 2509: `POST https://chutes-qwen-image-edit-2509.chutes.ai/generate`
   - HiDream: `POST https://chutes-hidream.chutes.ai/generate` (uses `resolution` enum, not width/height)
+  - Hunyuan Image 3: `POST https://chutes-hunyuan-image-3.chutes.ai/generate` (accepts a `size` string for resolution or aspect ratio)
   - Wan2.1 14b (Image): `POST https://chutes-wan2-1-14b.chutes.ai/text2image` (uses `resolution` enum, not width/height)
   - Wan2.1 14b Video:
     - Text-to-Video: `POST https://chutes-wan2-1-14b.chutes.ai/text2video`
@@ -59,6 +61,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
   - **Send to Image Edit**: One-click button on result and in modal to use an image as the source for Image Edit
   - Text-to-Image: `width`, `height`, `prompt`, `guidance_scale`, `num_inference_steps`, optionally `negative_prompt`, `seed`, `model`.
   - HiDream: `prompt`, `resolution` (e.g. "1024x1024"), `guidance_scale`, `num_inference_steps`, optionally `seed`.
+  - Hunyuan Image 3: `prompt`, `size` ("auto", `WxH` like `1280x768`, or aspect ratio like `16:9`), optional `seed`, optional `steps` (default 50).
   - Wan2.1 14b (Image): `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `sample_shift`, `seed`, `negative_prompt`.
   - Video (flat JSON, returns mp4 Blob):
   - Wan2.1 14b Video – Text-to-Video: `prompt`, `resolution` (e.g. "832*480"), `guidance_scale`, `steps`, `fps`, `frames`, `seed`, optional `sample_shift`, optional `negative_prompt`.
@@ -73,7 +76,7 @@ A minimalist, vibecoded Progressive Web App for generating and editing images an
     - CSM 1B: `text` (required), optional `speaker`, `max_duration_ms`; advanced `context` omitted from UI
 
 Notes:
-- Resolution strings are model-specific: Wan uses `W*H`, HiDream uses `WxH`. The app formats and includes/omits `resolution` automatically based on each model's metadata.
+- Resolution strings are model-specific: Wan uses `W*H`, HiDream uses `WxH`, and Hunyuan Image 3 uses a `size` string that accepts `auto`, `WxH`, or aspect ratios like `16:9`. The app formats and includes/omits these fields automatically based on each model's metadata.
 - Parameter names vary by model: some use `guidance_scale`, others use `true_cfg_scale`. The app maps UI inputs to correct parameter names using each model's `parameterMapping` metadata.
 - Some models display contextual warnings or notices (e.g., HiDream shows a dimension swap warning due to a server-side bug).
 

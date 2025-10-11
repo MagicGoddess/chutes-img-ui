@@ -6,6 +6,27 @@ import { toast } from './serviceWorker.js';
 import { ts } from './helpers.js';
 import { log } from './activityLog.js';
 
+function formatResolutionForModal(settings = {}) {
+  if (settings.resolution) {
+    const raw = String(settings.resolution).trim();
+    if (!raw) return '-';
+    if (raw.toLowerCase() === 'auto') return 'Auto';
+    if (raw.includes(':')) return `Aspect ${raw}`;
+    const normalized = raw.replace('*', 'x');
+    const parts = normalized.split('x');
+    if (parts.length === 2 && parts.every(part => part && part.trim())) {
+      return `${parts[0]} × ${parts[1]}`;
+    }
+    return normalized;
+  }
+  const w = settings.width;
+  const h = settings.height;
+  if (w && h) return `${w} × ${h}`;
+  if (w && !h) return `${w} × ?`;
+  if (!w && h) return `? × ${h}`;
+  return '-';
+}
+
 // Current modal state
 let currentModalImage = null;
 let modalObjectUrl = null; // Track modal object URL for cleanup
@@ -126,7 +147,7 @@ export async function openImageModal(imageId) {
   } else if (isTts) {
     modalResolution.textContent = 'Audio';
   } else {
-    modalResolution.textContent = `${image.settings.width} × ${image.settings.height}`;
+    modalResolution.textContent = formatResolutionForModal(image.settings || {});
   }
   modalSeed.textContent = image.settings.seed || 'Random';
   

@@ -298,6 +298,9 @@ export function setupEventListeners() {
       }
       
       // Get model-specific parameters
+      let widthForHistory = width;
+      let heightForHistory = height;
+      let resolutionForHistory = `${width}x${height}`;
       let body;
       let endpoint;
       
@@ -454,9 +457,44 @@ export function setupEventListeners() {
         
         // Build payload generically from model config
         const payload = { prompt };
+  resolutionForHistory = null;
+  widthForHistory = width;
+  heightForHistory = height;
         
         // Handle resolution (enum vs width/height)
-        if (config.params.resolution && Array.isArray(config.params.resolution.options)) {
+        if (config.sizeParam) {
+          let sizeValue;
+          const presetVal = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
+          if (presetVal === 'auto') {
+            sizeValue = config.params?.size?.default || 'auto';
+            widthForHistory = null;
+            heightForHistory = null;
+          } else if (presetVal === 'custom-aspect' && config.supportsAspectRatio) {
+            const ratioRaw = (els.aspectRatio?.value || '').trim();
+            if (!ratioRaw) {
+              return toast('Enter an aspect ratio (e.g. 16:9)', true);
+            }
+            const normalized = ratioRaw.replace(/\s+/g, '');
+            const ratioPattern = /^\d+(?:\.\d+)?:\d+(?:\.\d+)?$/;
+            if (!ratioPattern.test(normalized)) {
+              return toast('Aspect ratio must be in W:H format, e.g. 16:9 or 4:3', true);
+            }
+            sizeValue = normalized;
+            widthForHistory = null;
+            heightForHistory = null;
+          } else if (presetVal && presetVal !== 'custom') {
+            sizeValue = String(presetVal).replace('*', 'x');
+            const parts = sizeValue.split('x').map(Number);
+            if (parts.length === 2 && parts.every(n => !Number.isNaN(n))) {
+              widthForHistory = parts[0];
+              heightForHistory = parts[1];
+            }
+          } else {
+            sizeValue = `${width}x${height}`;
+          }
+          payload[config.sizeParam] = sizeValue;
+          resolutionForHistory = sizeValue;
+        } else if (config.params.resolution && Array.isArray(config.params.resolution.options)) {
           // Model uses resolution enum
           let resStr;
           const presetVal = els.resolutionPreset ? els.resolutionPreset.value : 'auto';
@@ -477,10 +515,12 @@ export function setupEventListeners() {
             }
           }
           payload.resolution = resStr;
+          resolutionForHistory = String(resStr).replace('*', 'x');
         } else {
           // Model uses separate width/height
           payload.width = width;
           payload.height = height;
+          resolutionForHistory = `${width}x${height}`;
         }
         
         // Parameter mapping from UI elements to model param names
@@ -524,7 +564,7 @@ export function setupEventListeners() {
         
         // Add any additional model-specific parameters with defaults
         for (const [paramName, paramSchema] of Object.entries(config.params)) {
-          if (['width', 'height', 'resolution', 'guidance_scale', 'true_cfg_scale', 'cfg', 'num_inference_steps', 'steps', 'seed', 'negative_prompt'].includes(paramName)) {
+          if (['width', 'height', 'resolution', 'size', 'guidance_scale', 'true_cfg_scale', 'cfg', 'num_inference_steps', 'steps', 'seed', 'negative_prompt'].includes(paramName)) {
             continue; // already handled above
           }
           if (paramSchema.default !== undefined) {
@@ -647,8 +687,9 @@ export function setupEventListeners() {
         generationSettings = {
           prompt: body.prompt,
           negativePrompt: body.negative_prompt || '',
-          width: body.width,
-          height: body.height,
+          width: widthForHistory,
+          height: heightForHistory,
+          resolution: resolutionForHistory,
           cfgScale: body.cfg || body.guidance_scale || body.true_cfg_scale,
           steps: body.steps || body.num_inference_steps,
           seed: body.seed,

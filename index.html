@@ -10,7 +10,7 @@
   <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png" />
-  <link rel="stylesheet" href="./app.css?v=1760031256522" />
+  <link rel="stylesheet" href="./app.css?v=1760186768896" />
 </head>
 <body>
   <header>
@@ -87,6 +87,7 @@
           <select id="modelSelect">
             <!-- Image models -->
 
+            <option value="hunyuan-image-3">Hunyuan Image 3</option>
             <option value="qwen-image">Qwen Image</option>
             <option value="hidream">HiDream</option>
             <option value="flux-dev">FLUX.1 Dev</option>
@@ -151,11 +152,16 @@
             </select>
             <div class="muted" id="autoDims" style="margin-top:4px;display:none"></div>
           </div>
-          <div>
+          <div id="aspectRatioGroup" style="display:none;">
+            <label for="aspectRatio">Aspect Ratio</label>
+            <input id="aspectRatio" type="text" placeholder="e.g. 16:9" />
+            <div class="muted" style="margin-top:4px">Used when Custom Aspect Ratio is selected.</div>
+          </div>
+          <div id="widthGroup">
             <label for="width">Width (128–2048)</label>
             <input id="width" type="number" min="128" max="2048" step="64" value="1024" />
           </div>
-          <div>
+          <div id="heightGroup">
             <label for="height">Height (128–2048)</label>
             <input id="height" type="number" min="128" max="2048" step="64" value="1024" />
           </div>
@@ -366,7 +372,7 @@
     </div>
   </footer>
 
-  <script type="module" src="./js/main.js?v=1760031256522"></script>
+  <script type="module" src="./js/main.js?v=1760186768896"></script>
   <div id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

@@ -25,6 +25,34 @@ import {
 // Track object URLs for grid images to prevent memory leaks
 let gridObjectUrls = new Set();
 
+function describeImageResolution(settings = {}) {
+  const res = settings.resolution;
+  if (res) {
+    const normalized = String(res).trim();
+    if (!normalized) return 'Unknown';
+    if (normalized.toLowerCase() === 'auto') return 'Auto';
+    if (normalized.includes(':')) return `Aspect ${normalized}`;
+    const cleaned = normalized.replace('*', 'x');
+    const parts = cleaned.split('x');
+    if (parts.length === 2 && parts.every(part => part && part.trim())) {
+      return `${parts[0]}×${parts[1]}`;
+    }
+    return cleaned;
+  }
+  const w = settings.width;
+  const h = settings.height;
+  if (w && h) {
+    return `${w}×${h}`;
+  }
+  if (w && !h) {
+    return `${w}×?`;
+  }
+  if (!w && h) {
+    return `?×${h}`;
+  }
+  return 'Unknown';
+}
+
 // Track current filter state
 let currentFilter = 'all'; // 'all', 'images', 'videos', 'tts'
 
@@ -450,7 +478,7 @@ function refreshImageGrid() {
       const isTts = img.settings?.type === 'tts';
       const resolution = isVideo ? 
         img.settings.resolution || 'Unknown' : 
-        (isTts ? 'Audio' : `${img.settings.width || '?'}×${img.settings.height || '?'}`);
+        (isTts ? 'Audio' : describeImageResolution(img.settings || {}));
       
       // Format file size if available
       const fileSize = img.fileSize ? formatBytes(img.fileSize) : 'Unknown';
@@ -636,24 +664,64 @@ async function loadModalSettings() {
   // Load settings
   els.prompt.value = settings.prompt || '';
   els.negPrompt.value = settings.negativePrompt || '';
-  els.width.value = settings.width || 1024;
-  els.height.value = settings.height || 1024;
+  let resolvedWidth = settings.width ?? 1024;
+  let resolvedHeight = settings.height ?? 1024;
+  let presetToUse = null;
+  const hasResolutionString = typeof settings.resolution === 'string' && settings.resolution.trim().length;
+  if (hasResolutionString) {
+    const resStr = settings.resolution.trim();
+    const lowered = resStr.toLowerCase();
+    if (lowered === 'auto') {
+      presetToUse = 'auto';
+      if (settings.width) resolvedWidth = settings.width;
+      if (settings.height) resolvedHeight = settings.height;
+    } else if (resStr.includes(':')) {
+      presetToUse = 'custom-aspect';
+      if (els.aspectRatio) els.aspectRatio.value = resStr;
+      if (settings.width) resolvedWidth = settings.width;
+      if (settings.height) resolvedHeight = settings.height;
+    } else {
+      const cleaned = resStr.replace('*', 'x');
+      const parts = cleaned.split('x').map(v => parseInt(v, 10));
+      if (parts.length === 2 && parts.every(n => !Number.isNaN(n))) {
+        resolvedWidth = parts[0];
+        resolvedHeight = parts[1];
+        presetToUse = findPresetForDimensions(resolvedWidth, resolvedHeight, settings.mode);
+        if (presetToUse === 'custom') {
+          // Keep exact resolution for display when not matching preset
+          if (els.resolutionPreset && !Array.from(els.resolutionPreset.options).some(opt => opt.value === cleaned)) {
+            // Will fall back to custom, width/height inputs already set
+          }
+        }
+      }
+    }
+  }
+  if (!presetToUse) {
+    presetToUse = findPresetForDimensions(resolvedWidth, resolvedHeight, settings.mode);
+  }
+
+  els.width.value = resolvedWidth;
+  els.height.value = resolvedHeight;
   els.cfg.value = settings.cfgScale || 4;
   els.steps.value = settings.steps || 50;
   els.seed.value = settings.seed || '';
   
   // Set resolution preset dropdown to match the loaded dimensions
-  const matchingPreset = findPresetForDimensions(settings.width || 1024, settings.height || 1024, settings.mode);
   if (els.resolutionPreset) {
-    els.resolutionPreset.value = matchingPreset;
-    // If it's custom, we need to enable the width/height inputs
-    if (matchingPreset === 'custom') {
+    const availableValues = Array.from(els.resolutionPreset.options || []).map(opt => opt.value);
+    if (!availableValues.includes(presetToUse)) {
+      if (presetToUse === 'custom-aspect' && els.aspectRatio) {
+        els.aspectRatio.value = '';
+      }
+      presetToUse = presetToUse === 'custom-aspect' ? 'custom' : 'auto';
+    }
+    els.resolutionPreset.value = presetToUse;
+    if (presetToUse === 'custom') {
       toggleDimInputs(true);
       if (els.autoDims) els.autoDims.style.display = 'none';
-    } else {
-      // Apply preset logic to update UI state
-      applyPreset();
     }
+    // Apply preset logic to update UI state (handles auto/custom-aspect cases)
+    applyPreset();
   }
   
   // Update UI

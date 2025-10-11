@@ -48,9 +48,13 @@ export const els = {
   inputCardTitle: document.getElementById('inputCardTitle'),
   width: document.getElementById('width'), 
   height: document.getElementById('height'), 
+  widthGroup: document.getElementById('widthGroup'),
+  heightGroup: document.getElementById('heightGroup'),
   seed: document.getElementById('seed'),
   resolutionPreset: document.getElementById('resolutionPreset'), 
   autoDims: document.getElementById('autoDims'),
+  aspectRatioGroup: document.getElementById('aspectRatioGroup'),
+  aspectRatio: document.getElementById('aspectRatio'),
   cfg: document.getElementById('cfg'), 
   cfgVal: document.getElementById('cfgVal'), 
   steps: document.getElementById('steps'), 
@@ -699,7 +703,15 @@ export function updateParametersForImageEdit() {
   
   // Set negative prompt placeholder for image editing (uses Qwen Image Edit defaults)
   els.negPrompt.placeholder = 'Things to avoid (optional)';
+  setDimGroupVisibility(true);
   
+  if (els.aspectRatioGroup) {
+    els.aspectRatioGroup.style.display = 'none';
+  }
+  if (els.aspectRatio) {
+    els.aspectRatio.value = '';
+  }
+
   sync();
 }
 
@@ -823,6 +835,8 @@ export function updateParametersForModel(modelKey) {
   
   currentModel = modelKey;
   const params = config.params;
+  const supportsAspect = Boolean(config.supportsAspectRatio);
+  const sizeDefault = config.params?.size?.default ?? 'auto';
   
   // Handle model-specific messages
   updateModelMessage(config);
@@ -900,6 +914,9 @@ export function updateParametersForModel(modelKey) {
       } else {
         autoLabel = 'Auto (model default)';
       }
+    } else if (supportsAspect && sizeDefault) {
+      const sizeNormalized = String(sizeDefault).toLowerCase();
+      autoLabel = sizeNormalized === 'auto' ? 'Auto (model default)' : `Auto (${sizeDefault})`;
     } else {
       autoLabel = 'Auto (model default)';
     }
@@ -929,22 +946,45 @@ export function updateParametersForModel(modelKey) {
       }
     }
   } else {
-    preset.innerHTML = `
-      <option value="auto">${autoLabel}</option>
-      <option value="512x512">512 × 512 (Low-res square 1:1)</option>
-      <option value="1024x1024">1024 × 1024 (Square 1:1)</option>
-      <option value="1536x1024">1536 × 1024 (Landscape 3:2)</option>
-      <option value="1024x1536">1024 × 1536 (Portrait 2:3)</option>
-      <option value="768x1360">768 × 1360 (Portrait 9:16)</option>
-      <option value="1360x768">1360 × 768 (Landscape 16:9)</option>
-      <option value="1920x1080">1920 × 1080 (HiRes landscape 16:9)</option>
-      <option value="1080x1920">1080 × 1920 (HiRes portrait 9:16)</option>
-      <option value="custom">Custom…</option>
-    `;
+    const baseOptions = [
+      { value: 'auto', label: autoLabel },
+      { value: '512x512', label: '512 × 512 (Low-res square 1:1)' },
+      { value: '1024x1024', label: '1024 × 1024 (Square 1:1)' },
+      { value: '1536x1024', label: '1536 × 1024 (Landscape 3:2)' },
+      { value: '1024x1536', label: '1024 × 1536 (Portrait 2:3)' },
+      { value: '768x1360', label: '768 × 1360 (Portrait 9:16)' },
+      { value: '1360x768', label: '1360 × 768 (Landscape 16:9)' },
+      { value: '1920x1080', label: '1920 × 1080 (HiRes landscape 16:9)' },
+      { value: '1080x1920', label: '1080 × 1920 (HiRes portrait 9:16)' }
+    ];
+    if (supportsAspect) {
+      baseOptions.push({ value: 'custom-aspect', label: 'Custom aspect ratio…' });
+    }
+    baseOptions.push({ value: 'custom', label: 'Custom…' });
+    preset.innerHTML = baseOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
   }
   
   // Restore the previously selected preset, or default to auto
-  preset.value = currentPreset || 'auto';
+  const availableValues = new Set(Array.from(preset.options).map(opt => opt.value));
+  const desiredPreset = (currentPreset && availableValues.has(currentPreset)) ? currentPreset : 'auto';
+  preset.value = desiredPreset;
+  setDimGroupVisibility(!(supportsAspect && preset.value === 'custom-aspect'));
+  if (!availableValues.has('custom-aspect') && els.aspectRatioGroup) {
+    els.aspectRatioGroup.style.display = 'none';
+  }
+  if (!availableValues.has(currentPreset) && els.aspectRatio && !supportsAspect) {
+    els.aspectRatio.value = '';
+  }
+
+  if (supportsAspect && els.aspectRatioGroup) {
+    const shouldShowAspect = preset.value === 'custom-aspect';
+    els.aspectRatioGroup.style.display = shouldShowAspect ? 'block' : 'none';
+  } else if (els.aspectRatioGroup) {
+    els.aspectRatioGroup.style.display = 'none';
+    if (els.aspectRatio) {
+      els.aspectRatio.value = '';
+    }
+  }
   
   // Update seed
   if (params.seed) {
@@ -982,6 +1022,16 @@ export function updateParametersForModel(modelKey) {
 export function toggleDimInputs(enabled) {
   els.width.disabled = !enabled;
   els.height.disabled = !enabled;
+}
+
+function setDimGroupVisibility(show) {
+  const display = show ? '' : 'none';
+  if (els.widthGroup) {
+    els.widthGroup.style.display = display;
+  }
+  if (els.heightGroup) {
+    els.heightGroup.style.display = display;
+  }
 }
 
 /**
@@ -1035,6 +1085,28 @@ export async function computeAndDisplayAutoDims(imgUrl) {
 export function applyPreset() {
   if (!els.resolutionPreset) return;
   const val = els.resolutionPreset.value;
+  const isTextToImage = currentMode === 'text-to-image';
+  const config = isTextToImage ? MODEL_CONFIGS[currentModel] : null;
+  const supportsAspect = Boolean(config?.supportsAspectRatio);
+  if (isTextToImage) {
+    const hideDimsForAspect = supportsAspect && val === 'custom-aspect';
+    setDimGroupVisibility(!hideDimsForAspect);
+  } else if (currentMode === 'image-edit') {
+    setDimGroupVisibility(true);
+  }
+
+  if (supportsAspect && els.aspectRatioGroup) {
+    if (val === 'custom-aspect') {
+      toggleDimInputs(false);
+      els.aspectRatioGroup.style.display = 'block';
+      if (els.autoDims) els.autoDims.style.display = 'none';
+      log(`[${ts()}] Preset: custom aspect ratio`);
+      return;
+    }
+    els.aspectRatioGroup.style.display = 'none';
+  } else if (els.aspectRatioGroup) {
+    els.aspectRatioGroup.style.display = 'none';
+  }
   
   if (val === 'custom') {
     toggleDimInputs(true);
@@ -1393,6 +1465,13 @@ function startTouchDrag(e, item, idx) {
 export function updateParametersForVideoGeneration() {
   // Filter model select to show only video models
   updateModelSelectForVideo();
+  if (els.aspectRatioGroup) {
+    els.aspectRatioGroup.style.display = 'none';
+  }
+  if (els.aspectRatio) {
+    els.aspectRatio.value = '';
+  }
+  setDimGroupVisibility(true);
   
   // Update video-specific parameters based on current model
   updateVideoParametersForModel(currentModel);
@@ -1583,10 +1662,19 @@ export function updateVideoResolutionPresets() {
   
   // Hide width/height inputs for models with enum-only resolutions
   const hideWidthHeight = config && config.resolutionFormat === 'enum';
-  const wContainer = els.width ? els.width.parentElement : null;
-  const hContainer = els.height ? els.height.parentElement : null;
-  if (wContainer) wContainer.style.display = hideWidthHeight ? 'none' : '';
-  if (hContainer) hContainer.style.display = hideWidthHeight ? 'none' : '';
+  if (els.widthGroup || els.heightGroup) {
+    if (els.widthGroup) {
+      els.widthGroup.style.display = hideWidthHeight ? 'none' : '';
+    }
+    if (els.heightGroup) {
+      els.heightGroup.style.display = hideWidthHeight ? 'none' : '';
+    }
+  } else {
+    const wContainer = els.width ? els.width.parentElement : null;
+    const hContainer = els.height ? els.height.parentElement : null;
+    if (wContainer) wContainer.style.display = hideWidthHeight ? 'none' : '';
+    if (hContainer) hContainer.style.display = hideWidthHeight ? 'none' : '';
+  }
 }
 
 /**
@@ -1726,8 +1814,9 @@ export function restoreModelSelectForImages() {
     modelSelect.value = currentSelection;
     currentModel = currentSelection;
   } else {
-    modelSelect.value = 'qwen-image';
-    currentModel = 'qwen-image';
+    const firstKey = Object.keys(MODEL_CONFIGS)[0];
+    modelSelect.value = firstKey;
+    currentModel = firstKey;
   }
 }
 
