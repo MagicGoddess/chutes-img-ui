@@ -354,14 +354,13 @@ curl -X POST \
 ### Example
 ```sh
 curl -X POST \
-		https://kikakkz-hidream-i1-full.chutes.ai/generate \
+		https://chutes-hidream.chutes.ai/generate \
 		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '  {
     "seed": null,
-    "width": 512,
-    "height": 512,
     "prompt": "example-string",
+    "resolution": "1024x1024",
     "guidance_scale": 5,
     "num_inference_steps": 50
   }'
@@ -407,23 +406,30 @@ curl -X POST \
             "title": "Seed",
             "default": null
           },
-          "width": {
-            "type": "integer",
-            "title": "Width",
-            "default": 512,
-            "maximum": 2560,
-            "minimum": 256
-          },
-          "height": {
-            "type": "integer",
-            "title": "Height",
-            "default": 512,
-            "maximum": 2560,
-            "minimum": 256
-          },
           "prompt": {
             "type": "string",
             "title": "Prompt"
+          },
+          "resolution": {
+            "anyOf": [
+              {
+                "enum": [
+                  "1024x1024",
+                  "768x1360",
+                  "1360x768",
+                  "880x1168",
+                  "1168x880",
+                  "1248x832",
+                  "832x1248"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolution",
+            "default": "1024x1024"
           },
           "guidance_scale": {
             "anyOf": [
