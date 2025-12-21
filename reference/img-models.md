@@ -2061,3 +2061,137 @@ curl -X POST \
   }
 }
 ```
+
+## Z Image Turbo (z-image-turbo)
+
+### Example
+```sh
+curl -X POST \
+		https://chutes-z-image-turbo.chutes.ai/generate \
+		-H "Authorization: Bearer $CHUTES_API_TOKEN" \
+	-H "Content-Type: application/json" \
+	-d '  {
+    "prompt": "a high quality photo of a sunrise over the mountains"
+  }'
+```
+
+### Schema
+```json
+{
+  "method": "POST",
+  "path": "/generate",
+  "function": "generate",
+  "stream": false,
+  "passthrough": false,
+  "public_api_path": "/generate",
+  "public_api_method": "POST",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/GenerateInput"
+      }
+    },
+    "definitions": {
+      "GenerateInput": {
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 4294967295,
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed",
+            "default": null
+          },
+          "shift": {
+            "type": "number",
+            "title": "Shift",
+            "default": 3,
+            "maximum": 10,
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 576
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 1024,
+            "maximum": 2048,
+            "minimum": 576
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "maxLength": 1200,
+            "minLength": 3
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 0,
+            "maximum": 5,
+            "minimum": 0
+          },
+          "max_sequence_length": {
+            "type": "integer",
+            "title": "Max Sequence Length",
+            "default": 512,
+            "maximum": 2048,
+            "minimum": 256
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "title": "Num Inference Steps",
+            "default": 9,
+            "maximum": 100,
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "output_schema": {},
+  "output_content_type": "image/png",
+  "minimal_input_schema": {
+    "type": "object",
+    "required": [
+      "input_args"
+    ],
+    "properties": {
+      "input_args": {
+        "$ref": "#/definitions/MinimalGenerateInput"
+      }
+    },
+    "definitions": {
+      "MinimalGenerateInput": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "a high quality photo of a sunrise over the mountains"
+          }
+        }
+      }
+    }
+  }
+}
+```

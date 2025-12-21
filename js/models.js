@@ -1,6 +1,24 @@
 // Model configurations based on actual API schemas from img-models.jsonl and vid-models.md
 export const MODEL_CONFIGS = {
 
+  'z-image-turbo': {
+    name: 'Z Image Turbo',
+    endpoint: 'https://chutes-z-image-turbo.chutes.ai/generate',
+    // Metadata for payload construction
+    payloadFormat: 'flat',
+    parameterMapping: {
+      cfgScale: 'guidance_scale',
+      steps: 'num_inference_steps'
+    },
+    params: {
+      width: { min: 576, max: 2048, default: 1024, step: 64 },
+      height: { min: 576, max: 2048, default: 1024, step: 64 },
+      guidance_scale: { min: 0, max: 5, default: 0, step: 0.1 },
+      num_inference_steps: { min: 1, max: 100, default: 9, step: 1 },
+      seed: { min: 0, max: 4294967295, default: null }
+    }
+  },
+
   'hunyuan-image-3': {
     name: 'Hunyuan Image 3',
     endpoint: 'https://chutes-hunyuan-image-3.chutes.ai/generate',
