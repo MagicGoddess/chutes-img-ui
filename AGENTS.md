@@ -225,6 +225,34 @@ Example for HiDream (with model message):
 ### Making Changes
 
 #### Adding a New Model:
+⚠️ **IMPORTANT: Parameter Wrapping Inconsistency Warning** ⚠️
+
+Different image models use **inconsistent parameter wrapping** in their API payloads. Always check the model's specific schema in `reference/img-models.md` to determine the correct structure:
+
+- **Pattern 1**: Requires `input_args` wrapper
+  ```json
+  {"input_args": {"prompt": "text", "width": 1024, ...}}
+  ```
+- **Pattern 2**: Uses `args` wrapper (e.g., Wan2.1 14b)
+  ```json
+  {"args": {"prompt": "text", "resolution": "832*480", ...}}
+  ```
+- **Pattern 3**: Direct parameters (no wrapper)
+  ```json
+  {"prompt": "text", "width": 1024, "height": 1024, ...}
+  ```
+
+**How to determine the correct pattern:**
+1. Look at the `required` field in the model's `input_schema`
+2. If it says `"input_args"` → wrap parameters inside `input_args`
+3. If it says `"args"` → wrap parameters inside `args` 
+4. If no wrapper is mentioned in examples → use direct parameters
+5. **The curl example is usually the most reliable guide** - it shows the exact payload structure that works
+
+**NEVER assume a universal pattern** - each model must be handled individually!
+
+---
+
 1. Add model configuration to `MODEL_CONFIGS` in `js/models.js`
 2. Include metadata for payload construction:
    - `payloadFormat`: currently `'flat'` for all models
